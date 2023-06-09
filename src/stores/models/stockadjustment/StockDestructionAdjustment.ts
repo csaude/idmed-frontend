@@ -16,19 +16,7 @@ export class StockDestructionAdjustment extends StockAdjustment {
     };
   }
 
-  static async apiSave(adjustment) {
-    return await this.api().post('/stockDestructionAdjustment', adjustment);
-  }
-
-  static async apiRemove(id) {
-    return await this.api().delete(`/stockDestructionAdjustment/${id}`);
-  }
-
-  static async apiUpdate(adjustment) {
-    return await this.api().patch('/stockDestructionAdjustment', adjustment);
-  }
-
-  static async apiGetAll() {
-    return await this.api().get('/stockDestructionAdjustment');
+  static piniaOptions = {
+    persist: true,
   }
 }

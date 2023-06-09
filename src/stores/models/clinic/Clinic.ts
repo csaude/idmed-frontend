@@ -36,6 +36,10 @@ export default class Clinic extends Model {
     };
   }
 
+  static piniaOptions = {
+    persist: true,
+  };
+
   static apiFetchById(id) {
     return this.api().get(`/clinic/${id}`);
   }
