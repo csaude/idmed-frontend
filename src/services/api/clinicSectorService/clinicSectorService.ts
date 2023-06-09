@@ -123,6 +123,8 @@ export default {
   getActivebyClinicId(clinicId: string) {
     return clinicsector
       .query()
+      .with('clinic')
+      .with('clinicSectorType')
       .where((clinicsector) => {
         return clinicsector.active && clinicsector.clinic_id === clinicId;
       })

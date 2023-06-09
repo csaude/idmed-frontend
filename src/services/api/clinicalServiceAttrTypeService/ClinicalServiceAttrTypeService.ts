@@ -96,12 +96,9 @@ export default {
         }
       });
   },
-  delete(id: number) {
-    return api()
-      .delete('clinicalServiceAttributeType/' + id)
-      .then(() => {
-        clinicalserviceAttrType.destroy(id);
-      });
+  async delete(id: number) {
+    await api().delete('clinicalServiceAttributeType/' + id);
+    clinicalserviceAttrType.destroy(id);
   },
 
   // Local Storage Pinia
@@ -111,6 +108,6 @@ export default {
 
   /*Pinia Methods*/
   getAllClinicalServiceAttrTypes() {
-    return clinicalserviceAttrType.query().withAll().get();
+    return clinicalserviceAttrType.withAll().get();
   },
 };

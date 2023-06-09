@@ -9,29 +9,31 @@ const { alertSucess, alertError, alertWarning } = useSwal();
 const clinicalservice = useRepo(ClinicalService);
 
 export default {
-  async post(params: string) {
-    try {
-      const resp = await api().post('clinicalService', params);
-      clinicalservice.save(resp.data);
-      alertSucess('O Registo foi efectuado com sucesso');
-    } catch (error) {
-      if (error.request != null) {
-        const arrayErrors = JSON.parse(error.request.response);
-        const listErrors = [];
-        if (arrayErrors.total == null) {
-          listErrors.push(arrayErrors.message);
+  post(params: string) {
+    return api()
+      .post('clinicalService', params)
+      .then((resp) => {
+        clinicalservice.save(resp.data);
+        alertSucess('O Registo foi efectuado com sucesso');
+      })
+      .catch((error) => {
+        if (error.request != null) {
+          const arrayErrors = JSON.parse(error.request.response);
+          const listErrors = [];
+          if (arrayErrors.total == null) {
+            listErrors.push(arrayErrors.message);
+          } else {
+            arrayErrors._embedded.errors.forEach((element) => {
+              listErrors.push(element.message);
+            });
+          }
+          alertError(String(listErrors));
+        } else if (error.request) {
+          alertError(error.request);
         } else {
-          arrayErrors._embedded.errors.forEach((element) => {
-            listErrors.push(element.message);
-          });
+          alertError(error.message);
         }
-        alertError(String(listErrors));
-      } else if (error.request) {
-        alertError(error.request);
-      } else {
-        alertError(error.message);
-      }
-    }
+      });
   },
   get(offset: number) {
     if (offset >= 0) {
@@ -68,29 +70,31 @@ export default {
         });
     }
   },
-  async patch(id: number, params: string) {
-    try {
-      const resp = await api().patch('clinicalService/' + id, params);
-      clinicalservice.save(resp.data);
-      alertSucess('O Registo foi alterado com sucesso');
-    } catch (error) {
-      if (error.request != null) {
-        const arrayErrors = JSON.parse(error.request.response);
-        const listErrors = {};
-        if (arrayErrors.total == null) {
-          listErrors.push(arrayErrors.message);
+  patch(id: string, params: string) {
+    return api()
+      .patch('clinicalService/' + id, params)
+      .then((resp) => {
+        clinicalservice.save(resp.data);
+        alertSucess('O Registo foi alterado com sucesso');
+      })
+      .catch((error) => {
+        if (error.request != null) {
+          const arrayErrors = JSON.parse(error.request.response);
+          const listErrors = {};
+          if (arrayErrors.total == null) {
+            listErrors.push(arrayErrors.message);
+          } else {
+            arrayErrors._embedded.errors.forEach((element) => {
+              listErrors.push(element.message);
+            });
+          }
+          alertError(String(listErrors));
+        } else if (error.request) {
+          alertError(error.request);
         } else {
-          arrayErrors._embedded.errors.forEach((element) => {
-            listErrors.push(element.message);
-          });
+          alertError(error.message);
         }
-        alertError(String(listErrors));
-      } else if (error.request) {
-        alertError(error.request);
-      } else {
-        alertError(error.message);
-      }
-    }
+      });
   },
 
   async delete(id: number) {
@@ -139,7 +143,10 @@ export default {
       .with('attributes', (query) => {
         query.with('clinicalServiceAttributeType');
       })
-      .with('clinicSectors')
+      .with('clinicSectors', (query) => {
+        query.with('clinic');
+        query.with('clinicSectorType');
+      })
       .with('identifierType')
       .get();
   },

@@ -145,7 +145,7 @@ const clinicalService = reactive(
   ref(clinicalServiceService.newInstanceEntity())
 );
 const clinicalServiceAttributes = ref([]);
-const showClinicServiceRegistrationScreen = ref(false);
+const showClinicServiceRegistrationScreen = reactive(ref(false));
 const filter = ref('');
 const therapeuticRegimens = ref([]);
 const clinicSectors = ref([]);
@@ -162,7 +162,7 @@ const currClinic = inject('currClinic');
 
 /*Hooks*/
 const clinicalServices = computed(() => {
-  return clinicalServiceService.getAllClinicalServices();
+  return clinicalServiceService.getAllClinicalServicesPersonalized();
 });
 
 const forms = computed(() => {
@@ -170,6 +170,7 @@ const forms = computed(() => {
 });
 
 onMounted(() => {
+  init();
   isEditStep.value = false;
   isCreateStep.value = false;
   step.value = '';
@@ -178,20 +179,16 @@ onMounted(() => {
   identifierTypes.value = identifierTypeService.getAllIdentifierTypes();
 });
 
-/*Provides*/
-provide('stepp', step);
-// provide('drugs', drugs);
-provide('selectedClinicalService', clinicalService);
-provide(
-  'showClinicServiceRegistrationScreen',
-  showClinicServiceRegistrationScreen
-);
-provide('clinicalServiceAttributes', clinicalServiceAttributes);
-provide('therapeuticRegimens', therapeuticRegimens);
-provide('clinicSectors', clinicSectors);
-provide('identifierTypes', identifierTypes);
-
 /*methods*/
+const init = () => {
+  clinicalServiceAttributes.value =
+    clinicalServiceAttrTypeService.getAllClinicalServiceAttrTypes();
+  therapeuticRegimens.value =
+    therapeuticalRegimenService.getAllActiveTherapeuticalRegimens();
+  clinicSectors.value = clinicSectorService.getActivebyClinicId(
+    currClinic.value.id
+  );
+};
 const getIconActive = (clinicalService) => {
   if (clinicalService.active) {
     return 'stop_circle';
@@ -233,47 +230,29 @@ const visualizeClinicalService = (clinicalServiceParam) => {
   isCreateStep.value = false;
   isEditStep.value = true;
   clinicalService.value = clinicalServiceParam;
-  showClinicServiceRegistrationScreen.value = true;
   editMode.value = false;
   viewMode.value = true;
+  showClinicServiceRegistrationScreen.value = true;
 };
 const editClinicService = (clinicalServiceParam) => {
-  clinicalServiceAttributes.value =
-    clinicalServiceAttrTypeService.getAllClinicalServiceAttrTypes();
-  therapeuticRegimens.value =
-    therapeuticalRegimenService.getAllActiveTherapeuticalRegimens();
-  // therapeuticalRegimenService.getAllActiveTherapeuticalRegimensByclinicalService(
-  //   clinicalServiceParam.id
-  // );
-  clinicSectors.value = clinicSectorService.getActivebyClinicId(
-    currClinic.value.id
-  );
   isCreateStep.value = false;
   isEditStep.value = true;
   clinicalService.value = clinicalServiceParam;
   step.value = 'edit';
-  showClinicServiceRegistrationScreen.value = true;
   editMode.value = true;
   viewMode.value = false;
+  showClinicServiceRegistrationScreen.value = true;
 };
 const addClinicService = () => {
-  clinicalServiceAttributes.value =
-    clinicalServiceAttrTypeService.getAllClinicalServiceAttrTypes();
-  therapeuticRegimens.value =
-    therapeuticalRegimenService.getAllActiveTherapeuticalRegimens();
-  clinicSectors.value = clinicSectorService.getActivebyClinicId(
-    currClinic.value.id
-  );
-  console.log(therapeuticRegimens.value);
   isCreateStep.value = true;
   isEditStep.value = false;
   clinicalService.value = reactive(
     ref(clinicalServiceService.newInstanceEntity())
   );
   step.value = 'create';
-  showClinicServiceRegistrationScreen.value = true;
   editMode.value = false;
   viewMode.value = false;
+  showClinicServiceRegistrationScreen.value = true;
 };
 const promptToConfirm = (clinicalServiceParam) => {
   const question = clinicalServiceParam.active
@@ -288,7 +267,6 @@ const promptToConfirm = (clinicalServiceParam) => {
         clinicalServiceParam.active = true;
       }
       //   if (this.mobile) {
-      //   console.log('FrontEnd');
       //   if (clinicalService.syncStatus !== 'R')
       //     clinicalService.syncStatus = 'U';
       //   ClinicalService.localDbAdd(
@@ -300,7 +278,6 @@ const promptToConfirm = (clinicalServiceParam) => {
       //     `Servico Clínico ${operation} com sucesso`
       //   );
       // } else {
-      console.log('BackEnd');
       clinicalServiceService
         .patch(clinicalServiceParam.id, clinicalServiceParam)
         .then((resp) => {
@@ -313,4 +290,16 @@ const promptToConfirm = (clinicalServiceParam) => {
     }
   });
 };
+/*Provides*/
+provide('stepp', step);
+// provide('drugs', drugs);
+provide('selectedClinicalService', clinicalService);
+provide(
+  'showClinicServiceRegistrationScreen',
+  showClinicServiceRegistrationScreen
+);
+provide('clinicalServiceAttributes', clinicalServiceAttributes);
+provide('therapeuticRegimens', therapeuticRegimens);
+provide('clinicSectors', clinicSectors);
+provide('identifierTypes', identifierTypes);
 </script>

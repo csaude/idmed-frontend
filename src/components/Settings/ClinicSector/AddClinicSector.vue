@@ -211,6 +211,7 @@ const submitClinicSector = () => {
   //   );
   // } else {
   if (isCreateStep.value) {
+    clinicSector.value.id = uuidv4();
     if (clinicSector.value.clinic !== null) {
       clinicSector.value.clinic_id = clinicSector.value.clinic.id;
     }

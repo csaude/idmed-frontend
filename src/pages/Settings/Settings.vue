@@ -140,7 +140,7 @@
 </template>
 <script setup>
 /*Imports*/
-import { ref, provide, computed, inject, onMounted } from 'vue';
+import { ref, provide, computed, inject, reactive, onMounted } from 'vue';
 import clinicServiceService from 'src/services/api/clinicService/clinicService.ts';
 import clinicalServiceAttrTypeService from 'src/services/api/clinicalServiceAttrTypeService/ClinicalServiceAttrTypeService.ts';
 import identifierTypeService from 'src/services/api/identifierTypeService/identifierTypeService.ts';
@@ -172,18 +172,18 @@ import roles from 'src/components/Settings/User/Roles.vue';
 /*Variables*/
 const { closeLoading, showloading } = useLoading();
 const activeMenu = ref('Farmácias');
-const filter = ref('');
-const selectedTab = ref('clinic');
+const filter = reactive(ref(''));
+const selectedTab = reactive(ref('clinic'));
 const drawer = ref(false);
-const viewMode = ref(false);
-const createMode = ref(false);
-const editMode = ref(false);
+const viewMode = reactive(ref(false));
+const createMode = reactive(ref(false));
+const editMode = reactive(ref(false));
 const splitterModel = ref(15);
-const step = ref('');
+const step = reactive(ref(''));
 const clinic = ref();
 const clinicSector = ref();
-const isEditStep = ref(false);
-const isCreateStep = ref(false);
+const isEditStep = reactive(ref(false));
+const isCreateStep = reactive(ref(false));
 const tabs = [
   // { name: 'national_clinic', icon: 'local_convenience_store', label: 'Unidade Sanitaria' },
   {
@@ -235,6 +235,8 @@ const currClinic = computed(() => {
 
 onMounted(() => {
   showloading();
+  userService.get(0);
+  showloading();
   identifierTypeService.get(0);
   showloading();
   clinicalServiceAttrTypeService.get(0);
@@ -244,8 +246,6 @@ onMounted(() => {
   interoperabilityTypeService.get(0);
   showloading();
   roleService.get(0);
-  showloading();
-  userService.get(0);
   showloading();
   clinicSectorTypeService.get(0);
   showloading();

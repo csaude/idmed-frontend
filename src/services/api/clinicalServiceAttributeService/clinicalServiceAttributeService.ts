@@ -124,4 +124,17 @@ export default {
       .with('clinicalServiceAttributeType')
       .get();
   },
+
+  getByServiceAndAtttrType(clinicalServiceId: string, attrTypeId: string) {
+    return clinicalserviceAttribute
+      .query()
+      .with('clinicalServiceAttributeType')
+      .where((csAttr) => {
+        return (
+          csAttr.service_id === clinicalServiceId &&
+          csAttr.service_attr_type_id === attrTypeId
+        );
+      })
+      .first();
+  },
 };
