@@ -174,6 +174,7 @@ const componentsList = {
   expectedOfDay,
   MmiaTb,
   PossiblePatientDuplicates,
+  TBScreening,
   RegisteredInIdmed,
 };
 
