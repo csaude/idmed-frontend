@@ -109,6 +109,7 @@ import DrugQuantityTemp from './models/report/monitoring/DrugQuantityTemp';
 import StockDistributor from './models/stockDistributor/StockDistributor';
 import StockDistributorBatch from './models/stockDistributorBatch/StockDistributorBatch';
 import DrugDistributor from './models/drugDistributor/DrugDistributor';
+import TBScreeningReport from './models/report/patient/TBScreeningReport';
 //import NonSqlDatabaseUtils from 'src/utils/NonSqlDatabaseUtils';
 // import ActiveInDrugStore from 'src/store/models/report/patient/ActiveInDrugStore';
 
@@ -216,6 +217,7 @@ export default {
     entitiesList.push(StockDistributorBatch);
     entitiesList.push(DrugDistributor);
     entitiesList.push(StockLevel);
+    entitiesList.push(TBScreeningReport);
 
     return entitiesList;
   },
