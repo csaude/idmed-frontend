@@ -124,6 +124,7 @@ import clinicService from 'src/services/api/clinicService/clinicService';
 import clinicalServiceService from 'src/services/api/clinicalServiceService/clinicalServiceService';
 import RegisteredInIdmed from 'src/components/Reports/monitoring/RegisteredInIdmed.vue';
 import { useLoading } from 'src/composables/shared/loading/loading';
+import TBScreening from 'components/Reports/Patient/TBScreening.vue';
 
 // NOVOS REPORTS COM REUTILIZACAO DE CONTROLLER
 
