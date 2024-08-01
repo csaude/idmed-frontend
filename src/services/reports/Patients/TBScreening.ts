@@ -115,7 +115,16 @@ export default {
     doc.text('Serviço Nacional de Saúde ', 16, 36);
     doc.addImage(image, 'png', 28, 15, 10, 10);
 
-    const cols = ['ORD', 'NID', 'Nome', 'UUID do OpenMrs', 'Data de criacao'];
+    const cols = [
+      'ORD',
+      'NID',
+      'Nome',
+      'Sexo',
+      'Idade',
+      'Data de criacao',
+      'Unidade Sanitaria',
+      'Suspeito',
+    ];
 
     const rows = result;
     const data = [];
@@ -125,18 +134,14 @@ export default {
       const createRow = [];
       createRow.push(ord);
       createRow.push(rows[row].nid);
+      createRow.push(rows[row].name);
+      createRow.push(rows[row].gender);
+      createRow.push(rows[row].age);
       createRow.push(
-        rows[row].firstNames +
-          ' ' +
-          rows[row].middleNames +
-          ' ' +
-          rows[row].lastNames
+        moment(new Date(rows[row].dateRegister)).format('DD-MM-YYYY')
       );
-
-      createRow.push(rows[row].uuidOpenMrs);
-      createRow.push(
-        moment(new Date(rows[row].createDate)).format('DD-MM-YYYY')
-      );
+      createRow.push(rows[row].clinic);
+      createRow.push(rows[row].wasTBScreened);
 
       data.push(createRow);
       ord += 1;
@@ -349,17 +354,33 @@ export default {
       style: {
         showRowStripes: false,
       },
+
       columns: [
         { name: 'ORD', totalsRowLabel: 'none', filterButton: false },
         { name: 'NID', totalsRowLabel: 'Totals:', filterButton: false },
         { name: 'Nome', totalsRowFunction: 'none', filterButton: false },
         {
-          name: 'Uuid do openMrs',
+          name: 'Sexo',
+          totalsRowFunction: 'none',
+          filterButton: false,
+        },
+        {
+          name: 'Idade',
           totalsRowFunction: 'none',
           filterButton: false,
         },
         {
           name: 'Data de criacao',
+          totalsRowFunction: 'none',
+          filterButton: false,
+        },
+        {
+          name: 'Unidade Sanitaria',
+          totalsRowFunction: 'none',
+          filterButton: false,
+        },
+        {
+          name: 'Rastreado Com TB',
           totalsRowFunction: 'none',
           filterButton: false,
         },
@@ -493,17 +514,15 @@ export default {
       const createRow = [];
       createRow.push(ord);
       createRow.push(rows[row].nid);
+      createRow.push(rows[row].name);
+      createRow.push(rows[row].gender);
+      createRow.push(rows[row].age);
       createRow.push(
-        rows[row].firstNames +
-          ' ' +
-          rows[row].middleNames +
-          ' ' +
-          rows[row].lastNames
+        moment(new Date(rows[row].dateRegister)).format('DD-MM-YYYY')
       );
-      createRow.push(rows[row].uuidOpenMrs);
-      createRow.push(
-        moment(new Date(rows[row].createDate)).format('DD-MM-YYYY')
-      );
+      createRow.push(rows[row].clinic);
+      createRow.push(rows[row].wasTBScreened);
+
       data.push(createRow);
       ord += 1;
     }

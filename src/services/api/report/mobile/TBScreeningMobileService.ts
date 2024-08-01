@@ -1,65 +1,102 @@
 import { nSQL } from 'nano-sql';
+import { useRepo } from 'pinia-orm';
 import ReportDatesParams from 'src/services/reports/ReportDatesParams';
 import patientVisitService from '../../patientVisit/patientVisitService';
 import moment from 'moment';
 import patientServiceIdentifierService from '../../patientServiceIdentifier/patientServiceIdentifierService';
-import AbsentPatientReport from 'src/stores/models/report/pharmacyManagement/AbsentPatientReport';
+import TBScreeningReport from 'src/stores/models/report/patient/TBScreeningReport';
 import patientService from '../../patientService/patientService';
+import db from 'src/stores/dexie';
+import { v4 as uuidv4 } from 'uuid';
+import { useDateUtils } from 'src/composables/shared/dateUtils/dateUtils';
+import clinicService from '../../clinicService/clinicService';
 
-// const activeInDrugStore = useRepo(ActiveInDrugStore);
+const { idadeCalculator } = useDateUtils();
 
-
+const tBScreeningReport = useRepo(TBScreeningReport);
+const TBScreeningReportDexie = TBScreeningReport.entity;
 
 export default {
+  async getDataLocalDb(params: any) {
+    const reportParams = ReportDatesParams.determineStartEndDate(params);
+    console.log(reportParams);
+    const patientVisitList =
+      await patientVisitService.localDbGetAllPatientVisit();
+    for (const patientVisit of patientVisitList) {
+      if (
+        moment(patientVisit.visitDate).format('YYYY/MM/DD') >=
+          moment(reportParams.startDate).format('YYYY/MM/DD') &&
+        moment(patientVisit.visitDate).format('YYYY/MM/DD') <=
+          moment(reportParams.endDate).format('YYYY/MM/DD')
+      ) {
+        const tbScreening = patientVisit.tbScreenings[0];
+        const tbScreeningReport = new TBScreeningReport();
+        if (tbScreening !== null && tbScreening !== undefined) {
+          const patient = await patientService.getPatientByIdMobile(
+            patientVisit.patient.id
+          );
 
-     async getDataLocalDb(params: any) {     
+          let identifier = patient.identifiers[0];
 
-        const reportParams = ReportDatesParams.determineStartEndDate(params)
-        console.log(reportParams)
-        const patientVisitList = await patientVisitService.localDbGetAllPatientVisit()
-        for (const patientVisit of patientVisitList) {
-          for (const reportData of patientVisit.patientVisitDetails) {
-           if (reportData.pack!== undefined && moment(reportData.pack.nextPickUpDate).format('YYYY/MM/DD') <= moment(reportParams.startDate).format('YYYY/MM/DD') && moment(reportData.pack.nextPickUpDate).add(3, 'd').format('YYYY/MM/DD') <= moment(reportParams.endDate).format('YYYY/MM/DD')) {
-                  const identifier = await patientServiceIdentifierService.localDbGetById(reportData.episode.patientServiceIdentifier.id)
-                if (identifier.length > 0) {
-                    if (identifier[0].service.id === reportParams.clinicalService) {
-                        const absentPatientReport = new AbsentPatientReport()
-                        const patient = await patientService.getPatientByIdMobile(patientVisit.patient.id)
-                        if (patient.length > 0) {
-                         const dateIdentifiedAbandonment = moment(reportData.pack.nextPickUpDate).add(60, 'd').format('YYYY/MM/DD')
-                        absentPatientReport.nid = identifier[0].value
-                        absentPatientReport.firstNames = patient[0].firstNames + ' ' + patient[0].lastNames
-                        absentPatientReport.cellphone = patient[0].cellphone
-                        absentPatientReport.dateBackUs = null
-                        absentPatientReport.dateMissedPickUp = reportData.pack.nextPickUpDate
-                        absentPatientReport.dateIdentifiedAbandonment = dateIdentifiedAbandonment > moment(reportParams.endDate).format('YYYY/MM/DD') ? dateIdentifiedAbandonment : ''
-                        absentPatientReport.returnedPickUp = null
-                        absentPatientReport.reportId = reportParams.id
-                        absentPatientReport.year = reportParams.year
-                        absentPatientReport.endDate = reportParams.endDate
-                        this.localDbAddOrUpdate(absentPatientReport)
-                      }
-                    }
-                  }
+          if (!identifier) {
+            const idents =
+              await patientServiceIdentifierService.getAllMobileByPatientId(
+                patientVisit.patient.id
+              );
+            identifier = idents[0];
+          }
+          tbScreeningReport.id = uuidv4();
+          tbScreeningReport.nid = identifier.value;
+          tbScreeningReport.name =
+            patient.firstNames +
+            ' ' +
+            patient.middleNames +
+            ' ' +
+            patient.lastNames;
+          tbScreeningReport.age = idadeCalculator(patient.dateOfBirth);
+          tbScreeningReport.gender = patient.gender;
+          tbScreeningReport.dateRegister = patientVisit.visitDate;
+          tbScreeningReport.clinic = clinicService.getActivebyClinicId(
+            patientVisit.clinic.id
+          ).clinicName;
+          tbScreeningReport.reportId = reportParams.id;
+          tbScreeningReport.year = reportParams.year;
+          tbScreeningReport.endDate = reportParams.endDate;
+          tbScreeningReport.startDate = reportParams.startDate;
+
+          if (
+            tbScreening.cough === true ||
+            tbScreening.fever === true ||
+            tbScreening.losingWeight === true ||
+            tbScreening.sweating === true ||
+            tbScreening.fatigueOrTirednessLastTwoWeeks === true
+          ) {
+            tbScreeningReport.wasTBScreened = 'Sim';
+          } else {
+            tbScreeningReport.wasTBScreened = 'Nao';
+          }
+          this.localDbAddOrUpdate(tbScreeningReport);
+        }
       }
-        }
-          } }
-   
-       ,
+    }
+  },
 
-    localDbAddOrUpdate (targetCopy: any) {
-        return nSQL().onConnected(() => {
-            nSQL(AbsentPatientReport.entity).query('upsert', targetCopy).exec()
-        })
-        },
+  async localDbAddOrUpdate(targetCopy: any) {
+    return db[TBScreeningReportDexie].add(
+      JSON.parse(JSON.stringify(targetCopy))
+    )
+      .then(() => {
+        tBScreeningReport.save(params);
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
 
-    localDbGetAllByReportId (reportId: any) {
-        return nSQL(AbsentPatientReport.entity).query('select').where(['reportId', '=', reportId]).exec().then( result => {
-            if (result !== undefined) {
-            return result
-            }
-            return null
-        })
-        }
-
-}
+  async localDbGetAllByReportId(reportId: any) {
+    const records = await db[TBScreeningReportDexie].where('reportId')
+      .equalsIgnoreCase(reportId)
+      .toArray();
+    return records;
+  },
+};

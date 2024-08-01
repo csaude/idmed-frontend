@@ -44,11 +44,14 @@
 import Report from 'src/services/api/report/ReportService';
 import { LocalStorage } from 'quasar';
 import { ref, provide, onMounted } from 'vue';
-import TBScreeningTs from 'src/services/reports/Patients/TBScreening.ts';
+import TBScreeningReportTs from 'src/services/reports/Patients/TBScreening.ts';
 import ListHeader from 'components/Shared/ListHeader.vue';
 import FiltersInput from 'components/Reports/shared/FiltersInput.vue';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
+import TBScreeningMobileService from 'src/services/api/report/mobile/TBScreeningMobileService';
+import moment from 'moment';
+
 const { isOnline } = useSystemUtils();
 const { alertError } = useSwal();
 const name = 'TBScreening';
@@ -81,12 +84,15 @@ const updateParamsOnLocalStrage = (params, isReportClosed) => {
 const initReportProcessing = async (params) => {
   progress.value = 0.001;
   if (isOnline.value) {
-    updateParamsOnLocalStrage(params, isReportClosed);
+    /*updateParamsOnLocalStrage(params, isReportClosed);
     Report.apiInitReportProcess('TBScreening', params).then((response) => {
       getProcessingStatus(params);
-    });
+    }); */
   } else {
+    TBScreeningMobileService.getDataLocalDb(params);
     updateParamsOnLocalStrage(params, isReportClosed);
+    progress.value = 100;
+    params.progress = 100;
   }
 };
 
@@ -115,58 +121,32 @@ const getProcessingStatus = (params) => {
 
 const generateReport = async (id, fileType) => {
   if (isOnline.value) {
-    Report.apiPrintPatientsWithoutDispenseReport(id).then((resp) => {
-      if (!resp.data[0]) {
-        alertError('Não existem Dados para o período selecionado');
-        downloadingXls.value = false;
-        downloadingPdf.value = false;
-      } else {
-        const patientAux = resp.data[0];
-
-        if (fileType === 'PDF') {
-          PatientWithoutDispenseTs.downloadPDF(
-            patientAux.province,
-            patientAux.startDate,
-            patientAux.endDate,
-            resp.data
-          );
-          downloadingPdf.value = false;
-        } else {
-          PatientWithoutDispenseTs.downloadExcel(
-            patientAux.province,
-            patientAux.startDate,
-            patientAux.endDate,
-            resp.data
-          );
-          downloadingXls.value = false;
-        }
-      }
-    });
+    //TODO:
   } else {
-    /* const data = await PatientsWithoutDispense.getDataLocalReport(id);
+    const data = await TBScreeningMobileService.localDbGetAllByReportId(id);
     if (data.length === 0) {
       alertError('Não existem Dados para o período selecionado');
-      downloadingXls.value = false
-            downloadingPdf.value = false
+      downloadingXls.value = false;
+      downloadingPdf.value = false;
     } else {
       const patientAux = data[0];
 
       if (fileType === 'PDF') {
-        await activePatients.downloadPDF(
+        await TBScreeningReportTs.downloadPDF(
           patientAux.province,
           moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
           moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
           data
         );
       } else {
-        await activePatients.downloadExcel(
+        await TBScreeningReportTs.downloadExcel(
           patientAux.province,
           moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
           moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
           data
         );
       }
-    } */
+    }
   }
 };
 
