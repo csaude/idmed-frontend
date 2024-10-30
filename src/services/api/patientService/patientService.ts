@@ -5,7 +5,6 @@ import Patient from 'src/stores/models/patient/Patient';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import db from '../../../stores/dexie';
-import clinicSectorService from '../clinicSectorService/clinicSectorService';
 import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
 import clinicService from '../clinicService/clinicService';
 import useNotify from 'src/composables/shared/notify/UseNotify';
@@ -15,9 +14,17 @@ import episodeService from '../episode/episodeService';
 import prescriptionService from '../prescription/prescriptionService';
 import packService from '../pack/packService';
 import patientServiceIdentifierService from '../patientServiceIdentifier/patientServiceIdentifierService';
+import prescribedDrugService from '../prescribedDrug/prescribedDrugService';
+import prescriptionDetailsService from '../prescriptionDetails/prescriptionDetailsService';
+import packagedDrugService from '../packagedDrug/packagedDrugService';
+import vitalSignsScreeningService from '../vitalSignsScreening/vitalSignsScreeningService';
+import rAMScreeningService from '../rAMScreening/rAMScreeningService';
+import tBScreeningService from '../tBScreening/tBScreeningService';
+import adherenceScreeningService from '../adherenceScreening/adherenceScreeningService';
+import pregnancyScreeningService from '../pregnancyScreening/pregnancyScreeningService';
 
 const patient = useRepo(Patient);
-const patientDexie = Patient.entity;
+const patientDexie = db[Patient.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -52,7 +59,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -73,7 +80,7 @@ export default {
           patient.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           } else {
             closeLoading();
           }
@@ -113,20 +120,20 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[patientDexie].add(JSON.parse(JSON.stringify(params))).then(() => {
+    return patientDexie.add(JSON.parse(JSON.stringify(params))).then(() => {
       patient.save(JSON.parse(JSON.stringify(params)));
       return params;
     });
   },
   putMobile(params: string) {
-    return db[patientDexie].put(JSON.parse(JSON.stringify(params))).then(() => {
+    return patientDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
       patient.save(JSON.parse(JSON.stringify(params)));
       return params;
     });
   },
   async getMobile() {
     try {
-      const rows = await db[patientDexie].toArray();
+      const rows = await patientDexie.toArray();
       patient.save(rows);
       return rows;
     } catch (error) {
@@ -135,7 +142,7 @@ export default {
     }
   },
   async deleteMobile(paramsId: string) {
-    return db[patientDexie]
+    return patientDexie
       .delete(paramsId)
       .then(() => {
         patient.destroy(paramsId);
@@ -148,7 +155,7 @@ export default {
   },
   apiFetchById(id: string) {
     if (isMobile.value && !isOnline.value) {
-      return db[patientDexie]
+      return patientDexie
         .where('id')
         .equalsIgnoreCase(id)
         .first()
@@ -244,15 +251,11 @@ export default {
     }
   },
 
-  addBulkMobile(params: any) {
-    return db[patientDexie]
-      .bulkPut(params)
-      .then(() => {
-        patient.save(params);
-      })
-      .catch((error: any) => {
-        console.log(error);
-      });
+  async addBulkMobile() {
+    const patientsFromPinia = this.getAllFromStorageToDexie();
+    patientDexie.bulkPut(patientsFromPinia).catch((error: any) => {
+      console.log(error);
+    });
   },
   async apiUpdate(patient: any) {
     return await this.patch(patient.id, patient);
@@ -289,17 +292,7 @@ export default {
   },
   async doPatientsBySectorGet() {
     notifyInfo('Carregamento de Pacientes Iniciado');
-    const data2 = clinicService.getAllClinics();
-    let clinicSectorUser = clinicService.currClinic();
-    /*
-    if (isPharmacyDDD(clinicService.currClinic())) {
-      clinicSectorUser = clinicService.currClinic();
-    } else {
-      clinicSectorUser = clinicSectorService.getClinicSectorByCode(
-        localStorage.getItem('clinicUsers')
-      );
-    }
-*/
+    const clinicSectorUser = clinicService.currClinic();
     if (clinicSectorUser === null || clinicSectorUser === undefined) {
       alertError(
         'O Utilizador logado nao pertence a nenhum sector clinico , não terá informação carregada do Servidor'
@@ -312,7 +305,6 @@ export default {
     } else {
       resp = await this.fetchAllPatientsByClinicSectorId(clinicSectorUser.id);
     }
-    this.addBulkMobile(resp);
     notifySuccess('Carregamento de Pacientes Terminado');
     return resp;
   },
@@ -320,7 +312,7 @@ export default {
   async fetchAllPatientsByClinicSectorId(clinicSectorId: any) {
     let offset = 0;
     const max = 100; // You can adjust this number based on your API's limits
-    let allPatients = [];
+    // const allPatients = [];
     let hasMorePatients = true;
 
     while (hasMorePatients) {
@@ -331,20 +323,21 @@ export default {
       );
       const patients = response.data;
       if (patients.length > 0) {
-        allPatients.push(...patients);
+        //  allPatients.push(...patients);
+        patient.save(patients);
         offset += patients.length;
       } else {
         hasMorePatients = false;
       }
     }
 
-    return allPatients;
+    return hasMorePatients;
   },
 
   async fetchAllPatientsForDCP() {
     let offset = 0;
     const max = 100; // You can adjust this number based on your API's limits
-    let allPatients = [];
+    // const allPatients = [];
     let hasMorePatients = true;
 
     while (hasMorePatients) {
@@ -354,14 +347,15 @@ export default {
       );
       const patients = response.data;
       if (patients.length > 0) {
-        allPatients.push(...patients);
+        patient.save(patients);
+        // allPatients.push(...patients);
         offset += patients.length;
       } else {
         hasMorePatients = false;
       }
     }
 
-    return allPatients;
+    return hasMorePatients;
   },
 
   /*
@@ -378,7 +372,7 @@ export default {
     if (patient.syncStatus === 'U') await this.apiSave(patient, false);
   },
   async getLocalDbPatientsToSync() {
-    return db[patientDexie]
+    return patientDexie
       .where('syncStatus')
       .equalsIgnoreCase('R')
       .or('syncStatus')
@@ -401,6 +395,9 @@ export default {
   },
   getAllFromStorage() {
     return patient.all();
+  },
+  getAllFromStorageToDexie() {
+    return patient.makeHidden(['hisSyncStatus']).all();
   },
   getPatientByID(id: string) {
     return patient.withAllRecursive(2).whereId(id).first();
@@ -485,7 +482,7 @@ export default {
       .first();
   },
   async getPatientByParams(patientParam: any) {
-    const results = await db[patientDexie]
+    const results = await patientDexie
       .filter((patient: Patient) => {
         const firstNamesMatch = patient.firstNames.includes(
           patientParam.firstNames
@@ -514,14 +511,21 @@ export default {
   },
 
   async getPatientByIdMobile(id: string) {
-    return db[patientDexie]
+    return patientDexie
       .where('id')
       .equalsIgnoreCase(id)
       .first()
       .then((row: any) => {
-        console.log('PACIENTES: ', row);
         return row;
       });
+  },
+
+  async getAllPatientFromDexie() {
+    return await patientDexie.toArray();
+  },
+
+  async getCountPatientFromDexie() {
+    return await patientDexie.count();
   },
 
   async getPatientMobileWithAllByPatientId(patient: any) {
@@ -531,31 +535,47 @@ export default {
     const patientServicesIds = patientServices.map((pat: any) => pat.id);
 
     await episodeService.getAllMobileByPatientServiceIds(patientServicesIds);
+
     const patientVisits = await patientVisitService.apiGetAllByPatientId(
       patient.id
     );
-    console.log(patientVisits);
-
     const ids = patientVisits.map((pat: any) => pat.id);
+
     const patientVisitDetails =
       await patientVisitDetailsService.getAllMobileByVisitId(ids);
-    console.log(patientVisitDetails);
-    // const epsiodeIds = patientVisitDetails.map((pat: any) => pat.episode.id);
-    const episodeIds = patient.identifiers.flatMap((data1: any) =>
-      data1.episodes.map((episode: any) => episode.id)
-    );
+
     const prescriptionIds = patientVisitDetails.map(
-      (pat: any) => pat.prescription.id
+      (pat: any) => pat.prescription_id
     );
-    const packIds = patientVisitDetails.map((pat: any) => pat.pack.id);
-    const epsiodes = await episodeService.getAllMobileByIds(episodeIds);
-    console.log(epsiodes);
+    const packIds = patientVisitDetails.map((pat: any) => pat.pack_id);
 
     const prescriptions = await prescriptionService.getAllMobileByIds(
       prescriptionIds
     );
-    console.log(prescriptions);
     const packs = await packService.getAllMobileByIds(packIds);
-    console.log(packs);
+
+    ids.forEach((id: any) => {
+      vitalSignsScreeningService.getVitalSignsScreeningByVisitIdMobile(id);
+      rAMScreeningService.getRAMScreeningByVisitIdMobile(id);
+      tBScreeningService.getTBScreeningsByVisitIdMobile(id);
+      adherenceScreeningService.getAdherenceScreeningByVisitIdMobile(id);
+      pregnancyScreeningService.getPregnancyScreeningsByVisitIdMobile(id);
+    });
+
+    prescriptions.forEach((prescription: any) => {
+      prescribedDrugService.getLastByPrescriprionIdFromDexie(prescription.id);
+      prescriptionDetailsService.getLastByPrescriprionIdFromDexie(
+        prescription.id
+      );
+    });
+
+    packs.forEach((pack: any) => {
+      packagedDrugService.getAllByPackIdMobile(pack.id);
+    });
+  },
+
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await patientDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

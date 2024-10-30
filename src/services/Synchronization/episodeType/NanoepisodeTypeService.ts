@@ -1,5 +1,10 @@
 import api from '../../api/apiService/apiService';
 import episodeTypeService from 'src/services/api/episodeType/episodeTypeService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
+import EpisodeType from 'src/stores/models/episodeType/EpisodeType';
+
+const episodeTypeDexie = db[EpisodeType.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -19,5 +24,18 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania EpisodeType');
+    (await SynchronizationService.hasData(episodeTypeDexie))
+      ? await episodeTypeService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie EpisodeType');
+    const getAllEpisodeType = episodeTypeService.getAllFromStorage();
+    await episodeTypeDexie.bulkPut(getAllEpisodeType);
   },
 };

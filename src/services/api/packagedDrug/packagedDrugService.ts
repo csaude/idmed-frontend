@@ -5,9 +5,10 @@ import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
+import drugService from '../drugService/drugService';
 
 const packagedDrug = useRepo(PackagedDrug);
-const packagedDrugDexie = PackagedDrug.entity;
+const packagedDrugDexie = db[PackagedDrug.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,7 +38,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -58,7 +59,7 @@ export default {
           packagedDrug.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -82,21 +83,21 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[packagedDrugDexie]
+    return packagedDrugDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         packagedDrug.save(JSON.parse(JSON.stringify(params)));
       });
   },
   putMobile(params: string) {
-    return db[packagedDrugDexie]
+    return packagedDrugDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         packagedDrug.save(JSON.parse(JSON.stringify(params)));
       });
   },
   getMobile() {
-    return db[packagedDrugDexie]
+    return packagedDrugDexie
       .toArray()
       .then((rows: any) => {
         packagedDrug.save(rows);
@@ -105,33 +106,41 @@ export default {
         console.log(error);
       });
   },
-  addBulkMobile(params: any) {
-    return db[packagedDrugDexie]
-      .bulkAdd(params)
-      .then(() => {
-        packagedDrug.save(params);
-      })
+  addBulkMobile() {
+    const packagedDrugFromPinia = this.getAllFromStorageForDexie();
+
+    return packagedDrugDexie
+      .bulkAdd(packagedDrugFromPinia)
       .catch((error: any) => {
         console.log(error);
       });
   },
-  getAllByPackIdMobile(packId: any) {
-    return db[packagedDrugDexie]
+  async getAllByPackIdMobile(packId: any) {
+    const packagedDrugs = await packagedDrugDexie
       .where('pack_id')
-      .equalsIgnoreCase(packId)
-      .then((rows: any) => {
-        return rows;
-        //console.log(rows);
-        // packagedDrug.save(rows);
-      })
-      .catch((error: any) => {
-        // alertError('Aconteceu um erro inesperado nesta operação.');
-        console.log(error);
-      });
+      .equals(packId)
+      .toArray();
+
+    const drugsId = packagedDrugs.map(
+      (packagedDrug: any) => packagedDrug.drug_id
+    );
+    const [drugs] = await Promise.all([
+      drugService.getAllByIDsFromDexie(drugsId),
+    ]);
+
+    packagedDrug.save(packagedDrugs);
+
+    packagedDrugs.map((packagedDrug: any) => {
+      packagedDrug.drug = drugs.find(
+        (drug: any) => drug.id === packagedDrug.drug_id
+      );
+    });
+
+    return packagedDrugs;
   },
 
   deleteMobile(paramsId: string) {
-    return db[packagedDrugDexie]
+    return packagedDrugDexie
       .delete(paramsId)
       .then(() => {
         packagedDrug.destroy(paramsId);
@@ -164,7 +173,34 @@ export default {
   getAllFromStorage() {
     return packagedDrug.all();
   },
+  getAllFromStorageForDexie() {
+    return packagedDrug
+      .makeHidden(['pack', 'drug', 'packagedDrugStocks'])
+      .all();
+  },
   deleteAllFromStorage() {
     packagedDrug.flush();
+  },
+
+  async getAllByIDsFromDexie(ids: []) {
+    const packagedDrugs = await packagedDrugDexie
+      .where('pack_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+
+    const drugsId = packagedDrugs.map(
+      (packagedDrug: any) => packagedDrug.drug_id
+    );
+    const [drugs] = await Promise.all([
+      drugService.getAllByIDsFromDexie(drugsId),
+    ]);
+
+    packagedDrugs.map((packagedDrug: any) => {
+      packagedDrug.drug = drugs.find(
+        (drug: any) => drug.id === packagedDrug.drug_id
+      );
+    });
+
+    return packagedDrugs;
   },
 };

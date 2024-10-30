@@ -252,7 +252,7 @@ const doValidationToDispense = () => {
   curPatientVisit.value.clinic.id = patient.value.clinic_id;
   curPatientVisit.value.patient = {};
   curPatientVisit.value.patient.id = patient.value.id;
-  // curPatientVisit.value.syncStatus = 'R';
+
   curPatientVisit.value.origin = currClinic.value.id;
   submitting.value = true;
   if (
@@ -275,31 +275,37 @@ const doValidationToDispense = () => {
       patientVisitDetail.pack.dispenseMode = {};
       patientVisitDetail.pack.dispenseMode.id = dispenseMode.value.id;
       patientVisitDetail.pack.syncStatus = 'R';
+
       if (isOnlyPharmacyDDDO() || isOnlyComunitaryDispense()) {
         patientVisitDetail.pack.providerUuid = null;
       } else {
         patientVisitDetail.pack.providerUuid = sessionStorage.getItem('Btoa');
       }
+
       patientVisitDetail.pack.origin = currClinic.value.id;
       patientVisitDetail.pack.packagedDrugs.forEach((packagedDrug) => {
         packagedDrug.drug = {};
         packagedDrug.drug.id = packagedDrug.drug_id;
+        
         packagedDrug.origin = currClinic.value.id;
       });
       patientVisitDetail.prescription.clinic = {};
       patientVisitDetail.prescription.clinic.id = patient.value.clinic_id;
+
       if (patientVisitDetail.prescription.origin !== patient.value.clinic_id) {
         patientVisitDetail.prescription.origin = currClinic.value.id;
       }
+
       patientVisitDetail.prescription.prescribedDrugs.forEach(
         (prescribedDrug) => {
           let drugID = prescribedDrug.drug.id;
           prescribedDrug.drug = {};
           prescribedDrug.drug.id = drugID;
+
           if (prescribedDrug.origin !== patient.value.clinic_id) {
             prescribedDrug.origin = currClinic.value.id;
           }
-          // prescribedDrug.prescribedQty = 1;
+
         }
       );
       const checkEpisode = episodeService.getEpisodeById(
@@ -339,9 +345,4 @@ provide('currClinic', currClinic);
 .box-border {
   border: 1px solid $grey-4;
 }
-// .q-expansion-item--expanded {
-//   // border: 1px solid #000000;
-//   // border-color: coral;
-//   background-color: coral;
-// }
 </style>

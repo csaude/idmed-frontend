@@ -15,7 +15,7 @@ const { isMobile, isOnline } = useSystemUtils();
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError, alertWarning } = useSwal();
 const drug = useRepo(Drug);
-const drugDexie = Drug.entity;
+const drugDexie = db[Drug.entity];
 
 export default {
   async post(params: string) {
@@ -48,6 +48,23 @@ export default {
             })
         );
       }
+    }
+  },
+  getWeb(offset: number) {
+    if (offset >= 0) {
+      return api()
+        .get('drug?offset=' + offset + '&max=100')
+        .then((resp) => {
+          drug.save(resp.data);
+          offset = offset + 100;
+          if (resp.data.length > 0) {
+            this.getWeb(offset);
+          }
+        })
+        .catch((error) => {
+          // alertError('Aconteceu um erro inesperado nesta operação.');
+          console.log(error);
+        });
     }
   },
   getFromProvincial(offset: number) {
@@ -93,7 +110,7 @@ export default {
 
   //Mobile
   getMobile() {
-    return db[drugDexie]
+    return drugDexie
       .toArray()
       .then((rows: any) => {
         drug.save(rows);
@@ -105,11 +122,11 @@ export default {
   },
 
   async getDrugsByIds(drugIds: any) {
-    return await db[drugDexie].where('id').anyOf(drugIds).toArray();
+    return await drugDexie.where('id').anyOf(drugIds).toArray();
   },
 
   async getMobileDrugById(drugId: any) {
-    return db[drugDexie]
+    return drugDexie
       .where('id')
       .equalsIgnoreCase(drugId)
       .first()
@@ -139,7 +156,7 @@ export default {
     return Array.from(drugMap.values());
   },
   addBulkMobile(params: any) {
-    return db[drugDexie]
+    return drugDexie
       .bulkPut(params)
       .then(() => {
         drug.save(params);
@@ -236,5 +253,8 @@ export default {
       .then((result) => {
         return result.length > 0;
       });
+  },
+  async getAllByIDsFromDexie(ids: []) {
+    return await drugDexie.where('id').anyOf(ids).toArray();
   },
 };

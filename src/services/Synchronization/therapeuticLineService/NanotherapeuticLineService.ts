@@ -1,5 +1,10 @@
 import api from '../../api/apiService/apiService';
 import therapeuticLineService from 'src/services/api/therapeuticLineService/therapeuticLineService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
+import TherapeuticLine from 'src/stores/models/therapeuticLine/TherapeuticLine';
+
+const therapeuticLineDexie = db[TherapeuticLine.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -19,5 +24,18 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania TherapeuticLine');
+    (await SynchronizationService.hasData(therapeuticLineDexie))
+      ? await therapeuticLineService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie TherapeuticLine');
+    const getAllTherapeuticLine = therapeuticLineService.getAllFromStorage();
+    await therapeuticLineDexie.bulkPut(getAllTherapeuticLine);
   },
 };

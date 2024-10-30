@@ -1,10 +1,10 @@
 import api from '../../api/apiService/apiService';
-import { nSQL } from 'nano-sql';
 import Form from 'src/stores/models/form/Form';
-import { useRepo } from 'pinia-orm';
 import formService from 'src/services/api/formService/formService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
 
-const form = useRepo(Form);
+const formDexie = db[Form.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -24,5 +24,18 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania Form');
+    (await SynchronizationService.hasData(formDexie))
+      ? await formService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie Form');
+    const getAllForm = formService.getAllForms();
+    await formDexie.bulkPut(getAllForm);
   },
 };

@@ -508,7 +508,12 @@ const init = () => {
 };
 
 const reloadIdentifierTypeMask = () => {
-  if (identifier.value.service !== null) {
+  if (
+    identifier.value.service !== null &&
+    (identifier.value.value === null ||
+      identifier.value.value === undefined ||
+      String(identifier.value.value).trim().length === 0)
+  ) {
     identifierTypeMask.value = identifier.value.service.identifierType.pattern;
   }
 };
@@ -766,10 +771,6 @@ const doSave = async () => {
     identifier.value.endDate = getYYYYMMDDFromJSDate(
       getDateFromHyphenDDMMYYYY(endDate.value)
     );
-    // if (!isReferenceEpisode.value || !isDCReferenceEpisode.value)
-    //   identifier.value.endDate = getYYYYMMDDFromJSDate(
-    //     getDateFromHyphenDDMMYYYY(endDate.value)
-    //   );
   }
   if (isReOpenStep.value) {
     closureEpisode.value.episodeType =

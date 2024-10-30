@@ -11,7 +11,7 @@ import db from '../../../stores/dexie';
 
 const clinicSector = useRepo(ClinicSector);
 
-const clinicSectorDexie = ClinicSector.entity;
+const clinicSectorDexie = db[ClinicSector.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -41,9 +41,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     }
   },
   // WEB
@@ -64,13 +64,10 @@ export default {
           clinicSector.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -94,7 +91,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     showloading();
-    return db[clinicSectorDexie]
+    return clinicSectorDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         clinicSector.save(params);
@@ -108,7 +105,7 @@ export default {
   },
   putMobile(params: string) {
     showloading();
-    return db[clinicSectorDexie]
+    return clinicSectorDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         clinicSector.save(params);
@@ -122,7 +119,7 @@ export default {
   },
   getMobile() {
     showloading();
-    return db[clinicSectorDexie]
+    return clinicSectorDexie
       .toArray()
       .then((rows: any) => {
         clinicSector.save(rows);
@@ -134,7 +131,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[clinicSectorDexie]
+    return clinicSectorDexie
       .delete(paramsId)
       .then(() => {
         clinicSector.destroy(paramsId);
@@ -146,7 +143,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[clinicSectorDexie]
+    return clinicSectorDexie
       .bulkPut(params)
       .then(() => {
         clinicSector.save(params);
@@ -222,7 +219,7 @@ export default {
   async getClinicSectorsDexie() {
     // const dexiDatabase1 = ClinicSector.entity;
     try {
-      const clinicSectors = await db[clinicSectorDexie].toArray();
+      const clinicSectors = await clinicSectorDexie.toArray();
 
       /*
       const clinicSectors = await db[dexiTable]
@@ -243,5 +240,9 @@ export default {
     } catch (error) {
       console.error('Failed to get appointments:', error);
     }
+  },
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await clinicSectorDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

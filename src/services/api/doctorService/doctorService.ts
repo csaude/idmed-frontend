@@ -7,7 +7,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 
 const doctor = useRepo(Doctor);
-const doctorDexie = Doctor.entity;
+const doctorDexie = db[Doctor.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -58,9 +58,7 @@ export default {
           doctor.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -84,7 +82,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[doctorDexie]
+    return doctorDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         doctor.save(JSON.parse(params));
@@ -94,7 +92,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[doctorDexie]
+    return doctorDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         doctor.save(JSON.parse(params));
@@ -106,7 +104,7 @@ export default {
       });
   },
   getMobile() {
-    return db[doctorDexie]
+    return doctorDexie
       .toArray()
       .then((rows: any) => {
         doctor.save(rows);
@@ -117,7 +115,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[doctorDexie]
+    return doctorDexie
       .put(paramsId)
       .then(() => {
         doctor.destroy(paramsId);
@@ -129,7 +127,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[doctorDexie]
+    return doctorDexie
       .bulkPut(params)
       .then(() => {
         doctor.save(params);
@@ -164,5 +162,9 @@ export default {
       })
       .orderBy('firstnames')
       .get();
+  },
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await doctorDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

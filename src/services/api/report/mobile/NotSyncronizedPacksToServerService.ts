@@ -1,123 +1,168 @@
 import ReportDatesParams from 'src/services/reports/ReportDatesParams';
-import patientVisitService from '../../patientVisit/patientVisitService';
 import moment from 'moment';
-import dispenseTypeService from '../../dispenseType/dispenseTypeService';
 import NotSyncronizedPacksToServer from 'src/stores/models/report/pharmacyManagement/NotSyncronizedPacksToServer';
 import db from 'src/stores/dexie';
 import { v4 as uuidv4 } from 'uuid';
-import patientServiceIdentifierService from '../../patientServiceIdentifier/patientServiceIdentifierService';
-import clinicalServiceService from '../../clinicalServiceService/clinicalServiceService';
-import therapeuticalRegimenService from '../../therapeuticalRegimenService/therapeuticalRegimenService';
-import dispenseModeService from '../../dispenseMode/dispenseModeService';
-import patientService from '../../patientService/patientService';
-import episodeService from '../../episode/episodeService';
+import packService from '../../pack/packService';
 const notSyncronizedPacksToServerDexie = NotSyncronizedPacksToServer.entity;
 
 export default {
-  async getDataLocalDb(params) {
+  async getDataLocalDb(params: any) {
     const reportParams = ReportDatesParams.determineStartEndDate(params);
 
-    const patientVisitList =
-      await patientVisitService.getLocalDbPatientVisitsNotSynced(
+    const [activePacks] = await Promise.all([
+      packService.getAllPacksByStartDateAndEndDateFromDexie(
         reportParams.startDate,
         reportParams.endDate
-      );
-    for (const patientVisit of patientVisitList) {
-      for (const patientVisitDetail of patientVisit.patientVisitDetails) {
-        if (patientVisitDetail.pack !== undefined) {
-          const pickupDate = moment(patientVisitDetail.pack.pickupDate).format(
-            'YYYY-MM-DD'
-          );
-          const endDate = moment(params.endDate).format('YYYY-MM-DD');
-          const startDate = moment(params.startDate).format('YYYY-MM-DD');
-          const days = moment(endDate).diff(pickupDate, 'days');
-          const newDate = moment(patientVisitDetail.pack.pickupDate).add(
-            days,
-            'd'
-          );
+      ),
+    ]);
 
-          if (
-            (patientVisit.visitDate >= reportParams.startDate &&
-              patientVisit.visitDate <= reportParams.endDate) ||
-            (newDate >= moment(params.startDate) &&
-              newDate <= moment(params.endDate))
-          ) {
-            const notSyncronizedPacksToServer =
-              new NotSyncronizedPacksToServer();
-            const dispenseType = dispenseTypeService.getById(
-              patientVisitDetail.prescription.prescriptionDetails[0]
-                .dispenseType.id
-            );
+    for (const pack of activePacks) {
+      const patientVisit = pack.patientvisitDetails.patientVisit;
+      const patient = pack.patientvisitDetails.patientVisit.patient;
+      const identifier =
+        pack.patientvisitDetails.episode.patientServiceIdentifier;
+      const clinicalService =
+        pack.patientvisitDetails.episode.patientServiceIdentifier.service;
+      const therapeuticRegimen =
+        pack.patientvisitDetails.prescription.prescriptionDetails
+          .therapeuticRegimen;
+      const dispenseType =
+        pack.patientvisitDetails.prescription.prescriptionDetails.dispenseType;
+      const dispenseMode = pack.dispenseMode;
 
-            notSyncronizedPacksToServer.dispenseType = dispenseType.description;
+      if (patientVisit.syncStatus === 'R') {
+        const notSyncronizedPacksToServer = new NotSyncronizedPacksToServer();
 
-            notSyncronizedPacksToServer.reportId = reportParams.id;
-            // patientHistory.period = reportParams.periodTypeView
-            notSyncronizedPacksToServer.year = reportParams.year;
-            notSyncronizedPacksToServer.startDate = reportParams.startDate;
-            notSyncronizedPacksToServer.endDate = reportParams.endDate;
+        notSyncronizedPacksToServer.dispenseType = dispenseType.description;
 
-            const patient = await patientService.getPatientByIdMobile(
-              patientVisit.patient.id
-            );
-            const episode = await episodeService.apiFetchById(
-              patientVisitDetail.episode.id
-            );
+        notSyncronizedPacksToServer.reportId = reportParams.id;
+        notSyncronizedPacksToServer.year = reportParams.year;
+        notSyncronizedPacksToServer.startDate = reportParams.startDate;
+        notSyncronizedPacksToServer.endDate = reportParams.endDate;
 
-            let identifier = patient.identifiers.find(
-              (identifier: Object) =>
-                identifier.id === episode.patientServiceIdentifier.id
-            );
-            if (!identifier)
-              identifier = await patientServiceIdentifierService.localDbGetById(
-                patientVisitDetail.episode.patientServiceIdentifier.id
-              );
-
-            if (identifier) {
-              // const serviceIdentifier = identifier
-              const pack = patientVisitDetail.pack;
-              const clinic = patientVisitDetail.clinic;
-              const clinicalService =
-                await clinicalServiceService.localDbGetById(
-                  identifier.service.id
-                );
-              const therapeuticRegimen =
-                await therapeuticalRegimenService.getById(
-                  patientVisitDetail.prescription.prescriptionDetails[0]
-                    .therapeuticRegimen.id
-                );
-              const dispenseMode = await dispenseModeService.localDbGetById(
-                pack.dispenseMode.id
-              );
-              // const episode = reportData.episode
-              // const dispenseMode = DispenseMode.localDbGetById(pack.dispenseMode.id)
-
-              notSyncronizedPacksToServer.nid = identifier.value;
-              notSyncronizedPacksToServer.firstNames = patient.firstNames;
-              notSyncronizedPacksToServer.middleNames = patient.middleNames;
-              notSyncronizedPacksToServer.lastNames = patient.lastNames;
-              notSyncronizedPacksToServer.cellphone = patient.cellphone;
-              // patientHistory.tipoTarv =
-              notSyncronizedPacksToServer.pickUpDate = pack.pickupDate;
-              notSyncronizedPacksToServer.nexPickUpDate = pack.nextPickUpDate;
-              notSyncronizedPacksToServer.therapeuticalRegimen =
-                therapeuticRegimen.description;
-              notSyncronizedPacksToServer.age = this.idadeCalculator(
-                patient.dateOfBirth
-              );
-              notSyncronizedPacksToServer.dispenseMode =
-                dispenseMode.description;
-              notSyncronizedPacksToServer.clinicalService =
-                clinicalService.description;
-              notSyncronizedPacksToServer.clinic = clinic.clinicName;
-              notSyncronizedPacksToServer.id = uuidv4();
-              this.localDbAddOrUpdate(notSyncronizedPacksToServer);
-              console.log(notSyncronizedPacksToServer);
-            }
-          }
-        }
+        notSyncronizedPacksToServer.nid = identifier.value;
+        notSyncronizedPacksToServer.firstNames = patient.firstNames;
+        notSyncronizedPacksToServer.middleNames = patient.middleNames;
+        notSyncronizedPacksToServer.lastNames = patient.lastNames;
+        notSyncronizedPacksToServer.cellphone = patient.cellphone;
+        notSyncronizedPacksToServer.pickUpDate = pack.pickupDate;
+        notSyncronizedPacksToServer.nexPickUpDate = pack.nextPickUpDate;
+        notSyncronizedPacksToServer.therapeuticalRegimen =
+          therapeuticRegimen.description;
+        notSyncronizedPacksToServer.age = this.idadeCalculator(
+          patient.dateOfBirth
+        );
+        notSyncronizedPacksToServer.dispenseMode = dispenseMode.description;
+        notSyncronizedPacksToServer.clinicalService =
+          clinicalService.description;
+        notSyncronizedPacksToServer.clinic = pack.clinic.clinicName;
+        notSyncronizedPacksToServer.id = uuidv4();
+        this.localDbAddOrUpdate(notSyncronizedPacksToServer);
+        console.log(notSyncronizedPacksToServer);
       }
     }
+    // const patientVisitList =
+    //   await patientVisitService.getLocalDbPatientVisitsNotSynced(
+    //     reportParams.startDate,
+    //     reportParams.endDate
+    //   );
+    // for (const patientVisit of patientVisitList) {
+    //   for (const patientVisitDetail of patientVisit.patientVisitDetails) {
+    //     if (patientVisitDetail.pack !== undefined) {
+    //       const pickupDate = moment(patientVisitDetail.pack.pickupDate).format(
+    //         'YYYY-MM-DD'
+    //       );
+    //       const endDate = moment(params.endDate).format('YYYY-MM-DD');
+    //       const startDate = moment(params.startDate).format('YYYY-MM-DD');
+    //       const days = moment(endDate).diff(pickupDate, 'days');
+    //       const newDate = moment(patientVisitDetail.pack.pickupDate).add(
+    //         days,
+    //         'd'
+    //       );
+
+    //       if (
+    //         (patientVisit.visitDate >= reportParams.startDate &&
+    //           patientVisit.visitDate <= reportParams.endDate) ||
+    //         (newDate >= moment(params.startDate) &&
+    //           newDate <= moment(params.endDate))
+    //       ) {
+    //         const notSyncronizedPacksToServer =
+    //           new NotSyncronizedPacksToServer();
+    //         const dispenseType = dispenseTypeService.getById(
+    //           patientVisitDetail.prescription.prescriptionDetails[0]
+    //             .dispenseType.id
+    //         );
+
+    //         notSyncronizedPacksToServer.dispenseType = dispenseType.description;
+
+    //         notSyncronizedPacksToServer.reportId = reportParams.id;
+    //         // patientHistory.period = reportParams.periodTypeView
+    //         notSyncronizedPacksToServer.year = reportParams.year;
+    //         notSyncronizedPacksToServer.startDate = reportParams.startDate;
+    //         notSyncronizedPacksToServer.endDate = reportParams.endDate;
+
+    //         const patient = await patientService.getPatientByIdMobile(
+    //           patientVisit.patient.id
+    //         );
+    //         const episode = await episodeService.apiFetchById(
+    //           patientVisitDetail.episode.id
+    //         );
+
+    //         let identifier = patient.identifiers.find(
+    //           (identifier: Object) =>
+    //             identifier.id === episode.patientServiceIdentifier.id
+    //         );
+    //         if (!identifier)
+    //           identifier = await patientServiceIdentifierService.localDbGetById(
+    //             patientVisitDetail.episode.patientServiceIdentifier.id
+    //           );
+
+    //         if (identifier) {
+    //           // const serviceIdentifier = identifier
+    //           const pack = patientVisitDetail.pack;
+    //           const clinic = patientVisitDetail.clinic;
+    //           const clinicalService =
+    //             await clinicalServiceService.localDbGetById(
+    //               identifier.service.id
+    //             );
+    //           const therapeuticRegimen =
+    //             await therapeuticalRegimenService.getById(
+    //               patientVisitDetail.prescription.prescriptionDetails[0]
+    //                 .therapeuticRegimen.id
+    //             );
+    //           const dispenseMode = await dispenseModeService.localDbGetById(
+    //             pack.dispenseMode.id
+    //           );
+    //           // const episode = reportData.episode
+    //           // const dispenseMode = DispenseMode.localDbGetById(pack.dispenseMode.id)
+
+    //           notSyncronizedPacksToServer.nid = identifier.value;
+    //           notSyncronizedPacksToServer.firstNames = patient.firstNames;
+    //           notSyncronizedPacksToServer.middleNames = patient.middleNames;
+    //           notSyncronizedPacksToServer.lastNames = patient.lastNames;
+    //           notSyncronizedPacksToServer.cellphone = patient.cellphone;
+    //           // patientHistory.tipoTarv =
+    //           notSyncronizedPacksToServer.pickUpDate = pack.pickupDate;
+    //           notSyncronizedPacksToServer.nexPickUpDate = pack.nextPickUpDate;
+    //           notSyncronizedPacksToServer.therapeuticalRegimen =
+    //             therapeuticRegimen.description;
+    //           notSyncronizedPacksToServer.age = this.idadeCalculator(
+    //             patient.dateOfBirth
+    //           );
+    //           notSyncronizedPacksToServer.dispenseMode =
+    //             dispenseMode.description;
+    //           notSyncronizedPacksToServer.clinicalService =
+    //             clinicalService.description;
+    //           notSyncronizedPacksToServer.clinic = clinic.clinicName;
+    //           notSyncronizedPacksToServer.id = uuidv4();
+    //           this.localDbAddOrUpdate(notSyncronizedPacksToServer);
+    //           console.log(notSyncronizedPacksToServer);
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
   },
 
   localDbAddOrUpdate(data: any) {

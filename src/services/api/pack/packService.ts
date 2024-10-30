@@ -6,11 +6,17 @@ import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 import ChunkArray from 'src/utils/ChunkArray';
+import { useDateUtils } from 'src/composables/shared/dateUtils/dateUtils';
+import patientVisitDetailsService from '../patientVisitDetails/patientVisitDetailsService';
+import dispenseModeService from '../dispenseMode/dispenseModeService';
+import clinicService from '../clinicService/clinicService';
+import packagedDrugService from '../packagedDrug/packagedDrugService';
 
 const pack = useRepo(Pack);
-const packDexie = Pack.entity;
+const packDexie = db[Pack.entity];
 
 const { closeLoading } = useLoading();
+const { getMonthsDateOfTheYear, addDays } = useDateUtils();
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
 
@@ -38,7 +44,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -59,7 +65,7 @@ export default {
           pack.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -83,17 +89,17 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[packDexie].add(JSON.parse(JSON.stringify(params))).then(() => {
+    return packDexie.add(JSON.parse(JSON.stringify(params))).then(() => {
       pack.save(JSON.parse(JSON.stringify(params)));
     });
   },
   putMobile(params: string) {
-    return db[packDexie].put(JSON.parse(JSON.stringify(params))).then(() => {
+    return packDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
       pack.save(JSON.parse(JSON.stringify(params)));
     });
   },
   getMobile() {
-    return db[packDexie]
+    return packDexie
       .toArray()
       .then((rows: any) => {
         pack.save(rows);
@@ -104,7 +110,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[packDexie]
+    return packDexie
       .delete(paramsId)
       .then(() => {
         pack.destroy(paramsId);
@@ -115,15 +121,11 @@ export default {
         console.log(error);
       });
   },
-  addBulkMobile(params: any) {
-    return db[packDexie]
-      .bulkPut(params)
-      .then(() => {
-        pack.save(params);
-      })
-      .catch((error: any) => {
-        console.log(error);
-      });
+  addBulkMobile() {
+    const packsFromPinia = this.getAllFromStorageForDexie();
+    return packDexie.bulkPut(packsFromPinia).catch((error: any) => {
+      console.log(error);
+    });
   },
   async apiSave(pack: any) {
     return await api().post('/pack', pack);
@@ -198,8 +200,8 @@ export default {
       });
   },
 
-  async getPackMobileById(id: String) {
-    const resp = await db[packDexie].where('id').equalsIgnoreCase(id).first();
+  async getPackMobileById(id: string) {
+    const resp = await packDexie.where('id').equalsIgnoreCase(id).first();
     return resp;
   },
 
@@ -209,6 +211,18 @@ export default {
   },
   getAllFromStorage() {
     return pack.all();
+  },
+  getAllFromStorageForDexie() {
+    return pack
+      .makeHidden([
+        'clinic',
+        'patientVisitDetails',
+        'dispenseMode',
+        'packagedDrugs',
+        'groupPack',
+        'syncStatus',
+      ])
+      .all();
   },
   deleteAllFromStorage() {
     pack.flush();
@@ -291,7 +305,7 @@ export default {
   },
 
   async getAllMobileByIds(packIds: any) {
-    const resp = await db[packDexie].where('id').anyOf(packIds).toArray();
+    const resp = await packDexie.where('id').anyOf(packIds).toArray();
 
     pack.save(resp);
     return resp;
@@ -310,6 +324,159 @@ export default {
 
       allPacks.push(...packs.data);
     }
-    this.addBulkMobile(allPacks);
+    // this.addBulkMobile(allPacks);
+  },
+
+  async getAllPacksByStartDateAndEndDateFromDexie(
+    startDate: any,
+    endDate: any
+  ) {
+    const packs = await packDexie
+      .where('pickupDate')
+      .between(startDate, endDate, true, true)
+      .toArray();
+
+    const packIds = packs.map((pack: any) => pack.id);
+    const clinicIds = packs.map((pack: any) => pack.clinic_id);
+    const dispenseModeIds = packs.map((pack: any) => pack.dispenseMode_id);
+
+    const [patientvisitDetailsList] = await Promise.all([
+      patientVisitDetailsService.getPatientVisitDetailsByPackIdFromDexie(
+        packIds
+      ),
+    ]);
+
+    const patientVisitDetailsIds = patientvisitDetailsList.map(
+      (patientvisitDetail: any) => patientvisitDetail.id
+    );
+
+    const [clinics, dispenseModes, patientVisitDetails] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(clinicIds),
+      dispenseModeService.getAllByIDsFromDexie(dispenseModeIds),
+      patientVisitDetailsService.getAllByIDsFromDexie(patientVisitDetailsIds),
+    ]);
+
+    packs.map((pack: any) => {
+      pack.patientvisitDetails = patientVisitDetails.find(
+        (patientVisitDetail: any) => patientVisitDetail.pack_id === pack.id
+      );
+      pack.dispenseMode = dispenseModes.find(
+        (dispenseMode: any) => dispenseMode.id === pack.dispenseMode_id
+      );
+      pack.clinic = clinics.find((clinic: any) => clinic.id === pack.clinic_id);
+    });
+    return packs;
+  },
+
+  async getTotalPacksInYear(year: number) {
+    const periods = getMonthsDateOfTheYear(year);
+    // Map each period to a promise to get packs from Dexie
+    return await Promise.all(
+      periods.map((period) =>
+        this.getAllPacksByStartDateAndEndDateFromDexie(
+          period.startDate,
+          period.endDate
+        )
+      )
+    );
+  },
+
+  async getAllByIDsFromDexie(ids: []) {
+    const packs = await packDexie.where('id').anyOf(ids).toArray();
+
+    const packsId = packs.map((pack: any) => pack.id);
+    const dispenseModeIds = packs.map((pack: any) => pack.dispenseMode_id);
+
+    const [dispenseModes, packagedDrugsList] = await Promise.all([
+      dispenseModeService.getAllByIDsFromDexie(dispenseModeIds),
+      packagedDrugService.getAllByIDsFromDexie(packsId),
+    ]);
+    packs.map((pack: any) => {
+      pack.dispenseMode = dispenseModes.find(
+        (dispenseMode: any) => dispenseMode.id === pack.dispenseMode_id
+      );
+      pack.packagedDrugs = packagedDrugsList.filter(
+        (packagedDrugs: any) => packagedDrugs.pack_id === pack.id
+      );
+    });
+    return packs;
+  },
+
+  async getAllActivePatientByEndDateFromDexie(startDate: any, endDate: any) {
+    const packs = await packDexie
+      .where('nextPickUpDate')
+      .aboveOrEqual(endDate)
+      .toArray();
+
+    const packIds = packs.map((pack: any) => pack.id);
+    const clinicIds = packs.map((pack: any) => pack.clinic_id);
+    const dispenseModeIds = packs.map((pack: any) => pack.dispenseMode_id);
+
+    const [patientvisitDetailsList] = await Promise.all([
+      patientVisitDetailsService.getPatientVisitDetailsByPackIdFromDexie(
+        packIds
+      ),
+    ]);
+
+    const patientVisitDetailsIds = patientvisitDetailsList.map(
+      (patientvisitDetail: any) => patientvisitDetail.id
+    );
+
+    const [clinics, dispenseModes, patientVisitDetails] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(clinicIds),
+      dispenseModeService.getAllByIDsFromDexie(dispenseModeIds),
+      patientVisitDetailsService.getAllByIDsFromDexie(patientVisitDetailsIds),
+    ]);
+
+    packs.map((pack: any) => {
+      pack.patientvisitDetails = patientVisitDetails.find(
+        (patientVisitDetail: any) => patientVisitDetail.pack_id === pack.id
+      );
+      pack.dispenseMode = dispenseModes.find(
+        (dispenseMode: any) => dispenseMode.id === pack.dispenseMode_id
+      );
+      pack.clinic = clinics.find((clinic: any) => clinic.id === pack.clinic_id);
+    });
+    return packs;
+  },
+  async getAllExpectedPacksByStartDateAndEndDateFromDexie(
+    startDate: any,
+    endDate: any
+  ) {
+    const packs = await packDexie
+      .where('nextPickUpDate')
+      .between(startDate, endDate, true, true)
+      .toArray();
+
+    const packIds = packs.map((pack: any) => pack.id);
+    const clinicIds = packs.map((pack: any) => pack.clinic_id);
+    const dispenseModeIds = packs.map((pack: any) => pack.dispenseMode_id);
+
+    const [patientvisitDetailsList] = await Promise.all([
+      patientVisitDetailsService.getPatientVisitDetailsByPackIdFromDexie(
+        packIds
+      ),
+    ]);
+
+    const patientVisitDetailsIds = patientvisitDetailsList.map(
+      (patientvisitDetail: any) => patientvisitDetail.id
+    );
+
+    const [clinics, dispenseModes, patientVisitDetails] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(clinicIds),
+      dispenseModeService.getAllByIDsFromDexie(dispenseModeIds),
+      patientVisitDetailsService.getAllByIDsFromDexie(patientVisitDetailsIds),
+    ]);
+
+    packs.map((pack: any) => {
+      pack.patientvisitDetails = patientVisitDetails.find(
+        (patientVisitDetail: any) => patientVisitDetail.pack_id === pack.id
+      );
+      pack.dispenseMode = dispenseModes.find(
+        (dispenseMode: any) => dispenseMode.id === pack.dispenseMode_id
+      );
+      pack.clinic = clinics.find((clinic: any) => clinic.id === pack.clinic_id);
+    });
+    return packs;
   },
 };

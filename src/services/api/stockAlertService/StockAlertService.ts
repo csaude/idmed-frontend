@@ -1,23 +1,19 @@
 import { useRepo } from 'pinia-orm';
 import StockAlert from 'src/stores/models/stockAlert/StockAlert';
 import api from '../apiService/apiService';
-import { useSwal } from 'src/composables/shared/dialog/dialog';
-import { nSQL } from 'nano-sql';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import drugService from '../drugService/drugService';
 import { useStock } from 'src/composables/stock/StockMethod';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import db from '../../../stores/dexie';
 import StockService from '../stockService/StockService';
-import patientVisitService from '../patientVisit/patientVisitService';
-import StockMethods from 'src/methods/stock/StockMethods';
 
 const { showloading, closeLoading } = useLoading();
 
 const stockMethod = useStock();
 const { isOnline, isMobile } = useSystemUtils();
 const stockAlert = useRepo(StockAlert);
-const stockAlertDexie = StockAlert.entity;
+const stockAlertDexie = db[StockAlert.entity];
 
 export default {
   // Axios API call
@@ -102,7 +98,7 @@ export default {
 
   // Mobile
   async localDbAddOrUpdate(targetCopy: any) {
-    return db[stockAlertDexie]
+    return stockAlertDexie
       .add(JSON.parse(JSON.stringify(targetCopy)))
       .then(() => {
         stockAlert.save(JSON.parse(JSON.stringify(targetCopy)));
@@ -130,7 +126,7 @@ export default {
   },
 
   addBulkMobile(params: string) {
-    return db[stockAlertDexie]
+    return stockAlertDexie
       .bulkAdd(params)
       .then(() => {
         stockAlert.save(JSON.parse(params));
@@ -142,7 +138,7 @@ export default {
 
   async localDbGetAll() {
     try {
-      const rows = await db[stockAlertDexie].toArray();
+      const rows = await stockAlertDexie.toArray();
       stockAlert.save(rows);
       return rows;
     } catch (error) {
@@ -161,11 +157,14 @@ export default {
         const balance = await stockMethod.localDbGetStockBalanceByDrug(drug);
         const drugQuantitySupplied =
           await stockMethod.localDbGetQuantitySuppliedByDrug(drug);
+        const avgConsuption = drugQuantitySupplied / 3;
         stockAlert.id = drug.id;
         stockAlert.balance = balance;
         stockAlert.drugName = drug.name;
         stockAlert.drug = drug;
-        stockAlert.avgConsuption = drugQuantitySupplied / 3;
+        stockAlert.avgConsuption = Number.isInteger(avgConsuption)
+          ? avgConsuption
+          : avgConsuption.toFixed(2);
         if (drugQuantitySupplied === 0) {
           stockAlert.state = 'Sem Consumo';
         } else if (stockAlert.balance > drugQuantitySupplied / 3) {

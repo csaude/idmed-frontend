@@ -146,7 +146,7 @@
               <template #body="props">
                 <q-tr :props="props">
                   <q-td key="order" :props="props">
-                    {{ index }}
+                    {{ props.rowIndex + 1 }}
                   </q-td>
                   <q-td key="drug" :props="props">
                     <q-select
@@ -215,6 +215,7 @@
                             <q-date
                               v-model="props.row.auxExpireDate"
                               mask="DD-MM-YYYY"
+                              :options="blockDataFutura"
                             >
                               <div class="row items-center justify-end">
                                 <q-btn
@@ -716,6 +717,10 @@ const blockDataFutura = (date) => {
   return date >= moment(new Date()).add(28, 'd').format('YYYY/MM/DD');
 };
 
+const blockDataPassada = (date) => {
+  return date <= moment(new Date()).format('YYYY/MM/DD');
+};
+
 const filterFn = (val, update, abort) => {
   const stringOptions = activeDrugs.value;
   if (val === '') {
@@ -971,7 +976,7 @@ const validateStock = (stock) => {
 
 const doSave = (stock) => {
   showloading();
-
+  stock.unitsReceived = Number(stock.unitsReceived);
   stock.stockMoviment = stock.unitsReceived;
   stock.clinic = {};
   stock.clinic.id = clinicService.currClinic().id;

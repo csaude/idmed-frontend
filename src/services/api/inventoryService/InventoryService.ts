@@ -7,7 +7,7 @@ import moment from 'moment';
 import db from 'src/stores/dexie';
 
 const { closeLoading, showloading } = useLoading();
-const inventoryDexie = Inventory.entity;
+const inventoryDexie = db[Inventory.entity];
 
 const inventory = useRepo(Inventory);
 const { isMobile, isOnline } = useSystemUtils();
@@ -128,7 +128,17 @@ export default {
       .get();
     return items.length > 0;
   },
-
+  lastInventoryBeforeDate(dateLimit: any) {
+    const items = inventory
+      .query()
+      .where('endDate', (value: Date) => {
+        const startDateMoment = moment(value, 'YYYY-MM-DD');
+        return startDateMoment.isSameOrBefore(dateLimit);
+      })
+      .orderBy('endDate', 'desc')
+      .first();
+    return items;
+  },
   isDateBetween21And25(dateMoment: any) {
     const currentDate = new Date();
     const startDate = new Date(
@@ -208,7 +218,7 @@ export default {
           inventory.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           } else {
             closeLoading();
           }
@@ -262,16 +272,14 @@ export default {
 
   //Mobile
   addMobile(params: string) {
-    return db[inventoryDexie]
-      .add(JSON.parse(JSON.stringify(params)))
-      .then(() => {
-        inventory.save(JSON.parse(JSON.stringify(params)));
-      });
+    return inventoryDexie.add(JSON.parse(JSON.stringify(params))).then(() => {
+      inventory.save(JSON.parse(JSON.stringify(params)));
+    });
   },
 
   async getMobile() {
     try {
-      const rows = await db[inventoryDexie].toArray();
+      const rows = await inventoryDexie.toArray();
       inventory.save(rows);
     } catch (error) {
       // alertError('Aconteceu um erro inesperado nesta operação.');
@@ -280,7 +288,7 @@ export default {
   },
 
   async putMobile(params: any) {
-    return db[inventoryDexie]
+    return await inventoryDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         inventory.save(JSON.parse(JSON.stringify(params)));
@@ -289,7 +297,7 @@ export default {
 
   async deleteMobile(id: any) {
     try {
-      await db[inventoryDexie].delete(id);
+      await inventoryDexie.delete(id);
       inventory.destroy(id);
       // alertSucess('O Registo foi removido com sucesso');
     } catch (error) {
@@ -299,7 +307,7 @@ export default {
   },
 
   apiFetchByIdMobile(id: any) {
-    return db[inventoryDexie]
+    return inventoryDexie
       .where('id')
       .equalsIgnoreCase(id)
       .toArray()
@@ -310,7 +318,7 @@ export default {
   },
 
   apiGetAllByClinicIdMobile(id: any) {
-    return db[inventoryDexie]
+    return inventoryDexie
       .where('clinic_id')
       .equalsIgnoreCase(id)
       .toArray()
@@ -318,5 +326,8 @@ export default {
         inventory.save(rows);
         return rows;
       });
+  },
+  async getAllByIDsFromDexie(ids: []) {
+    return await inventoryDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

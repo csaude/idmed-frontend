@@ -7,7 +7,7 @@ import db from '../../../stores/dexie';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const therapeuticLine = useRepo(TherapeuticLine);
-const therapeuticLineDexie = TherapeuticLine.entity;
+const therapeuticLineDexie = db[TherapeuticLine.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -61,13 +61,10 @@ export default {
           therapeuticLine.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -94,7 +91,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[therapeuticLineDexie]
+    return therapeuticLineDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         therapeuticLine.save(JSON.parse(params));
@@ -104,7 +101,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[therapeuticLineDexie]
+    return therapeuticLineDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         therapeuticLine.save(JSON.parse(params));
@@ -114,7 +111,7 @@ export default {
       });
   },
   getMobile() {
-    return db[therapeuticLineDexie]
+    return therapeuticLineDexie
       .toArray()
       .then((rows: any) => {
         therapeuticLine.save(rows);
@@ -125,7 +122,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[therapeuticLineDexie]
+    return therapeuticLineDexie
       .delete(paramsId)
       .then(() => {
         therapeuticLine.destroy(paramsId);
@@ -137,7 +134,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[therapeuticLineDexie]
+    return therapeuticLineDexie
       .bulkPut(params)
       .then(() => {
         therapeuticLine.save(params);
@@ -158,5 +155,13 @@ export default {
   //PINIA
   getAllFromStorage() {
     return therapeuticLine.all();
+  },
+
+  //Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await therapeuticLineDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
   },
 };

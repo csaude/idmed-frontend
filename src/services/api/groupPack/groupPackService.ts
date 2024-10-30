@@ -1,8 +1,10 @@
 import { useRepo } from 'pinia-orm';
 import api from '../apiService/apiService';
 import GroupPack from 'src/stores/models/group/GroupPack';
+import db from 'src/stores/dexie';
 
 const groupPack = useRepo(GroupPack);
+const groupPackDexie = db[GroupPack.entity];
 
 export default {
   // Axios API call
@@ -67,5 +69,10 @@ export default {
       .with('pack')
       .where('header_id', groupHeaderId)
       .get();
+  },
+
+  // Dexie Block
+  async getByIdFromDexie(id: string) {
+    return groupPackDexie.get(id);
   },
 };

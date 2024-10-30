@@ -7,7 +7,7 @@ import { useLoading } from 'src/composables/shared/loading/loading';
 import db from '../../../stores/dexie';
 
 const adherenceScreening = useRepo(AdherenceScreening);
-const adherenceScreeningDexi = AdherenceScreening.entity;
+const adherenceScreeningDexie = db[AdherenceScreening.entity];
 
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -37,7 +37,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -58,7 +58,7 @@ export default {
           adherenceScreening.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -83,7 +83,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     showloading();
-    return db[adherenceScreeningDexi]
+    return adherenceScreeningDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         adherenceScreening.save(params);
@@ -97,7 +97,7 @@ export default {
   },
   patchMobile(params: string) {
     showloading();
-    return db[adherenceScreeningDexi]
+    return adherenceScreeningDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         adherenceScreening.save(params);
@@ -111,7 +111,7 @@ export default {
   },
   getMobile() {
     showloading();
-    return db[adherenceScreeningDexi]
+    return adherenceScreeningDexie
       .toArray()
       .then((rows: any) => {
         adherenceScreening.save(rows);
@@ -123,7 +123,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[adherenceScreeningDexi]
+    return adherenceScreeningDexie
       .delete(paramsId)
       .then(() => {
         adherenceScreening.destroy(paramsId);
@@ -134,15 +134,21 @@ export default {
         console.log(error);
       });
   },
-  addBulkMobile(params: string) {
-    return db[adherenceScreeningDexi]
-      .bulkPut(params)
-      .then(() => {
-        adherenceScreening.save(params);
-      })
+  addBulkMobile() {
+    const adherenceScreeningFromPinia = this.getAllFromStorageForDexie();
+    return adherenceScreeningDexie
+      .bulkPut(adherenceScreeningFromPinia)
       .catch((error: any) => {
         console.log(error);
       });
+  },
+  async getAdherenceScreeningByVisitIdMobile(id: string) {
+    const adherenceScreenings = await adherenceScreeningDexie
+      .where('patient_visit_id')
+      .equalsIgnoreCase(id)
+      .toArray();
+    adherenceScreening.save(adherenceScreenings);
+    return adherenceScreenings;
   },
   // Local Storage Pinia
   newInstanceEntity() {
@@ -151,7 +157,24 @@ export default {
   getAllFromStorage() {
     return adherenceScreening.all();
   },
+  getAllFromStorageForDexie() {
+    return adherenceScreening.makeHidden(['visit']).all();
+  },
   deleteAllFromStorage() {
     adherenceScreening.flush();
+  },
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await adherenceScreeningDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+  },
+
+  async getAllByPatientVisitIDsFromDexie(ids: []) {
+    return await adherenceScreeningDexie
+      .where('patient_visit_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
   },
 };

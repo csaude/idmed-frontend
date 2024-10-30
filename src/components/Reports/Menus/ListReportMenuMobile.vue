@@ -134,29 +134,29 @@ const menu = [
       },
     ],
   },
-  {
-    description: 'Referências',
-    id: 3,
-    menuItem: [
-      {
-        description: 'Lista de Pacientes Referidos Para outras Farmacias',
-        tabName: 'ReferredPatients',
-      },
-      {
-        description: 'Lista de Pacientes que voltaram da Referencia',
-        tabName: 'ReferredBackPatients',
-      },
-      {
-        description:
-          'Lista de Pacientes referidos faltosos em outras Farmacias',
-        tabName: 'AbsentReferredPatients',
-      },
-      {
-        description: 'Historico de Levantamentos de Pacientes Referidos',
-        tabName: 'ReferredPatientDispenseHistory',
-      },
-    ],
-  },
+  // {
+  //   description: 'Referências',
+  //   id: 3,
+  //   menuItem: [
+  //     {
+  //       description: 'Lista de Pacientes Referidos Para outras Farmacias',
+  //       tabName: 'ReferredPatients',
+  //     },
+  //     {
+  //       description: 'Lista de Pacientes que voltaram da Referencia',
+  //       tabName: 'ReferredBackPatients',
+  //     },
+  //     {
+  //       description:
+  //         'Lista de Pacientes referidos faltosos em outras Farmacias',
+  //       tabName: 'AbsentReferredPatients',
+  //     },
+  //     {
+  //       description: 'Historico de Levantamentos de Pacientes Referidos',
+  //       tabName: 'ReferredPatientDispenseHistory',
+  //     },
+  //   ],
+  // },
   {
     description: 'Stock',
     id: 4,

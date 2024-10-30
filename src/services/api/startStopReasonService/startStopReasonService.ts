@@ -7,7 +7,7 @@ import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const startStopReason = useRepo(StartStopReason);
-const startStopReasonDexie = StartStopReason.entity;
+const startStopReasonDexie = db[StartStopReason.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,7 +37,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -58,9 +58,7 @@ export default {
           startStopReason.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -84,7 +82,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[startStopReasonDexie]
+    return startStopReasonDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         startStopReason.save(JSON.parse(params));
@@ -94,7 +92,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[startStopReasonDexie]
+    return startStopReasonDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         startStopReason.save(JSON.parse(params));
@@ -106,7 +104,7 @@ export default {
       });
   },
   getMobile() {
-    return db[startStopReasonDexie]
+    return startStopReasonDexie
       .toArray()
       .then((rows: any) => {
         startStopReason.save(rows);
@@ -117,7 +115,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[startStopReasonDexie]
+    return startStopReasonDexie
       .delete(paramsId)
       .then(() => {
         startStopReason.destroy(paramsId);
@@ -129,7 +127,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[startStopReasonDexie]
+    return startStopReasonDexie
       .bulkPut(params)
       .then(() => {
         startStopReason.save(params);
@@ -171,5 +169,13 @@ export default {
         return startStopReason.id === id;
       })
       .get();
+  },
+
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await startStopReasonDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
   },
 };

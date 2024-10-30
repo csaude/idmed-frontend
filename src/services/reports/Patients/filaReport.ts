@@ -1,4 +1,3 @@
-import { clinicService } from 'src/services/api/clinicService/clinicService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import moment from 'moment';
@@ -84,7 +83,6 @@ export default {
           patientServiceIdentifier.service.code
         )
         .then((resp) => {
-          console.log(resp);
           rows = resp;
         });
     }
@@ -216,11 +214,7 @@ export default {
       window.open(doc.output('bloburl'));
     } else {
       const pdfOutput = doc.output();
-      DownloadFileMobile.downloadFile(
-        'Ficha_Individual_de_Levantamento',
-        '.pdf',
-        pdfOutput
-      );
+      DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput);
     }
 
     // return doc.save(fileName.concat('.pdf'));

@@ -74,7 +74,7 @@ export default {
           if (resp.data.length > 0) {
             stockDistributor.save(resp.data);
             offset = offset + 100;
-            this.get(offset);
+            this.getWeb(offset);
           } else {
             closeLoading();
           }

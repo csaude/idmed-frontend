@@ -98,16 +98,7 @@
 </template>
 
 <script setup>
-import {
-  ref,
-  computed,
-  inject,
-  provide,
-  reactive,
-  onMounted,
-  onBeforeMount,
-  watch,
-} from 'vue';
+import { ref, computed, inject, provide, reactive, watchEffect } from 'vue';
 
 import drugService from 'src/services/api/drugService/drugService';
 import { useRouter } from 'vue-router';
@@ -216,7 +207,7 @@ const rowsAux = computed(() => {
   return list;
 });
 
-watch((isExecutedStockAlert) => {
+watchEffect((isExecutedStockAlert) => {
   if (isExecutedStockAlert.value === 'true') {
     loading.value = false;
   } else {

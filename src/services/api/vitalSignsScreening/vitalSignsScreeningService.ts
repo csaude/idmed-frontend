@@ -7,7 +7,7 @@ import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const vitalSignsScreening = useRepo(VitalSignsScreening);
-const vitalSignsScreeningDexie = VitalSignsScreening.entity;
+const vitalSignsScreeningDexie = db[VitalSignsScreening.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,7 +37,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -58,7 +58,7 @@ export default {
           vitalSignsScreening.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -82,7 +82,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[vitalSignsScreeningDexie]
+    return vitalSignsScreeningDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         vitalSignsScreening.save(JSON.parse(params));
@@ -94,14 +94,14 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[vitalSignsScreeningDexie]
+    return vitalSignsScreeningDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         vitalSignsScreening.save(JSON.parse(params));
       });
   },
   getMobile() {
-    return db[vitalSignsScreeningDexie]
+    return vitalSignsScreeningDexie
       .toArray()
       .then((rows: any) => {
         vitalSignsScreening.save(rows);
@@ -112,7 +112,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[vitalSignsScreeningDexie]
+    return vitalSignsScreeningDexie
       .delete(paramsId)
       .then(() => {
         vitalSignsScreening.destroy(paramsId);
@@ -123,17 +123,23 @@ export default {
         console.log(error);
       });
   },
-  addBulkMobile(params: any) {
-    return db[vitalSignsScreeningDexie]
-      .bulkAdd(params)
-      .then(() => {
-        vitalSignsScreening.save(params);
-      })
+  addBulkMobile() {
+    const vitalSignsScreeningFromPinia = this.getAllFromStorageForDexie();
+
+    return vitalSignsScreeningDexie
+      .bulkAdd(vitalSignsScreeningFromPinia)
       .catch((error: any) => {
         console.log(error);
       });
   },
-
+  async getVitalSignsScreeningByVisitIdMobile(id: string) {
+    const vitalSignsScreenings = await vitalSignsScreeningDexie
+      .where('patient_visit_id')
+      .equalsIgnoreCase(id)
+      .toArray();
+    vitalSignsScreening.save(vitalSignsScreenings);
+    return vitalSignsScreenings;
+  },
   async apiGetAll(offset: number, max: number) {
     return await api().get(
       '/vitalSignsScreening?offset=' + offset + '&max=' + max
@@ -146,7 +152,23 @@ export default {
   getAllFromStorage() {
     return vitalSignsScreening.all();
   },
+  getAllFromStorageForDexie() {
+    return vitalSignsScreening.makeHidden(['visit']).all();
+  },
   deleteAllFromStorage() {
     vitalSignsScreening.flush();
+  },
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await vitalSignsScreeningDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+  },
+  async getAllByPatientVisitIDsFromDexie(ids: []) {
+    return await vitalSignsScreeningDexie
+      .where('patient_visit_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
   },
 };

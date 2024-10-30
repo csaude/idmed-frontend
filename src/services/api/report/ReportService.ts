@@ -4,8 +4,10 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import stockAlertService from 'src/services/api/stockAlertService/StockAlertService';
 import { nSQL } from 'nano-sql';
 import moment from 'moment';
+import packService from '../pack/packService';
 
 const { showloading } = useLoading();
+
 const { isOnline } = useSystemUtils();
 
 export default {
@@ -26,7 +28,10 @@ export default {
   },
 
   async apiInitPatientsAbandonmentProcessing(params: any) {
-    return await api().post('/patientsAbandonmentReport/initReportProcess', params);
+    return await api().post(
+      '/patientsAbandonmentReport/initReportProcess',
+      params
+    );
   },
 
   async apiPrintMmiaReport(reportId: string, fileType: string) {
@@ -317,7 +322,6 @@ export default {
     return moment.parseZone(date).format('DD-MM-YYYY');
   },
 
-
   getFormatYYYYMMDD(date: any) {
     return moment(date).format('YYYY-MM-DD');
   },
@@ -328,46 +332,7 @@ export default {
         `/dashBoard/getDashboardServiceButton/${year}/${clinicId}`
       );
     } else {
-      const dateStr = year + '-12-20';
-      const parts = dateStr.split('-');
-      const currentYear = new Date().getFullYear();
-      let endDateObject = new Date(parts[0], parts[1] - 1, parts[2]);
-      if (currentYear == year) {
-        endDateObject = new Date();
-      }
-
-      showloading();
-      return nSQL('identifiers')
-        .query('select', [
-          'clinicalServices.code AS service',
-          '0 AS quantity',
-          'identifiers.clinic.id AS clinicId',
-          'identifiers.startDate AS startDate',
-        ])
-        .where(['clinic.id', 'LIKE', clinicId])
-        .join({
-          type: 'inner',
-          table: 'clinicalServices',
-          where: ['clinicalServices.id', '=', 'identifiers.service.id'],
-        })
-        .exec()
-        .then((rows) => {
-          // filtrar por datas
-          rows = rows.filter(function (value) {
-            return new Date(value.startDate) <= endDateObject; // Apenas o true sera mantido, o resto sera removido
-          });
-
-          return rows.reduce((acc, obj) => {
-            const key = obj.service;
-            const matchingObj = acc.find((item) => item.service === key);
-            if (!matchingObj) {
-              acc.push({ service: key, startDate: obj.startDate, quantity: 1 });
-            } else {
-              matchingObj.quantity++;
-            }
-            return acc;
-          }, []);
-        });
+      return this.getAllPatientActive(year);
     }
   },
 
@@ -381,124 +346,7 @@ export default {
         `/dashBoard/getRegisteredPatientByDispenseType/${year}/${clinicId}/${serviceCode}`
       );
     } else {
-      const realYear = year;
-      const dateStr = realYear + '-12-20';
-      const yearBefore = year - 1;
-      const dateStr1 = yearBefore + '-12-21';
-      const endDateObject = new Date(dateStr);
-      const startDateObject = new Date(dateStr1);
-      const serviceCD = serviceCode;
-
-      return nSQL('patientVisits')
-        .query('select', [
-          '1 AS month',
-          'clinicalServices.code AS service',
-          'identifiers.startDate AS startDate',
-          'patientVisits.visitDate AS visitDate',
-          'patientVisits.patient.id AS patientId',
-          'dispenseTypes.code AS dispenseTypeCode',
-        ])
-        .join([
-          {
-            type: 'inner',
-            table: 'identifiers',
-            where: ['identifiers.patient.id', '=', 'patientVisits.patient.id'],
-          },
-          {
-            type: 'inner',
-            table: 'episodes',
-            where: [
-              'episodes.patientServiceIdentifier.id',
-              '=',
-              'identifiers.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'clinicalServices',
-            where: ['clinicalServices.id', '=', 'identifiers.service.id'],
-          },
-          {
-            type: 'inner',
-            table: 'patientVisitDetails',
-            where: [
-              'patientVisits.id',
-              '=',
-              'patientVisitDetails.patientVisit.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'prescriptions',
-            where: [
-              'prescriptions.id',
-              '=',
-              'patientVisitDetails.prescription.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'prescriptionsDetails',
-            where: [
-              'prescriptionsDetails.prescription.id',
-              '=',
-              'prescriptions.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'dispenseTypes',
-            where: [
-              'dispenseTypes.id',
-              '=',
-              'prescriptionsDetails.dispenseType.id',
-            ],
-          },
-        ])
-        .exec()
-        .then(async (rows) => {
-          rows = await this.removerDuplicados(rows);
-          rows.forEach((item) => {
-            if (item.startDate !== null && item.startDate !== undefined) {
-              const strtDate = new Date(item.startDate);
-              if (strtDate.getDate() > 20) {
-                item.month = strtDate.getMonth() + 2; // Adicionar 1 mes
-              }
-              if (strtDate.getDate() <= 20) {
-                item.month = strtDate.getMonth() + 1; // Considerar mes da data
-              }
-            }
-          });
-
-          rows = rows.filter(function (value) {
-            return (
-              value.service === serviceCD &&
-              new Date(value.startDate) >= startDateObject &&
-              new Date(value.startDate) <= endDateObject &&
-              new Date(value.visitDate) <= endDateObject
-            ); // Apenas o true sera mantido, o resto sera removido
-          });
-
-          return rows.reduce((acc, obj) => {
-            const key = obj.dispenseTypeCode;
-            const matchingObj = acc.find(
-              (item) => item.dispenseTypeCode === key
-            );
-            if (!matchingObj) {
-              acc.push({
-                dispenseTypeCode: key,
-                startDate: obj.startDate,
-                visitDate: obj.visitDate,
-                month: obj.month,
-                service: obj.service,
-                quantity: 1,
-              });
-            } else {
-              matchingObj.quantity++;
-            }
-            return acc;
-          }, []);
-        });
+      return this.getStatisticBarReport(year, serviceCode);
     }
   },
 
@@ -522,138 +370,7 @@ export default {
         `/dashBoard/getPatientsFirstDispenseByAge/${year}/${clinicId}/${serviceCode}`
       );
     } else {
-      const realYear = year;
-      const dateStr = realYear + '-12-20';
-      const yearBefore = year - 1;
-      const dateStr1 = yearBefore + '-12-21';
-      const endDateObject = new Date(dateStr);
-      const startDateObject = new Date(dateStr1);
-      const serviceCD = serviceCode;
-
-      return nSQL('patientVisits')
-        .query('select', [
-          'identifiers.startDate AS startDate',
-          'patientVisits.visitDate AS visitDate',
-          'patientVisits.patient.dateOfBirth AS dateOfBirth',
-          'patientVisits.patient.id AS patientId',
-          'clinicalServices.code AS service',
-          '1 AS month',
-          '0 AS quantity',
-          '0 AS faixa',
-          'dispenseTypes.code AS dispenseTypeCode',
-        ])
-        .join([
-          {
-            type: 'inner',
-            table: 'identifiers',
-            where: ['identifiers.patient.id', '=', 'patientVisits.patient.id'],
-          },
-          {
-            type: 'inner',
-            table: 'episodes',
-            where: [
-              'episodes.patientServiceIdentifier.id',
-              '=',
-              'identifiers.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'clinicalServices',
-            where: ['clinicalServices.id', '=', 'identifiers.service.id'],
-          },
-          {
-            type: 'inner',
-            table: 'patientVisitDetails',
-            where: [
-              'patientVisits.id',
-              '=',
-              'patientVisitDetails.patientVisit.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'prescriptions',
-            where: [
-              'prescriptions.id',
-              '=',
-              'patientVisitDetails.prescription.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'prescriptionsDetails',
-            where: [
-              'prescriptionsDetails.prescription.id',
-              '=',
-              'prescriptions.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'dispenseTypes',
-            where: [
-              'dispenseTypes.id',
-              '=',
-              'prescriptionsDetails.dispenseType.id',
-            ],
-          },
-        ])
-        .exec()
-        .then((rows) => {
-          rows = this.removerDuplicados(rows);
-          rows.forEach((item) => {
-            const idade = this.calcularIdade(item.dateOfBirth);
-            if (item.startDate !== null && item.startDate !== undefined) {
-              const strtDate = new Date(item.startDate);
-              if (strtDate.getDate() > 20) {
-                item.month = strtDate.getMonth() + 2; // Adicionar 1 mes
-              }
-              if (strtDate.getDate() <= 20) {
-                item.month = strtDate.getMonth() + 1; // Considerar mes da data
-              }
-              if (idade < 18) {
-                item.faixa = 'MENOR';
-              }
-              if (idade >= 18) {
-                item.faixa = 'ADULTO';
-              }
-            }
-          });
-
-          rows = rows.filter(function (value) {
-            return (
-              value.service === serviceCD &&
-              new Date(value.startDate) >= startDateObject &&
-              new Date(value.startDate) <= endDateObject &&
-              new Date(value.visitDate) <= endDateObject
-            ); // Apenas o true sera mantido, o resto sera removido
-          });
-
-          rows = rows.reduce((acc, obj) => {
-            const key =
-              obj.dispenseTypeCode + '-' + obj.month + '-' + obj.faixa;
-            const matchingObj = acc.find((item) => item.key === key);
-            if (!matchingObj) {
-              acc.push({
-                key: key,
-                dispenseTypeCode: obj.dispenseTypeCode,
-                startDate: obj.startDate,
-                visitDate: obj.visitDate,
-                month: obj.month,
-                service: obj.service,
-                dateOfBirth: obj.dateOfBirth,
-                faixa: obj.faixa,
-                quantity: 1,
-              });
-            } else {
-              matchingObj.quantity++;
-            }
-            return acc;
-          }, []);
-
-          return rows;
-        });
+      return this.getDispenseByAgeAndMonthInYear(year, serviceCode);
     }
   },
 
@@ -668,106 +385,13 @@ export default {
     return idade;
   },
 
-  getActivePatientPercentage(year, clinicId, serviceCode) {
+  async getActivePatientPercentage(year, clinicId, serviceCode) {
     if (isOnline.value) {
       return api().get(
         `/dashBoard/getActivePatientPercentage/${year}/${clinicId}/${serviceCode}`
       );
     } else {
-      const realYear = year;
-      const dateStr = realYear + '-12-20';
-      const yearBefore = year - 1;
-      const dateStr1 = yearBefore + '-12-21';
-      const endDateObject = new Date(dateStr);
-      const startDateObject = new Date(dateStr1);
-      const serviceCD = serviceCode;
-      return nSQL('patientVisits')
-        .query('select', [
-          'identifiers.startDate AS startDate',
-          'patientVisits.visitDate AS visitDate',
-          'patientVisits.patient.id AS patientId',
-          'clinicalServices.code AS service',
-          '0 AS quantity',
-          '0 AS percent',
-          'dispenseTypes.code AS dispenseTypeCode',
-          'patientVisits.patientVisitDetails[0].prescription.prescriptionDetails[0].therapeuticRegimen.code AS therapeuticRegimen',
-          'patientVisits.patientVisitDetails[0].prescription.prescriptionDate AS prescriptionDate',
-          'patientVisits.patientVisitDetails[0].prescription.prescriptionDetails[0].therapeuticLine.code AS therapeuticLine',
-          'patientVisits.patientVisitDetails[0].episode.episodeDate AS lastEpisode',
-          'patientVisits.patient.gender AS gender',
-        ])
-        .join([
-          {
-            type: 'inner',
-            table: 'identifiers',
-            where: ['identifiers.patient.id', '=', 'patientVisits.patient.id'],
-          },
-          {
-            type: 'inner',
-            table: 'episodes',
-            where: [
-              'episodes.patientServiceIdentifier.id',
-              '=',
-              'identifiers.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'clinicalServices',
-            where: ['clinicalServices.id', '=', 'identifiers.service.id'],
-          },
-          {
-            type: 'inner',
-            table: 'patientVisitDetails',
-            where: [
-              'patientVisits.id',
-              '=',
-              'patientVisitDetails.patientVisit.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'prescriptions',
-            where: [
-              'prescriptions.id',
-              '=',
-              'patientVisitDetails.prescription.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'prescriptionsDetails',
-            where: [
-              'prescriptionsDetails.prescription.id',
-              '=',
-              'prescriptions.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'dispenseTypes',
-            where: [
-              'dispenseTypes.id',
-              '=',
-              'prescriptionsDetails.dispenseType.id',
-            ],
-          },
-        ])
-        .exec()
-        .then((rows) => {
-          rows = this.removerDuplicados(rows);
-          rows = rows.filter(function (value) {
-            return (
-              value.service === serviceCD &&
-              new Date(value.startDate) >= startDateObject &&
-              new Date(value.startDate) <= endDateObject &&
-              new Date(value.visitDate) <= endDateObject
-            ); // Apenas o true sera mantido, o resto sera removido
-          });
-          const arr = this.filterUniquePatients(rows);
-          const arr1 = this.groupByGender(arr);
-          return arr1;
-        });
+      return this.getAllPatientActiveByGender(year, serviceCode);
     }
   },
   filterUniquePatients(data) {
@@ -829,110 +453,7 @@ export default {
         `/dashBoard/getPatientsFirstDispenseByGender/${year}/${clinicId}/${serviceCode}`
       );
     } else {
-      const realYear = year;
-      const dateStr = realYear + '-12-20';
-      const yearBefore = year - 1;
-      const dateStr1 = yearBefore + '-12-21';
-      const endDateObject = new Date(dateStr);
-      const startDateObject = new Date(dateStr1);
-      const serviceCD = serviceCode;
-      return nSQL('patientVisits')
-        .query('select', [
-          'identifiers.startDate AS startDate',
-          'patientVisits.visitDate AS visitDate',
-          'patientVisits.patient.id AS patientId',
-          'clinicalServices.code AS service',
-          '0 AS quantity',
-          '0 AS percent',
-          'patientVisits.patientVisitDetails[0].episode.episodeDate AS lastEpisode',
-          '0 AS month',
-          'dispenseTypes.code AS dispenseTypeCode',
-          'patientVisits.patient.gender AS gender',
-        ])
-        .join([
-          {
-            type: 'inner',
-            table: 'identifiers',
-            where: ['identifiers.patient.id', '=', 'patientVisits.patient.id'],
-          },
-          {
-            type: 'inner',
-            table: 'episodes',
-            where: [
-              'episodes.patientServiceIdentifier.id',
-              '=',
-              'identifiers.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'clinicalServices',
-            where: ['clinicalServices.id', '=', 'identifiers.service.id'],
-          },
-          {
-            type: 'inner',
-            table: 'patientVisitDetails',
-            where: [
-              'patientVisits.id',
-              '=',
-              'patientVisitDetails.patientVisit.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'prescriptions',
-            where: [
-              'prescriptions.id',
-              '=',
-              'patientVisitDetails.prescription.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'prescriptionsDetails',
-            where: [
-              'prescriptionsDetails.prescription.id',
-              '=',
-              'prescriptions.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'dispenseTypes',
-            where: [
-              'dispenseTypes.id',
-              '=',
-              'prescriptionsDetails.dispenseType.id',
-            ],
-          },
-        ])
-        .exec()
-        .then((rows) => {
-          rows = this.removerDuplicados(rows);
-          rows = rows.filter(function (value) {
-            return (
-              value.service === serviceCD &&
-              new Date(value.startDate) >= startDateObject &&
-              new Date(value.startDate) <= endDateObject &&
-              new Date(value.visitDate) >= startDateObject &&
-              new Date(value.visitDate) <= endDateObject
-            ); // Apenas o true sera mantido, o resto sera removido
-          });
-
-          rows.forEach((item) => {
-            if (item.visitDate !== null && item.visitDate !== undefined) {
-              const visitDate = new Date(item.visitDate);
-              if (visitDate.getDate() > 20) {
-                item.month = visitDate.getMonth() + 2; // Adicionar 1 mes
-              }
-              if (visitDate.getDate() <= 20) {
-                item.month = visitDate.getMonth() + 1; // Considerar mes da data
-              }
-            }
-          });
-          rows = this.agruparRegistrosPorDispenseTypeCodeMonthGender(rows);
-          return rows;
-        });
+      return this.getDispenseByGenderAndMonthInYear(year, serviceCode);
     }
   },
 
@@ -956,137 +477,23 @@ export default {
     return Object.values(agrupadoPorDispenseTypeCode);
   },
 
-  getDispenseByAge(year: any, clinicId: string, serviceCode: string) {
+  async getDispenseByAge(year: any, clinicId: string, serviceCode: string) {
     if (isOnline.value) {
       return api().get(
         `/dashBoard/getDispenseByAge/${year}/${clinicId}/${serviceCode}`
       );
     } else {
-      const realYear = year;
-      const dateStr = realYear + '-12-20';
-      const yearBefore = year - 1;
-      const dateStr1 = yearBefore + '-12-21';
-      const endDateObject = new Date(dateStr);
-      const startDateObject = new Date(dateStr1);
-      const serviceCD = serviceCode;
-      return nSQL('patientVisits')
-        .query('select', [
-          'identifiers.startDate AS startDate',
-          'patientVisits.visitDate AS visitDate',
-          'packs.pickupDate AS pickupDate',
-          'patientVisits.patient.id AS patientId',
-          'clinicalServices.code AS service',
-          '0 AS quantity',
-          '0 AS percent',
-          'patientVisits.patient.dateOfBirth AS dateOfBirth',
-          'episodes.episodeDate AS lastEpisode',
-          '0 AS month',
-          'patientVisits.clinic.id AS clinicID',
-          'dispenseTypes.code AS dispenseTypeCode',
-          '0 AS faixa',
-          'dispenseTypes.description AS dispenseTypeDescription',
-          'patientVisits.patient.gender AS gender',
-        ])
-        .join([
-          {
-            type: 'inner',
-            table: 'identifiers',
-            where: ['identifiers.patient.id', '=', 'patientVisits.patient.id'],
-          },
-          {
-            type: 'inner',
-            table: 'episodes',
-            where: [
-              'episodes.patientServiceIdentifier.id',
-              '=',
-              'identifiers.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'clinicalServices',
-            where: ['clinicalServices.id', '=', 'identifiers.service.id'],
-          },
-          {
-            type: 'inner',
-            table: 'patientVisitDetails',
-            where: [
-              'patientVisits.id',
-              '=',
-              'patientVisitDetails.patientVisit.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'prescriptions',
-            where: [
-              'prescriptions.id',
-              '=',
-              'patientVisitDetails.prescription.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'prescriptionsDetails',
-            where: [
-              'prescriptionsDetails.prescription.id',
-              '=',
-              'prescriptions.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'dispenseTypes',
-            where: [
-              'dispenseTypes.id',
-              '=',
-              'prescriptionsDetails.dispenseType.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'packs',
-            where: ['packs.id', '=', 'patientVisitDetails.pack.id'],
-          },
-          {
-            type: 'inner',
-            table: 'episodes',
-            where: ['episodes.id', '=', 'patientVisitDetails.episode.id'],
-          },
-        ])
-        .exec()
-        .then((rows) => {
-          rows = rows.filter((value) => {
-            return (
-              value.service === serviceCD &&
-              new Date(value.startDate) >= startDateObject &&
-              new Date(value.startDate) <= endDateObject &&
-              new Date(value.pickupDate) >= startDateObject &&
-              new Date(value.pickupDate) <= endDateObject &&
-              value.clinicID === clinicId
-            ); // Apenas o true sera mantido, o resto sera removido
-          });
+      const [dispensesByAge] = await Promise.all([
+        this.getAllPatientActiveByAGE(year, serviceCode),
+      ]);
 
-          rows.forEach((item) => {
-            const idade = this.calcularIdade(item.dateOfBirth);
-            if (idade >= 0) {
-              if (idade < 18) {
-                item.faixa = 'MENOR';
-              }
-              if (idade >= 18) {
-                item.faixa = 'ADULTO';
-              }
-            }
-          });
-          rows = this.agruparRegistros(rows);
-          return rows;
-        });
+      return this.agruparRegistros(dispensesByAge);
     }
   },
 
   agruparRegistros(registros: any) {
     const agrupado = registros.reduce((obj, registro) => {
-      const descricao = registro.dispenseTypeDescription;
+      const descricao = registro.dispenseTypeCode;
       const faixa = registro.faixa;
 
       if (!obj[descricao]) {
@@ -1098,9 +505,9 @@ export default {
       }
 
       if (faixa === 'ADULTO') {
-        obj[descricao].adulto++;
+        obj[descricao].adulto = registro.quantity;
       } else if (faixa === 'MENOR') {
-        obj[descricao].menor++;
+        obj[descricao].menor = registro.quantity;
       }
 
       return obj;
@@ -1111,7 +518,7 @@ export default {
 
   agruparRegistrosMascFem(registros) {
     const agrupado = registros.reduce((obj, registro) => {
-      const descricao = registro.dispenseTypeDescription;
+      const descricao = registro.dispenseTypeCode;
       const genero = registro.gender;
 
       if (!obj[descricao]) {
@@ -1142,118 +549,17 @@ export default {
     }
   },
 
-  getDispensesByGender(year: any, clinicId: string, serviceCode: string) {
+  async getDispensesByGender(year: any, clinicId: string, serviceCode: string) {
     if (isOnline.value) {
       return api().get(
         `/dashBoard/getDispensesByGender/${year}/${clinicId}/${serviceCode}`
       );
     } else {
-      const realYear = year;
-      const dateStr = realYear + '-12-20';
-      const yearBefore = year - 1;
-      const dateStr1 = yearBefore + '-12-21';
-      const endDateObject = new Date(dateStr);
-      const startDateObject = new Date(dateStr1);
-      const serviceCD = serviceCode;
-      return nSQL('patientVisits')
-        .query('select', [
-          'identifiers.startDate AS startDate',
-          'patientVisits.visitDate AS visitDate',
-          'packs.pickupDate AS pickupDate',
-          'patientVisits.patient.id AS patientId',
-          'clinicalServices.code AS service',
-          '0 AS quantity',
-          '0 AS percent',
-          'episodes.episodeDate AS lastEpisode',
-          '0 AS month',
-          'patientVisits.clinic.id AS clinicID',
-          'dispenseTypes.code AS dispenseTypeCode',
-          'dispenseTypes.description AS dispenseTypeDescription',
-          'patientVisits.patient.gender AS gender',
-          'patientVisits.id AS patientVisitId',
-        ])
-        .join([
-          {
-            type: 'inner',
-            table: 'identifiers',
-            where: ['identifiers.patient.id', '=', 'patientVisits.patient.id'],
-          },
-          {
-            type: 'inner',
-            table: 'episodes',
-            where: [
-              'episodes.patientServiceIdentifier.id',
-              '=',
-              'identifiers.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'clinicalServices',
-            where: ['clinicalServices.id', '=', 'identifiers.service.id'],
-          },
-          {
-            type: 'inner',
-            table: 'patientVisitDetails',
-            where: [
-              'patientVisits.id',
-              '=',
-              'patientVisitDetails.patientVisit.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'prescriptions',
-            where: [
-              'prescriptions.id',
-              '=',
-              'patientVisitDetails.prescription.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'prescriptionsDetails',
-            where: [
-              'prescriptionsDetails.prescription.id',
-              '=',
-              'prescriptions.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'dispenseTypes',
-            where: [
-              'dispenseTypes.id',
-              '=',
-              'prescriptionsDetails.dispenseType.id',
-            ],
-          },
-          {
-            type: 'inner',
-            table: 'packs',
-            where: ['packs.id', '=', 'patientVisitDetails.pack.id'],
-          },
-          {
-            type: 'inner',
-            table: 'episodes',
-            where: ['episodes.id', '=', 'patientVisitDetails.episode.id'],
-          },
-        ])
-        .exec()
-        .then((rows) => {
-          rows = rows.filter((value) => {
-            return (
-              value.service === serviceCD &&
-              new Date(value.startDate) >= startDateObject &&
-              new Date(value.startDate) <= endDateObject &&
-              new Date(value.pickupDate) >= startDateObject &&
-              new Date(value.pickupDate) <= endDateObject &&
-              value.clinicID === clinicId
-            ); // Apenas o true sera mantido, o resto sera removido
-          });
-          rows = this.agruparRegistrosMascFem(rows);
-          return rows;
-        });
+      const [dispensesByGender] = await Promise.all([
+        this.getDispenseByGenderAndMonthInYear(year, serviceCode),
+      ]);
+
+      return this.agruparRegistrosMascFem(dispensesByGender);
     }
   },
 
@@ -1438,5 +744,300 @@ export default {
 
   areEqualObjects(obj1, obj2) {
     return JSON.stringify(obj1) === JSON.stringify(obj2);
+  },
+
+  // Dexie Report
+
+  async getDispenseByGenderAndMonthInYear(year: number, serviceCode: string) {
+    const dispensesPerMonthsByGenderInYear: any[] = [];
+
+    const [dataPacksList] = await Promise.all([
+      packService.getTotalPacksInYear(year),
+    ]);
+    for (let i = 0; i < dataPacksList.length; i++) {
+      const dataMonths = dataPacksList[i];
+
+      for (const data of dataMonths) {
+        const patientvisitDetail = data.patientvisitDetails;
+        const patientVisit = patientvisitDetail.patientVisit;
+        const prescription = patientvisitDetail.prescription;
+        const episode = patientvisitDetail.episode;
+        const identifier = episode.patientServiceIdentifier;
+        const service = identifier.service;
+        const patient = patientVisit.patient;
+        let dispenseType = '';
+
+        if (service.code === serviceCode) {
+          if (prescription !== null && prescription !== undefined) {
+            dispenseType = prescription.prescriptionDetails.dispenseType;
+          }
+        }
+
+        if (service.code === serviceCode) {
+          const existingItem = dispensesPerMonthsByGenderInYear.find((item) => {
+            return (
+              item.faixa === patient.gender &&
+              item.month === i &&
+              item.service === service.code
+            );
+          });
+          if (existingItem) {
+            existingItem.quantity++;
+          } else {
+            dispensesPerMonthsByGenderInYear.push({
+              dispenseTypeCode: dispenseType.code,
+              month: i,
+              service: service.code,
+              gender: patient.gender,
+              quantity: 1,
+            });
+          }
+        }
+      }
+    }
+    return dispensesPerMonthsByGenderInYear;
+  },
+
+  async getDispenseByAgeAndMonthInYear(year: number, serviceCode: string) {
+    const dispensesPerMonthsByAgeInYear: any[] = [];
+
+    const [dataPacksList] = await Promise.all([
+      packService.getTotalPacksInYear(year),
+    ]);
+    for (let i = 0; i < dataPacksList.length; i++) {
+      const dataMonths = dataPacksList[i];
+
+      for (const data of dataMonths) {
+        const patientvisitDetail = data.patientvisitDetails;
+        const patientVisit = patientvisitDetail.patientVisit;
+        const prescription = patientvisitDetail.prescription;
+        const episode = patientvisitDetail.episode;
+        const identifier = episode.patientServiceIdentifier;
+        const service = identifier.service;
+        const patient = patientVisit.patient;
+        let dispenseType = '';
+
+        if (service.code === serviceCode) {
+          if (prescription !== null && prescription !== undefined) {
+            dispenseType = prescription.prescriptionDetails.dispenseType;
+          }
+          const existingItem = dispensesPerMonthsByAgeInYear.find((item) => {
+            return (
+              item.faixa ===
+                (this.calcularIdade(patient.dateOfBirth) >= 15
+                  ? 'ADULTO'
+                  : 'MENOR') &&
+              item.month === i &&
+              item.service === service.code
+            );
+          });
+          if (existingItem) {
+            existingItem.quantity++;
+          } else {
+            dispensesPerMonthsByAgeInYear.push({
+              dispenseTypeCode: dispenseType.code,
+              month: i,
+              service: service.code,
+              faixa:
+                this.calcularIdade(patient.dateOfBirth) >= 15
+                  ? 'ADULTO'
+                  : 'MENOR',
+              quantity: 1,
+            });
+          }
+        }
+      }
+    }
+    return dispensesPerMonthsByAgeInYear;
+  },
+
+  async getAllPatientActive(year: number) {
+    const patientsInYear: any[] = [];
+    const patientsInService: any[] = [];
+
+    const [dataPacksList] = await Promise.all([
+      packService.getTotalPacksInYear(year),
+    ]);
+    for (let i = 0; i < dataPacksList.length; i++) {
+      const dataMonths = dataPacksList[i];
+
+      for (const data of dataMonths) {
+        const patientvisitDetail = data.patientvisitDetails;
+        const patientVisit = patientvisitDetail.patientVisit;
+        const episode = patientvisitDetail.episode;
+        const identifier = episode.patientServiceIdentifier;
+        const service = identifier.service;
+        const patient = patientVisit.patient;
+
+        const existingItem = patientsInService.find((item) => {
+          return (
+            item.patient_id === patient.id && service.code === item.service
+          );
+        });
+
+        if (existingItem) {
+          existingItem.quantity++;
+        } else {
+          patientsInService.push({
+            service: service.code,
+            patient_id: patient.id,
+          });
+          patientsInYear.push({
+            service: service.code,
+            quantity: 1,
+          });
+        }
+      }
+    }
+
+    return patientsInYear;
+  },
+
+  async getAllPatientActiveByGender(year: number, serviceCode: string) {
+    const patientsInYear: any[] = [];
+    const patientsInService: any[] = [];
+
+    const [dataPacksList] = await Promise.all([
+      packService.getTotalPacksInYear(year),
+    ]);
+    for (let i = 0; i < dataPacksList.length; i++) {
+      const dataMonths = dataPacksList[i];
+
+      for (const data of dataMonths) {
+        const patientvisitDetail = data.patientvisitDetails;
+        const patientVisit = patientvisitDetail.patientVisit;
+        const episode = patientvisitDetail.episode;
+        const identifier = episode.patientServiceIdentifier;
+        const service = identifier.service;
+        const patient = patientVisit.patient;
+        if (service.code === serviceCode) {
+          const existingItem = patientsInService.find((item) => {
+            return (
+              item.patient_id === patient.id &&
+              service.code === item.service &&
+              item.gender === patient.gender
+            );
+          });
+
+          if (existingItem) {
+            existingItem.quantity++;
+          } else {
+            patientsInService.push({
+              gender: patient.gender,
+              service: service.code,
+              patient_id: patient.id,
+            });
+            patientsInYear.push({
+              service: service.code,
+              quantity: 1,
+            });
+          }
+        }
+      }
+    }
+
+    return patientsInYear;
+  },
+
+  async getAllPatientActiveByAGE(year: number, serviceCode: string) {
+    const patientsInService: any[] = [];
+
+    const [dataPacksList] = await Promise.all([
+      packService.getTotalPacksInYear(year),
+    ]);
+    for (let i = 0; i < dataPacksList.length; i++) {
+      const dataMonths = dataPacksList[i];
+
+      for (const data of dataMonths) {
+        const patientvisitDetail = data.patientvisitDetails;
+        const patientVisit = patientvisitDetail.patientVisit;
+        const episode = patientvisitDetail.episode;
+        const prescription = patientvisitDetail.prescription;
+        const identifier = episode.patientServiceIdentifier;
+        const service = identifier.service;
+        const patient = patientVisit.patient;
+        let dispenseType = '';
+
+        if (service.code === serviceCode) {
+          if (prescription !== null && prescription !== undefined) {
+            dispenseType = prescription.prescriptionDetails.dispenseType;
+          }
+          const existingItem = patientsInService.find((item) => {
+            return (
+              service.code === item.service &&
+              item.faixa ===
+                (this.calcularIdade(patient.dateOfBirth) >= 15
+                  ? 'ADULTO'
+                  : 'MENOR') &&
+              item.dispenseTypeCode === dispenseType.description
+            );
+          });
+
+          if (existingItem) {
+            existingItem.quantity++;
+          } else {
+            patientsInService.push({
+              dispenseTypeCode: dispenseType.description,
+              faixa:
+                this.calcularIdade(patient.dateOfBirth) >= 15
+                  ? 'ADULTO'
+                  : 'MENOR',
+              service: service.code,
+              quantity: 1,
+            });
+          }
+        }
+      }
+    }
+
+    return patientsInService;
+  },
+
+  async getStatisticBarReport(year: number, serviceCode: string) {
+    const dispensesPerMonthsInYear: any[] = [];
+
+    const [dataPacksList] = await Promise.all([
+      packService.getTotalPacksInYear(year),
+    ]);
+
+    for (let i = 0; i < dataPacksList.length; i++) {
+      const dataMonths = dataPacksList[i];
+
+      for (const data of dataMonths) {
+        const patientvisitDetail = data.patientvisitDetails;
+        const prescription = patientvisitDetail.prescription;
+        const episode = patientvisitDetail.episode;
+        const identifier = episode.patientServiceIdentifier;
+        const service = identifier.service;
+        let dispenseType = '';
+
+        if (service.code === serviceCode) {
+          if (prescription !== null && prescription !== undefined) {
+            dispenseType = prescription.prescriptionDetails.dispenseType;
+          }
+
+          const existingItem = dispensesPerMonthsInYear.find((item) => {
+            return (
+              item.dispense_type === dispenseType.code &&
+              item.month === i &&
+              service.code === serviceCode
+            );
+          });
+
+          if (existingItem) {
+            existingItem.quantity++;
+          } else {
+            dispensesPerMonthsInYear.push({
+              dispense_type: dispenseType.code,
+              month: i,
+              service: serviceCode,
+              quantity: 1,
+            });
+          }
+        }
+      }
+    }
+
+    return dispensesPerMonthsInYear;
   },
 };

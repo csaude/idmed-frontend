@@ -1,10 +1,10 @@
 import api from '../../api/apiService/apiService';
-import { nSQL } from 'nano-sql';
 import GroupType from 'src/stores/models/groupType/GroupType';
-import { useRepo } from 'pinia-orm';
 import groupTypeService from 'src/services/api/groupType/groupTypeService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
 
-const groupType = useRepo(GroupType);
+const groupTypeDexie = db[GroupType.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -24,5 +24,18 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania GroupType');
+    (await SynchronizationService.hasData(groupTypeDexie))
+      ? await groupTypeService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie GroupType');
+    const getAllGroupType = groupTypeService.getAllFromStorage();
+    await groupTypeDexie.bulkPut(getAllGroupType);
   },
 };

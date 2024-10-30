@@ -232,7 +232,7 @@
                     </q-avatar>
                   </div>
                 </div>
-                <div class="row justify-center">Versão v.1.4.0_3 SNAPSHOT</div>
+                <div class="row justify-center">Versão v.1.4.0</div>
               </q-card-section>
             </q-card>
           </transition>
@@ -275,16 +275,7 @@
               </q-card-actions>
             </q-card>
           </q-dialog>
-          <q-dialog
-            persistent
-            transition-show="slide-up"
-            transition-hide="slide-down"
-            v-model="popUpUrlMobile"
-          >
-            <UrlChanger />
-          </q-dialog>
         </q-page>
-        <!-- </q-responsive> -->
       </q-page-container>
     </q-layout>
   </q-responsive>
@@ -306,7 +297,6 @@ import bcrypt from 'bcryptjs';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { LocalStorage } from 'quasar';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
-import UrlChanger from 'src/components/Shared/UrlChanger.vue';
 import useNotify from 'src/composables/shared/notify/UseNotify';
 import StockService from 'src/services/api/stockService/StockService';
 import StockReferenceAdjustmentService from 'src/services/api/stockAdjustment/StockReferenceAdjustmentService';
@@ -314,8 +304,8 @@ import StockDestructionAdjustmentService from 'src/services/api/stockAdjustment/
 import InventoryStockAdjustmentService from 'src/services/api/stockAdjustment/InventoryStockAdjustmentService';
 import InventoryService from 'src/services/api/inventoryService/InventoryService';
 import eventBus from '../../utils/eventbus';
-import NanosystemConfigsService from 'src/services/Synchronization/systemConfigs/NanosystemConfigsService';
 import NanoclinicService from 'src/services/Synchronization/clinicService/NanoclinicService';
+import NanosystemConfigsService from 'src/services/Synchronization/systemConfigs/NanosystemConfigsService';
 const { notifyError, notifySuccess } = useNotify();
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -334,7 +324,6 @@ const passwordRef = ref(null);
 const isPwd = ref(true);
 const submitting = ref(false);
 const notice = ref(true);
-const popUpUrlMobile = ref(false);
 const isOpen = ref(false);
 /*
 Hook
@@ -345,21 +334,6 @@ onMounted(async () => {
     notifyError('Sessão Expirada');
     sessionStorage.setItem('tokenExpiration', 1);
   }
-  if (isMobile.value && localStorage.getItem('backend_url') === null) {
-    popUpUrlMobile.value = true;
-  }
-  $q.loading.show({
-    message: 'Carregando ...',
-    spinnerColor: 'grey-4',
-    spinner: QSpinnerBall,
-  });
-  loadSystemConfigs();
-  loadProvinceAndDistrict();
-  loadMenusFromLocalToVuex();
-  setTimeout(() => {
-    $q.loading.hide();
-  }, 600);
-
   if (!isMobile.value) {
     UsersService.logout();
     StockService.deleteAllFromStorage();
@@ -381,8 +355,12 @@ onMounted(async () => {
     const users = await UsersService.getMobile();
     if (users.length === 0) {
       NanoclinicService.getFromBackEnd(0);
+    } else {
+      systemConfigsService.getMobile();
+      clinicService.getMobile()
     }
   }
+
   eventBus.on('notification', (notificationIsOpen) => {
     if (isMobile.value) {
       isOpen.value = false;
@@ -396,6 +374,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   eventBus.off('notification');
 });
+
 /*
 Computed
 */
@@ -430,16 +409,6 @@ const doSave = () => {
       ? clinic.value.uuid
       : province.value.code;
   systemConfigsService.apiSave(systemConfigs.value);
-};
-const loadSystemConfigs = async () => {
-  systemConfigsService.get(0);
-};
-const loadProvinceAndDistrict = async () => {
-  provinceService.get(0);
-  districtService.get(0);
-};
-const loadMenusFromLocalToVuex = async () => {
-  menuService.get(0);
 };
 
 const authUser = async () => {

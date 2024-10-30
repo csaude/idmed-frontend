@@ -205,23 +205,23 @@ import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { computed, onMounted, watch, inject } from 'vue';
 import clinicService from 'src/services/api/clinicService/clinicService';
-import patientService from 'src/services/api/patientService/patientService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import InventoryService from 'src/services/api/inventoryService/InventoryService';
 import sysConfigsService from 'src/services/api/systemConfigs/systemConfigsService.ts';
 import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
 import DrugDistributorService from 'src/services/api/drugDistributorService/DrugDistributorService';
+import patientService from 'src/services/api/patientService/patientService';
 
-const { closeLoading, showloading } = useLoading();
+const { showloading } = useLoading();
 const { website, isMobile, isOnline } = useSystemUtils();
 const { isProvincialInstalation } = useSystemConfig();
 
-const { loadSettingParams, loadPatientData } = useOnline();
+const { loadSettingParams } = useOnline();
 
 const {
+  loadParamsDataFromBackEndToPinia,
+  saveParamsFromPiniaToDexie,
   loadPatientDataToOffline,
-  loadSettingParamsToOffline,
-  loadSettingParamsInOfflineMode,
 } = useOffline();
 const { alertWarningTitle } = useSwal();
 
@@ -267,19 +267,19 @@ onMounted(async () => {
     showloading();
     loadSettingParams();
   } else {
-    //  await clinicService.getMobile();
-    await patientService.getMobile();
-    console.log(patientService.getAllFromStorage().length);
-    if (patientService.getAllFromStorage().length <= 0) {
-      showloading();
-      loadSettingParamsToOffline();
-      //   getStockDistributionCount(clinic.value);
-      setTimeout(() => {
-        loadPatientDataToOffline();
-      }, 5000);
-    } else {
-      loadSettingParams();
-    }
+    patientService.getCountPatientFromDexie().then((resp) => {
+      if (resp <= 0) {
+        showloading();
+        loadParamsDataFromBackEndToPinia().then((pinia_resp) => {
+          showloading();
+          if (pinia_resp)
+            saveParamsFromPiniaToDexie().then((dexie_resp) => {
+              showloading();
+              if (dexie_resp) loadPatientDataToOffline();
+            });
+        });
+      }
+    });
   }
 });
 

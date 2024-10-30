@@ -12,7 +12,7 @@ const { closeLoading, showloading } = useLoading();
 const { isMobile, isOnline } = useSystemUtils();
 
 const stock = useRepo(Stock);
-const stockDexie = Stock.entity;
+const stockDexie = db[Stock.entity];
 
 export default {
   // Axios API call
@@ -317,20 +317,20 @@ export default {
   //Mobile
 
   addMobile(params: string) {
-    return db[stockDexie].add(JSON.parse(JSON.stringify(params))).then(() => {
+    return stockDexie.add(JSON.parse(JSON.stringify(params))).then(() => {
       stock.save(JSON.parse(JSON.stringify(params)));
     });
   },
 
   async putMobile(params: any) {
-    return db[stockDexie].put(JSON.parse(JSON.stringify(params))).then(() => {
+    return stockDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
       stock.save(JSON.parse(JSON.stringify(params)));
     });
   },
 
   async getMobile() {
     try {
-      const rows = await db[stockDexie].toArray();
+      const rows = await stockDexie.toArray();
       stock.save(rows);
     } catch (error) {
       // alertError('Aconteceu um erro inesperado nesta operação.');
@@ -339,11 +339,11 @@ export default {
   },
 
   async getStocksByIds(stockIds: any) {
-    return db[stockDexie].where('id').anyOf(stockIds).toArray();
+    return stockDexie.where('id').anyOf(stockIds).toArray();
   },
 
   async getBystockMobile(stockId: any) {
-    const stocks = await db[stockDexie]
+    const stocks = await stockDexie
       .where('id')
       .equalsIgnoreCase(stockId)
       .toArray();
@@ -351,14 +351,14 @@ export default {
   },
 
   async getStocksByDrugIdMobile(drugId: any) {
-    const rows = await db[stockDexie].toArray();
+    const rows = await stockDexie.toArray();
     const data = rows.filter((row) => row.drug && row.drug.id === drugId);
     return data;
   },
 
   async deleteMobile(id: any) {
     try {
-      await db[stockDexie].delete(id);
+      await stockDexie.delete(id);
       stock.destroy(id);
       // alertSucess('O Registo foi removido com sucesso');
     } catch (error) {
@@ -369,7 +369,7 @@ export default {
 
   async localDbGetAll() {
     try {
-      const rows = await db[stockDexie].toArray();
+      const rows = await stockDexie.toArray();
       stock.save(rows);
       return rows;
     } catch (error) {
@@ -379,7 +379,7 @@ export default {
   },
 
   async localDbGetUsedStock(reportParams: any) {
-    return db[stockDexie]
+    return stockDexie
       .where('drug.clinical_Service_id')
       .equalsIgnoreCase(reportParams.clinicalService)
       .toArray()
@@ -390,7 +390,7 @@ export default {
   },
 
   localDbGetById(stock: any) {
-    return db[stockDexie]
+    return stockDexie
       .where('id')
       .equalsIgnoreCase(stock.id)
       .then((rows: any) => {
@@ -400,7 +400,7 @@ export default {
   },
 
   localDbGetByStockEntranceId(stockEntrance: any) {
-    return db[stockDexie]
+    return stockDexie
       .where('entrance_id')
       .equalsIgnoreCase(stockEntrance.id)
       .then((rows: any) => {
@@ -410,7 +410,7 @@ export default {
   },
 
   localDbGetByDrug(drug: any) {
-    return db[stockDexie]
+    return stockDexie
       .where('drug_id')
       .equalsIgnoreCase(drug.id)
       .then((rows: any) => {
@@ -421,7 +421,7 @@ export default {
 
   async hasStockMobile(drugg: any) {
     try {
-      const rows = await db[stockDexie].toArray();
+      const rows = await stockDexie.toArray();
       const stocks = rows.filter((row) => row.drug && row.drug.id === drugg.id);
       return stocks.length > 0;
     } catch (error) {
@@ -430,7 +430,7 @@ export default {
     }
   },
   addBulkMobile(params: string) {
-    return db[stockDexie]
+    return stockDexie
       .bulkPut(params)
       .then(() => {
         stock.save(params);

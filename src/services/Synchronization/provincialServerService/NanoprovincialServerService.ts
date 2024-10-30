@@ -1,5 +1,10 @@
 import api from '../../api/apiService/apiService';
 import provincialServerService from 'src/services/api/provincialServerService/provincialServerService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
+import ProvincialServer from 'src/stores/models/provincialServer/ProvincialServer';
+
+const provincialServerDexie = db[ProvincialServer.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -19,5 +24,18 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania ProvincialServer');
+    (await SynchronizationService.hasData(provincialServerDexie))
+      ? await provincialServerService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie ProvincialServer');
+    const getAllProvincialServer = provincialServerService.getAllFromStorage();
+    await provincialServerDexie.bulkPut(getAllProvincialServer);
   },
 };

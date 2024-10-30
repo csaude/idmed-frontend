@@ -5,9 +5,13 @@ import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
+import clinicService from '../clinicService/clinicService';
+import clinicalServiceService from '../clinicalServiceService/clinicalServiceService';
+import identifierTypeService from '../identifierTypeService/identifierTypeService';
+import { FeCompositeElement } from 'app/src-cordova/platforms/android/app/build/intermediates/assets/debug/mergeDebugAssets/www/assets/index.es.58f0f285';
 
 const patientServiceIdentifier = useRepo(PatientServiceIdentifier);
-const patientServiceIdentifierDexie = PatientServiceIdentifier.entity;
+const patientServiceIdentifierDexie = db[PatientServiceIdentifier.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,7 +41,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -58,7 +62,7 @@ export default {
           patientServiceIdentifier.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -82,14 +86,14 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[patientServiceIdentifierDexie]
+    return patientServiceIdentifierDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         patientServiceIdentifier.save(JSON.parse(JSON.stringify(params)));
       });
   },
   putMobile(params: string) {
-    return db[patientServiceIdentifierDexie]
+    return patientServiceIdentifierDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         patientServiceIdentifier.save(JSON.parse(JSON.stringify(params)));
@@ -97,7 +101,7 @@ export default {
   },
   async getMobile() {
     try {
-      const rows = await db[patientServiceIdentifierDexie].toArray();
+      const rows = await patientServiceIdentifierDexie.toArray();
       patientServiceIdentifier.save(rows);
       return rows;
     } catch (error) {
@@ -107,7 +111,7 @@ export default {
   },
   async deleteMobile(paramsId: string) {
     try {
-      await db[patientServiceIdentifierDexie].delete(paramsId);
+      await patientServiceIdentifierDexie.delete(paramsId);
       patientServiceIdentifier.destroy(paramsId);
       alertSucess('O Registo foi removido com sucesso');
     } catch (error) {
@@ -115,18 +119,16 @@ export default {
       console.log(error);
     }
   },
-  addBulkMobile(params: any) {
-    return db[patientServiceIdentifierDexie]
-      .bulkPut(params)
-      .then(() => {
-        patientServiceIdentifier.save(params);
-      })
+  addBulkMobile() {
+    const patientServiceIdentifierFromPinia = this.getAllFromStorageForDexie();
+    return patientServiceIdentifierDexie
+      .bulkPut(patientServiceIdentifierFromPinia)
       .catch((error: any) => {
         console.log(error);
       });
   },
   async getAllMobileByPatientId(patientId: string) {
-    const resp = await db[patientServiceIdentifierDexie]
+    const resp = await patientServiceIdentifierDexie
       .where('patient_id')
       .equalsIgnoreCase(patientId)
       .toArray();
@@ -181,7 +183,7 @@ export default {
 
   async apiGetAllByPatientId(patientId: string, offset: number, max: number) {
     if (isMobile.value && !isOnline.value) {
-      return db[patientServiceIdentifierDexie]
+      return patientServiceIdentifierDexie
         .where('patient_id')
         .equalsIgnoreCase(patientId)
         .then((row: any) => {
@@ -209,7 +211,7 @@ export default {
       await this.patchWeb(identifier.id, identifier);
   },
   async getLocalDbPatientServiceIdentifierToSync() {
-    return db[patientServiceIdentifierDexie]
+    return patientServiceIdentifierDexie
       .where('syncStatus')
       .equalsIgnoreCase('R')
       .or('syncStatus')
@@ -225,6 +227,17 @@ export default {
   },
   getAllFromStorage() {
     return patientServiceIdentifier.all();
+  },
+  getAllFromStorageForDexie() {
+    return patientServiceIdentifier
+      .makeHidden([
+        'identifierType',
+        'service',
+        'patient',
+        'episodes',
+        'clinic',
+      ])
+      .all();
   },
   deleteAllFromStorage() {
     patientServiceIdentifier.flush();
@@ -276,7 +289,7 @@ export default {
     return patientServiceIdentifier.withAllRecursive(2).where('id', id).first();
   },
   localDbGetById(id: string) {
-    return db[patientServiceIdentifierDexie]
+    return patientServiceIdentifierDexie
       .where('id')
       .equalsIgnoreCase(id)
       .first()
@@ -286,7 +299,7 @@ export default {
   },
 
   async localDbGetByPatientId(patientId: string) {
-    return db[patientServiceIdentifierDexie]
+    return patientServiceIdentifierDexie
       .where('patient_id')
       .equalsIgnoreCase(patientId)
       .toArray()
@@ -316,5 +329,47 @@ export default {
       })
       .orderBy('startDate', 'desc')
       .first();
+  },
+
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    const patientServiceIdentifiers = await patientServiceIdentifierDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+
+    const identifierTypeIds = patientServiceIdentifiers.map(
+      (patientServiceIdentifier: any) =>
+        patientServiceIdentifier.identifier_type_id
+    );
+
+    const serviceIds = patientServiceIdentifiers.map(
+      (patientServiceIdentifier: any) => patientServiceIdentifier.service_id
+    );
+
+    const clinicIds = patientServiceIdentifiers.map(
+      (patientServiceIdentifier: any) => patientServiceIdentifier.clinic_id
+    );
+
+    const [identifierTypes, services, clinics] = await Promise.all([
+      identifierTypeService.getAllByIDsFromDexie(identifierTypeIds),
+      clinicalServiceService.getAllByIDsFromDexie(serviceIds),
+      clinicService.getAllByIDsFromDexie(clinicIds),
+    ]);
+
+    patientServiceIdentifiers.map((patientServiceIdentifier: any) => {
+      patientServiceIdentifier.clinic = clinics.find(
+        (clinic: any) => clinic.id === patientServiceIdentifier.clinic_id
+      );
+      patientServiceIdentifier.identifierType = identifierTypes.find(
+        (identifierType: any) =>
+          identifierType.id === patientServiceIdentifier.identifier_type_id
+      );
+      patientServiceIdentifier.service = services.find(
+        (service: any) => service.id === patientServiceIdentifier.service_id
+      );
+    });
+
+    return patientServiceIdentifiers;
   },
 };

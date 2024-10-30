@@ -7,7 +7,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 
 const identifierType = useRepo(IdentifierType);
-const identifierTypeDexie = IdentifierType.entity;
+const identifierTypeDexie = db[IdentifierType.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -58,13 +58,10 @@ export default {
           identifierType.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -85,7 +82,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[identifierTypeDexie]
+    return identifierTypeDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         identifierType.save(JSON.parse(params));
@@ -95,7 +92,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[identifierTypeDexie]
+    return identifierTypeDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         identifierType.save(JSON.parse(params));
@@ -105,7 +102,7 @@ export default {
       });
   },
   getMobile() {
-    return db[identifierTypeDexie]
+    return identifierTypeDexie
       .toArray()
       .then((rows: any) => {
         identifierType.save(rows);
@@ -116,7 +113,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[identifierTypeDexie]
+    return identifierTypeDexie
       .delete(paramsId)
       .then(() => {
         identifierType.destroy(paramsId);
@@ -129,7 +126,7 @@ export default {
   },
 
   addBulkMobile(params: any) {
-    return db[identifierTypeDexie]
+    return identifierTypeDexie
       .bulkPut(params)
       .then(() => {
         identifierType.save(params);
@@ -160,5 +157,9 @@ export default {
           }
         });
     }
+  },
+  //Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await identifierTypeDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

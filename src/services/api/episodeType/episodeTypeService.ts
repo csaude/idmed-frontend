@@ -7,7 +7,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 
 const episodeType = useRepo(EpisodeType);
-const episodeTypeDexie = EpisodeType.entity;
+const episodeTypeDexie = db[EpisodeType.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -61,13 +61,10 @@ export default {
           episodeType.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -94,7 +91,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[episodeTypeDexie]
+    return episodeTypeDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         episodeType.save(JSON.parse(params));
@@ -106,7 +103,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[episodeTypeDexie]
+    return episodeTypeDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         episodeType.save(JSON.parse(params));
@@ -116,7 +113,7 @@ export default {
       });
   },
   getMobile() {
-    return db[episodeTypeDexie]
+    return episodeTypeDexie
       .toArray()
       .then((rows: any) => {
         episodeType.save(rows);
@@ -127,7 +124,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[episodeTypeDexie]
+    return episodeTypeDexie
       .delete(paramsId)
       .then(() => {
         episodeType.destroy(paramsId);
@@ -139,7 +136,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[episodeTypeDexie]
+    return episodeTypeDexie
       .bulkPut(params)
       .then(() => {
         episodeType.save(params);
@@ -164,5 +161,10 @@ export default {
   },
   getEpisodeTypeByCode(code: string) {
     return episodeType.where('code', code).first();
+  },
+
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await episodeTypeDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

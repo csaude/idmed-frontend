@@ -7,7 +7,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 const { closeLoading, showloading } = useLoading();
 
 const dispenseType = useRepo(DispenseType);
-const dispenseTypeDexie = DispenseType.entity;
+const dispenseTypeDexie = db[DispenseType.entity];
 const { isMobile, isOnline } = useSystemUtils();
 
 export default {
@@ -35,6 +35,22 @@ export default {
       }
     }
   },
+  getWeb(offset: number) {
+    if (offset >= 0) {
+      return api()
+        .get('dispenseType?offset=' + offset + '&max=100')
+        .then((resp) => {
+          dispenseType.save(resp.data);
+          offset = offset + 100;
+          if (resp.data.length > 0) {
+            this.getWeb(offset);
+          }
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    }
+  },
   async patch(id: number, params: string) {
     const resp = await api().patch('dispenseType/' + id, params);
     dispenseType.save(resp.data);
@@ -51,7 +67,7 @@ export default {
     return await api().get(`/dispenseType/${id}`);
   },
   addMobile(params: string) {
-    return db[dispenseTypeDexie]
+    return dispenseTypeDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         dispenseType.save(JSON.parse(params));
@@ -61,7 +77,7 @@ export default {
       });
   },
   getMobile() {
-    return db[dispenseTypeDexie]
+    return dispenseTypeDexie
       .toArray()
       .then((rows: any) => {
         dispenseType.save(rows);
@@ -72,7 +88,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[dispenseTypeDexie]
+    return dispenseTypeDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         dispenseType.save(JSON.parse(params));
@@ -84,7 +100,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[dispenseTypeDexie]
+    return dispenseTypeDexie
       .bulkPut(params)
       .then(() => {
         dispenseType.save(params);
@@ -182,5 +198,10 @@ export default {
       })
       .orderBy('id', 'asc')
       .get();
+  },
+
+  //Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await dispenseTypeDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

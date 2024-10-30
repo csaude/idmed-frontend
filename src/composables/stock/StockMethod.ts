@@ -1,6 +1,4 @@
-import packService from 'src/services/api/pack/packService';
 import { date } from 'quasar';
-import { nSQL } from 'nano-sql';
 import { v4 as uuidv4 } from 'uuid';
 import StockService from 'src/services/api/stockService/StockService';
 import patientVisitService from 'src/services/api/patientVisit/patientVisitService';
@@ -9,7 +7,6 @@ import InventoryStockAdjustmentService from 'src/services/api/stockAdjustment/In
 import ReferedStockMovimentService from 'src/services/api/referedStockMovimentService/ReferedStockMovimentService';
 import DestroyedStockService from 'src/services/api/destroyedStockService/DestroyedStockService';
 import { useDateUtils } from 'src/composables/shared/dateUtils/dateUtils';
-import { SSL_OP_SSLEAY_080_CLIENT_DH_BUG } from 'constants';
 
 const dateUtils = useDateUtils();
 
@@ -289,14 +286,14 @@ export function useStock() {
     const recordFileList = [];
     // Query stocks table to get all records matching the drug_id
     const stocks = await StockService.getStocksByDrugIdMobile(drug.id);
-    const entranceIds = stocks.map((stock) => stock.entrance.id);
+    const entranceIds = stocks.map((stock) => stock.entrance_id);
     const stockEntrances = await StockEntranceService.getStockEntrancesByIds(
       entranceIds
     );
     // Merge the results and calculate the total incomes
     const result = stockEntrances.map((entrance) => {
       const totalIncomes = stocks
-        .filter((stock) => stock.entrance.id === entrance.id)
+        .filter((stock) => stock.entrance_id === entrance.id)
         .reduce((sum, stock) => sum + stock.unitsReceived, 0);
       return {
         incomes: totalIncomes,
@@ -634,7 +631,7 @@ export function useStock() {
     const recordFileList = [];
     // Query stocks table to get all records matching the stockId pattern
     const stocks = await StockService.getBystockMobile(stockId);
-    const entranceIds = stocks.map((stock) => stock.entrance.id);
+    const entranceIds = stocks.map((stock) => stock.entrance_id);
     // Query stockEntrances table to get all records matching the entrance_ids
     const stockEntrances = await StockEntranceService.getStockEntrancesByIds(
       entranceIds
@@ -642,13 +639,13 @@ export function useStock() {
     // Merge the results and calculate the total incomes
     const result = stockEntrances.map((entrance) => {
       const totalIncomes = stocks
-        .filter((stock) => stock.entrance.id === entrance.id)
+        .filter((stock) => stock.entrance_id === entrance.id)
         .reduce((sum, stock) => sum + stock.unitsReceived, 0);
       return {
         incomes: totalIncomes,
         dateReceived: entrance.dateReceived,
         orderNumber: entrance.orderNumber,
-        stockId: stocks.find((stock) => stock.entrance.id === entrance.id)?.id,
+        stockId: stocks.find((stock) => stock.entrance_id === entrance.id)?.id,
       };
     });
 

@@ -7,7 +7,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 
 const duration = useRepo(Duration);
-const durationDexie = Duration.entity;
+const durationDexie = db[Duration.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -61,13 +61,10 @@ export default {
           duration.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -94,7 +91,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[durationDexie]
+    return durationDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         duration.save(JSON.parse(params));
@@ -104,7 +101,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[durationDexie]
+    return durationDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         duration.save(JSON.parse(params));
@@ -114,7 +111,7 @@ export default {
       });
   },
   getMobile() {
-    return db[durationDexie]
+    return durationDexie
       .toArray()
       .then((rows: any) => {
         duration.save(rows);
@@ -125,7 +122,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[durationDexie]
+    return durationDexie
       .delete(paramsId)
       .then(() => {
         duration.destroy(paramsId);
@@ -135,7 +132,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[durationDexie]
+    return durationDexie
       .bulkPut(params)
       .then(() => {
         duration.save(params);
@@ -165,5 +162,10 @@ export default {
 
   getDurationById(id: any) {
     return duration.where('id', id).first();
+  },
+
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await durationDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

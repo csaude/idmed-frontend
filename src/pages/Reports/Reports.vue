@@ -191,7 +191,7 @@ const componentsList = {
   NotSynchronizedPackToServer,
   PatientsMonitoredForAdherence,
   PatientsPickedUpMedsAtUS,
-  RegisteredInIdmed
+  RegisteredInIdmed,
 };
 
 const { isMobile } = useSystemUtils();

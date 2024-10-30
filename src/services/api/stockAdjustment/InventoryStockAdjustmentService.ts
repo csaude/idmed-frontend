@@ -5,12 +5,13 @@ import { nSQL } from 'nano-sql';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import db from '../../../stores/dexie';
+import InventoryService from '../inventoryService/InventoryService';
 
 const { closeLoading, showloading } = useLoading();
 
 const { isMobile, isOnline } = useSystemUtils();
 const inventoryStockAdjustment = useRepo(InventoryStockAdjustment);
-const inventoryStockAdjustmentDexie = InventoryStockAdjustment.entity;
+const inventoryStockAdjustmentDexie = db[InventoryStockAdjustment.entity];
 
 export default {
   // Axios API call
@@ -92,7 +93,7 @@ export default {
           inventoryStockAdjustment.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           } else {
             closeLoading();
           }
@@ -157,7 +158,7 @@ export default {
   //Mobile
 
   async putMobile(params: any) {
-    return db[inventoryStockAdjustmentDexie]
+    return inventoryStockAdjustmentDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         inventoryStockAdjustment.save(JSON.parse(JSON.stringify(params)));
@@ -166,7 +167,7 @@ export default {
 
   async getMobile() {
     try {
-      const rows = await db[inventoryStockAdjustmentDexie].toArray();
+      const rows = await inventoryStockAdjustmentDexie.toArray();
       inventoryStockAdjustment.save(rows);
     } catch (error) {
       // alertError('Aconteceu um erro inesperado nesta operação.');
@@ -175,14 +176,14 @@ export default {
   },
 
   async getAllFinalizedInventoryStockAdjustmentMobile() {
-    const rows = await db[inventoryStockAdjustmentDexie].toArray();
+    const rows = await inventoryStockAdjustmentDexie.toArray();
     const data = rows.filter((row) => row.inventory && row.finalised === true);
     return data;
   },
 
   async deleteMobile(id: any) {
     try {
-      await db[inventoryStockAdjustmentDexie].delete(id);
+      await inventoryStockAdjustmentDexie.delete(id);
       inventoryStockAdjustment.destroy(id);
       // alertSucess('O Registo foi removido com sucesso');
     } catch (error) {
@@ -192,7 +193,7 @@ export default {
   },
 
   async apiFetchByIdMobile(id: any) {
-    return db[inventoryStockAdjustmentDexie]
+    return inventoryStockAdjustmentDexie
       .where('id')
       .equalsIgnoreCase(id)
       .then((rows: any) => {
@@ -202,13 +203,31 @@ export default {
   },
 
   async apiGetAdjustmentsByInventoryIdMobile(id: any) {
-    const rows = await db[inventoryStockAdjustmentDexie].toArray();
+    const rows = await inventoryStockAdjustmentDexie.toArray();
     const data = rows.filter((row) => row.inventory && row.inventory.id === id);
     return data;
   },
   async apiGetAllMobile() {
     try {
-      const rows = await db[inventoryStockAdjustmentDexie].toArray();
+      const rows = await inventoryStockAdjustmentDexie.toArray();
+
+      const inventoryIds = rows.map((inventoryStockAdjustment: any) =>
+        inventoryStockAdjustment.inventory_id !== null &&
+        inventoryStockAdjustment.inventory_id !== undefined
+          ? inventoryStockAdjustment.inventory_id
+          : ''
+      );
+      const [inventories] = await Promise.all([
+        InventoryService.getAllByIDsFromDexie(inventoryIds),
+      ]);
+
+      rows.map((inventoryStockAdjustment: any) => {
+        inventoryStockAdjustment.inventory = inventories.find(
+          (inventory: any) =>
+            inventoryStockAdjustment.inventory_id === inventory.id
+        );
+      });
+
       inventoryStockAdjustment.save(rows);
       return rows;
     } catch (error) {
@@ -218,7 +237,7 @@ export default {
   },
   async localDbGetAll() {
     try {
-      const rows = await db[inventoryStockAdjustmentDexie].toArray();
+      const rows = await inventoryStockAdjustmentDexie.toArray();
       inventoryStockAdjustment.save(rows);
       return rows;
     } catch (error) {
@@ -228,7 +247,7 @@ export default {
   },
 
   getAllByClinicMobile(clinicId: any) {
-    return db[inventoryStockAdjustmentDexie]
+    return inventoryStockAdjustmentDexie
       .where('clinic_id')
       .equalsIgnoreCase(clinicId)
       .toArray()
@@ -258,7 +277,7 @@ export default {
   },
 
   addBulkMobile(params: string) {
-    return db[inventoryStockAdjustmentDexie]
+    return inventoryStockAdjustmentDexie
       .bulkAdd(params)
       .then(() => {
         inventoryStockAdjustment.save(JSON.parse(params));

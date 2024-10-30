@@ -7,7 +7,7 @@ import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const spetialPrescriptionMotive = useRepo(SpetialPrescriptionMotive);
-const spetialPrescriptionMotiveDexie = SpetialPrescriptionMotive.entity;
+const spetialPrescriptionMotiveDexie = db[SpetialPrescriptionMotive.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,7 +37,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -58,9 +58,7 @@ export default {
           spetialPrescriptionMotive.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -84,7 +82,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[spetialPrescriptionMotiveDexie]
+    return spetialPrescriptionMotiveDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         spetialPrescriptionMotive.save(JSON.parse(params));
@@ -96,7 +94,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[spetialPrescriptionMotiveDexie]
+    return spetialPrescriptionMotiveDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         spetialPrescriptionMotive.save(JSON.parse(params));
@@ -108,7 +106,7 @@ export default {
       });
   },
   getMobile() {
-    return db[spetialPrescriptionMotiveDexie]
+    return spetialPrescriptionMotiveDexie
       .toArray()
       .then((rows: any) => {
         spetialPrescriptionMotive.save(rows);
@@ -119,7 +117,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[spetialPrescriptionMotiveDexie]
+    return spetialPrescriptionMotiveDexie
       .delete(paramsId)
       .then(() => {
         spetialPrescriptionMotive.destroy(paramsId);
@@ -131,7 +129,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[spetialPrescriptionMotiveDexie]
+    return spetialPrescriptionMotiveDexie
       .bulkPut(params)
       .then(() => {
         spetialPrescriptionMotive.save(params);
@@ -153,5 +151,13 @@ export default {
   },
   getAllFromStorage() {
     return spetialPrescriptionMotive.all();
+  },
+
+  //Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await spetialPrescriptionMotiveDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
   },
 };

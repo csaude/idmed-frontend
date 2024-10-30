@@ -472,7 +472,6 @@ const referealClinicSectors = computed(() => {
 
 const referealClinicSectorsRSC = computed(() => {
   const facilityType = facilityTypeService.getFacilityTypeParagemUnica();
-  console.log(facilityType);
   return clinicSectorService.getClinicSectorsByFacilityTypeId(
     currClinic.value.id,
     facilityType.id
@@ -624,7 +623,6 @@ const stopReasons = computed(() => {
         reason.code !== 'VOLTOU_A_SER_REFERIDO_PARA'
       );
     });
-    console.log(resonList);
     return resonList;
   }
   if (
@@ -683,16 +681,6 @@ const init = async () => {
         curIdentifier.value.id
       );
       startDate.value = getDDMMYYYFromJSDate(episode.value.episodeDate);
-      // startDate.value = episode.value.episodeDate;
-      // episode.value.patientServiceIdentifier.episodes = [];
-      // if (
-      //   lastEpisodeIdentifier(curIdentifier.value) !== null &&
-      //   isStartEpisode(lastEpisodeIdentifier(curIdentifier.value)) &&
-      //   (episode.value !== null || episode.value !== undefined)
-      // ) {
-      //   episode.value = new Episode(lastEpisodeIdentifier(curIdentifier.value));
-      //   changeToCloseStep();
-      // }
     }
   }
 };
@@ -709,8 +697,6 @@ const submitForm = () => {
   ) {
     if (isNewEpisode.value) {
       if (lastEpisode.value !== null) {
-        console.log(lastEpisode.value.episodeDate);
-        console.log(moment(lastEpisode.value.episodeDate));
         if (
           getYYYYMMDDFromJSDate(
             extractHyphenDateFromDMYConvertYMD(startDate.value)
@@ -837,13 +823,14 @@ const doSave = async () => {
     episode.value.episodeDate = getDateFromHyphenDDMMYYYYWithTime(
       startDate.value
     );
-    episode.value.creationDate = moment();
+    episode.value.creationDate = new Date();
     episode.value.patientVisitDetails = [];
     episode.value.patientServiceIdentifier = {};
     episode.value.patientServiceIdentifier.id = curIdentifier.value.id;
     episode.value.patientServiceIdentifier_id = curIdentifier.value.id;
     episode.value.origin = currClinic.value.id;
   } else {
+    episode.value.creationDate = new Date();
     episode.value.clinicSector_id = episode.value.clinicSector.id;
     const clinicSectorId = episode.value.clinicSector.id;
     episode.value.clinicSector = {};
@@ -878,7 +865,7 @@ const doSave = async () => {
       closureEpisode.value.episodeDate = getDateFromHyphenDDMMYYYYWithTime(
         stopDate.value
       );
-      closureEpisode.value.creationDate = moment();
+      closureEpisode.value.creationDate = new Date();
       closureEpisode.value.patientServiceIdentifier = {};
       closureEpisode.value.patientServiceIdentifier.id = curIdentifier.value.id;
       closureEpisode.value.patientVisitDetails = [];
