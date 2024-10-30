@@ -138,7 +138,6 @@ const createEntrance = ref(false);
 const createInventory = ref(false);
 const createStockDitribution = ref(false);
 const title = ref('Gestão de Stock');
-const currClinic = inject('currClinic');
 const isClinicSector = ref('');
 
 const addEntrada = () => {

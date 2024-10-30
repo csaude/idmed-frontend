@@ -1,5 +1,10 @@
 import api from '../../api/apiService/apiService';
 import facilityTypeService from 'src/services/api/facilityTypeService/facilityTypeService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
+import FacilityType from 'src/stores/models/facilityType/FacilityType';
+
+const facilityTypeDexie = db[FacilityType.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -19,5 +24,18 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania FacilityType');
+    (await SynchronizationService.hasData(facilityTypeDexie))
+      ? await facilityTypeService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie FacilityType');
+    const getAllFacilityType = facilityTypeService.getAllFacilityTypes();
+    await facilityTypeDexie.bulkPut(getAllFacilityType);
   },
 };

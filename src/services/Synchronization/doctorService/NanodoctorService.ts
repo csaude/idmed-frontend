@@ -1,5 +1,10 @@
 import doctorService from 'src/services/api/doctorService/doctorService';
 import api from '../../api/apiService/apiService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
+import Doctor from 'src/stores/models/doctor/Doctor';
+
+const doctorDexie = db[Doctor.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -19,5 +24,18 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania Doctor');
+    (await SynchronizationService.hasData(doctorDexie))
+      ? await doctorService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie Doctor');
+    const getAllDoctor = doctorService.getAlldoctors();
+    await doctorDexie.bulkPut(getAllDoctor);
   },
 };

@@ -4,49 +4,41 @@ import moment from 'moment';
 import PatientsWithScreeningReport from 'src/stores/models/report/patient/PatientsWithScreeningReport';
 import db from 'src/stores/dexie';
 import { v4 as uuidv4 } from 'uuid';
-import drugService from '../../drugService/drugService';
 import patientService from '../../patientService/patientService';
 import patientServiceIdentifierService from '../../patientServiceIdentifier/patientServiceIdentifierService';
 import { useDateUtils } from 'src/composables/shared/dateUtils/dateUtils';
 import clinicService from '../../clinicService/clinicService';
 
-const patientsWithScreeningReport = PatientsWithScreeningReport.entity;
+const patientsWithScreeningReport = db[PatientsWithScreeningReport.entity];
 const { idadeCalculator } = useDateUtils();
 
 export default {
   async getDataLocalDbForPregnancyScreening(params: any) {
     const reportParams = ReportDatesParams.determineStartEndDate(params);
 
-    console.log(reportParams);
+    const [patientVisitList] = await Promise.all([
+      patientVisitService.getAllByStartDateAndEndDateFromDexie(
+        reportParams.startDate,
+        reportParams.endDate
+      ),
+    ]);
 
-    console.log(reportParams);
-    const patientVisitList =
-      await patientVisitService.getLocalDbPatientVisitsBetweenDatesWithPregnancyScreening(
-        params.startDate,
-        params.endDate
-      );
-    console.log(patientVisitList);
     for (const patientVisit of patientVisitList) {
       const patientsWithPregnancyScreening = new PatientsWithScreeningReport();
+
       const endDate = moment(params.endDate).format('YYYY-MM-DD');
       const startDate = moment(params.startDate).format('YYYY-MM-DD');
+      const patient = patientVisit.patient;
+      const identifier = patientServiceIdentifierService.localDbGetByPatientId(
+        patient.id
+      )[0];
+
       patientsWithPregnancyScreening.reportId = reportParams.id;
       patientsWithPregnancyScreening.startDate = startDate;
       patientsWithPregnancyScreening.endDate = endDate;
       patientsWithPregnancyScreening.year = reportParams.year;
       patientsWithPregnancyScreening.id = uuidv4();
-      const patient = await patientService.getPatientByIdMobile(
-        patientVisit.patient.id
-      );
-      let identifier;
-      if (patient.identifiers.length > 0) {
-        identifier = patient.identifiers[0];
-      }
-      if (!identifier) {
-        identifier = patientServiceIdentifierService.localDbGetByPatientId(
-          patientVisit.patient.id
-        )[0];
-      }
+
       if (identifier) {
         patientsWithPregnancyScreening.nid = identifier.value;
         patientsWithPregnancyScreening.firstNames = patient.firstNames;
@@ -58,9 +50,7 @@ export default {
           patient.dateOfBirth
         );
         patientsWithPregnancyScreening.visitDate = patientVisit.visitDate;
-        patientsWithPregnancyScreening.clinic = clinicService.getById(
-          patientVisit.clinic.id
-        );
+        patientsWithPregnancyScreening.clinic = patientVisit.clinic;
 
         if (patientVisit.pregnancyScreenings[0].pregnant === true) {
           patientsWithPregnancyScreening.isPregnant = 'Sim';
@@ -80,63 +70,108 @@ export default {
     console.log(reportParams);
 
     console.log(reportParams);
-    const patientVisitList =
-      await patientVisitService.getLocalDbPatientVisitsBetweenDatesMonitoredForAdherence(
-        params.startDate,
-        params.endDate
-      );
-    console.log(patientVisitList);
+
+    const [patientVisitList] = await Promise.all([
+      patientVisitService.getAllByStartDateAndEndDateFromDexie(
+        reportParams.startDate,
+        reportParams.endDate
+      ),
+    ]);
+
     for (const patientVisit of patientVisitList) {
-      const patientsWithPregnancyScreening = new PatientsWithScreeningReport();
+      const patientsWithAdherenceScreenings = new PatientsWithScreeningReport();
       const endDate = moment(params.endDate).format('YYYY-MM-DD');
       const startDate = moment(params.startDate).format('YYYY-MM-DD');
-      patientsWithPregnancyScreening.reportId = reportParams.id;
-      patientsWithPregnancyScreening.startDate = startDate;
-      patientsWithPregnancyScreening.endDate = endDate;
-      patientsWithPregnancyScreening.year = reportParams.year;
-      patientsWithPregnancyScreening.id = uuidv4();
-      const patient = await patientService.getPatientByIdMobile(
-        patientVisit.patient.id
-      );
-      let identifier;
-      if (patient.identifiers.length > 0) {
-        identifier = patient.identifiers[0];
-      }
-      if (!identifier) {
-        identifier = patientServiceIdentifierService.localDbGetByPatientId(
-          patientVisit.patient.id
-        )[0];
-      }
+      patientsWithAdherenceScreenings.reportId = reportParams.id;
+      patientsWithAdherenceScreenings.startDate = startDate;
+      patientsWithAdherenceScreenings.endDate = endDate;
+      patientsWithAdherenceScreenings.year = reportParams.year;
+      patientsWithAdherenceScreenings.id = uuidv4();
+      const patient = patientVisit.patient;
+      const identifier = patientServiceIdentifierService.localDbGetByPatientId(
+        patient.id
+      )[0];
+
       if (identifier) {
-        patientsWithPregnancyScreening.nid = identifier.value;
-        patientsWithPregnancyScreening.firstNames = patient.firstNames;
-        patientsWithPregnancyScreening.middleNames = patient.middleNames;
-        patientsWithPregnancyScreening.lastNames = patient.lastNames;
-        patientsWithPregnancyScreening.cellphone = patient.cellphone;
-        patientsWithPregnancyScreening.gender = patient.gender;
-        patientsWithPregnancyScreening.age = idadeCalculator(
+        patientsWithAdherenceScreenings.nid = identifier.value;
+        patientsWithAdherenceScreenings.firstNames = patient.firstNames;
+        patientsWithAdherenceScreenings.middleNames = patient.middleNames;
+        patientsWithAdherenceScreenings.lastNames = patient.lastNames;
+        patientsWithAdherenceScreenings.cellphone = patient.cellphone;
+        patientsWithAdherenceScreenings.gender = patient.gender;
+        patientsWithAdherenceScreenings.age = idadeCalculator(
           patient.dateOfBirth
         );
-        patientsWithPregnancyScreening.visitDate = patientVisit.visitDate;
-        patientsWithPregnancyScreening.clinic = clinicService.getById(
-          patientVisit.clinic.id
-        );
+        patientsWithAdherenceScreenings.visitDate = patientVisit.visitDate;
+        patientsWithAdherenceScreenings.clinic = patientVisit.clinic;
 
-        this.localDbAddOrUpdate(patientsWithPregnancyScreening);
-        console.log(patientsWithPregnancyScreening);
+        this.localDbAddOrUpdate(patientsWithAdherenceScreenings);
+        console.log(patientsWithAdherenceScreenings);
       }
     }
+
+    // const patientVisitList =
+    //   await patientVisitService.getLocalDbPatientVisitsBetweenDatesMonitoredForAdherence(
+    //     params.startDate,
+    //     params.endDate
+    //   );
+    // console.log(patientVisitList);
+    // for (const patientVisit of patientVisitList) {
+    //   const patientsWithPregnancyScreening = new PatientsWithScreeningReport();
+    //   const endDate = moment(params.endDate).format('YYYY-MM-DD');
+    //   const startDate = moment(params.startDate).format('YYYY-MM-DD');
+    //   patientsWithPregnancyScreening.reportId = reportParams.id;
+    //   patientsWithPregnancyScreening.startDate = startDate;
+    //   patientsWithPregnancyScreening.endDate = endDate;
+    //   patientsWithPregnancyScreening.year = reportParams.year;
+    //   patientsWithPregnancyScreening.id = uuidv4();
+    //   const patient = await patientService.getPatientByIdMobile(
+    //     patientVisit.patient.id
+    //   );
+    //   let identifier;
+    //   if (patient.identifiers.length > 0) {
+    //     identifier = patient.identifiers[0];
+    //   }
+    //   if (!identifier) {
+    //     identifier = patientServiceIdentifierService.localDbGetByPatientId(
+    //       patientVisit.patient.id
+    //     )[0];
+    //   }
+    //   if (identifier) {
+    //     patientsWithPregnancyScreening.nid = identifier.value;
+    //     patientsWithPregnancyScreening.firstNames = patient.firstNames;
+    //     patientsWithPregnancyScreening.middleNames = patient.middleNames;
+    //     patientsWithPregnancyScreening.lastNames = patient.lastNames;
+    //     patientsWithPregnancyScreening.cellphone = patient.cellphone;
+    //     patientsWithPregnancyScreening.gender = patient.gender;
+    //     patientsWithPregnancyScreening.age = idadeCalculator(
+    //       patient.dateOfBirth
+    //     );
+    //     patientsWithPregnancyScreening.visitDate = patientVisit.visitDate;
+    //     patientsWithPregnancyScreening.clinic = clinicService.getById(
+    //       patientVisit.clinic.id
+    //     );
+
+    //     this.localDbAddOrUpdate(patientsWithPregnancyScreening);
+    //     console.log(patientsWithPregnancyScreening);
+    //   }
+    // }
   },
 
   async getDataLocalDbForTBScreening(params: any) {
     const reportParams = ReportDatesParams.determineStartEndDate(params);
     console.log(reportParams);
-    const patientVisitList =
-      await patientVisitService.getLocalDbPatientVisitsBetweenDatesWithTBScreening(
-        params.startDate,
-        params.endDate
-      );
-
+    // const patientVisitList =
+    //   await patientVisitService.getLocalDbPatientVisitsBetweenDatesWithTBScreening(
+    //     params.startDate,
+    //     params.endDate
+    //   );
+    const [patientVisitList] = await Promise.all([
+      patientVisitService.getAllByStartDateAndEndDateFromDexie(
+        reportParams.startDate,
+        reportParams.endDate
+      ),
+    ]);
     for (const patientVisit of patientVisitList) {
       const tbScreening = patientVisit.tbScreenings[0];
       const tbScreeningReport = new PatientsWithScreeningReport();
@@ -192,11 +227,13 @@ export default {
   async getDataLocalDbRAM(params: any) {
     const reportParams = ReportDatesParams.determineStartEndDate(params);
     console.log(reportParams);
-    const patientVisitList =
-      await patientVisitService.getLocalDbPatientVisitsBetweenDatesWithRAMScreening(
-        params.startDate,
-        params.endDate
-      );
+
+    const [patientVisitList] = await Promise.all([
+      patientVisitService.getAllByStartDateAndEndDateFromDexie(
+        reportParams.startDate,
+        reportParams.endDate
+      ),
+    ]);
 
     for (const patientVisit of patientVisitList) {
       const ramScreening = patientVisit.tbScreenings[0];
@@ -248,13 +285,13 @@ export default {
   },
 
   localDbAddOrUpdate(data: any) {
-    return db[patientsWithScreeningReport].add(data).catch((error: any) => {
+    return patientsWithScreeningReport.add(data).catch((error: any) => {
       console.log(error);
     });
   },
 
   async localDbGetAllByReportId(reportId: any) {
-    return db[patientsWithScreeningReport]
+    return patientsWithScreeningReport
       .where('reportId')
       .equalsIgnoreCase(reportId)
       .toArray()

@@ -1,5 +1,10 @@
 import api from '../../api/apiService/apiService';
-import InteroperabilityAttributeService from 'src/services/api/InteroperabilityAttribute/InteroperabilityAttributeService';
+import InteroperabilityTypeService from 'src/services/api/InteroperabilityType/InteroperabilityTypeService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
+import InteroperabilityType from 'src/stores/models/interoperabilityType/InteroperabilityType';
+
+const InteroperabilityTypeDexie = db[InteroperabilityType.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -7,7 +12,7 @@ export default {
       return await api()
         .get('interoperabilityType?offset=' + offset + '&max=100')
         .then((resp) => {
-          InteroperabilityAttributeService.addBulkMobile(resp.data);
+          InteroperabilityTypeService.addBulkMobile(resp.data);
           console.log('Data synced from backend: InteroperabilityType');
           offset = offset + 100;
           if (resp.data.length > 0) {
@@ -19,5 +24,19 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania InteroperabilityType');
+    (await SynchronizationService.hasData(InteroperabilityTypeDexie))
+      ? await InteroperabilityTypeService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie InteroperabilityType');
+    const getAllInteroperabilityType =
+      InteroperabilityTypeService.getAllFromStorage();
+    await InteroperabilityTypeDexie.bulkPut(getAllInteroperabilityType);
   },
 };

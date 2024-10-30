@@ -1,4 +1,3 @@
-import { forEach } from 'app/src-cordova/platforms/android/platform_www/cordova_plugins';
 import api from '../../api/apiService/apiService';
 import { nSQL } from 'nano-sql';
 import Stock from 'src/stores/models/stock/Stock';
@@ -8,6 +7,10 @@ import DestroyedStock from 'src/stores/models/stockdestruction/DestroyedStock';
 import StockEntrance from 'src/stores/models/stockentrance/StockEntrance';
 import Inventory from 'src/stores/models/stockinventory/Inventory';
 import StockCenterService from 'src/services/api/stockCenterService/StockCenterService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
+
+const StockCenterDexie = db[StockCenter.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -129,5 +132,18 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania StockCenter');
+    (await SynchronizationService.hasData(StockCenterDexie))
+      ? await StockCenterService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie StockCenter');
+    const getAllStockCenter = StockCenterService.getAllFromStorage();
+    await StockCenterDexie.bulkPut(getAllStockCenter);
   },
 };

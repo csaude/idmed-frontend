@@ -72,7 +72,7 @@
 
 <script setup>
 import { date } from 'quasar';
-import { ref, computed, inject, watch } from 'vue';
+import { ref, computed, inject, watch, watchEffect } from 'vue';
 import StockEntranceService from 'src/services/api/stockEntranceService/StockEntranceService';
 import { useRouter } from 'vue-router';
 
@@ -125,7 +125,7 @@ const stockEntrances = computed(() => {
   return list;
 });
 
-watch((isExecutedEntrance) => {
+watchEffect((isExecutedEntrance) => {
   if (isExecutedEntrance.value === 'true') {
     loading.value = false;
   } else {

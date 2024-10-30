@@ -56,7 +56,6 @@ export function generateSchemaFromModels() {
 
     schema[modelName] = fieldNames.join(', ');
   });
-
   return schema;
 }
 

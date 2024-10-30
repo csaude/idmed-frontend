@@ -6,7 +6,7 @@
       expand-icon-class="text-white"
       :default-opened="curIdentifier.service.code === 'TARV' || !website"
     >
-      <template v-slot:header>
+    <!--   <template v-slot:header>
         <q-item-section avatar>
           <q-icon color="white" name="medication" />
         </q-item-section>
@@ -261,7 +261,7 @@
             </div>
           </q-card-section>
         </q-card>
-      </div>
+      </div>-->
     </q-expansion-item>
     <q-separator />
     <q-dialog persistent v-model="showPrescriptionDetails">
@@ -299,7 +299,7 @@ const { closeLoading, showloading } = useLoading();
 const { isProvincialInstalation } = useSystemConfig();
 const { isCloseEpisode, isDCReferenceEpisode } = useEpisode();
 const { alertSucess, alertError, alertInfo, alertWarningAction } = useSwal();
-const { remainigDuration, remainigDurationInWeeks } = usePrescription();
+const { remainigDuration } = usePrescription();
 const infoVisible = ref(true);
 const loadingFilaPDF = reactive(ref(false));
 const showPrescriptionDetails = ref(false);
@@ -336,12 +336,13 @@ const removePack = () => {
   ) {
     isPatientVisitRemoveble = false;
   }
+  const patientVisitDetailsList =
+    patientVisitDetailsService.getAllPatientVisitByPrescriptioId(
+      lastPatientVisitDetails.value.prescription.id
+    );
   alertWarningAction('Deseja remover a Dispensa?').then((result) => {
     if (result) {
-      if (
-        isPatientVisitRemoveble &&
-        patientVisit.value.patientVisitDetails.length <= 1
-      ) {
+      if (isPatientVisitRemoveble && patientVisitDetailsList.length <= 1) {
         let packIdToRemove = lastPatientVisitDetails.value.pack.id;
         let prescriptionToRemove =
           lastPatientVisitDetails.value.prescription.id;
@@ -367,19 +368,12 @@ const removePack = () => {
           });
       } else {
         let packIdToRemove = lastPatientVisitDetails.value.pack.id;
-        let prescriptionToRemove =
-          lastPatientVisitDetails.value.prescription.id;
-        let countPatientVisitDetailsByPrescription =
-          patientVisitDetailsService.getAllPatientVisitByPrescriptioId(
-            prescriptionToRemove
-          );
+
         patientVisitDetailsService
           .delete(lastPatientVisitDetails.value.id)
           .then((resp) => {
             packService.removeFromStorage(packIdToRemove);
-            if (countPatientVisitDetailsByPrescription.length <= 1) {
-              prescriptionService.removeFromStorage(prescriptionToRemove);
-            }
+
             closeLoading();
             console.log(resp);
             alertSucess('Dispensa removida com sucesso');

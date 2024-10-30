@@ -7,7 +7,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 
 const packagedDrugStock = useRepo(PackagedDrugStock);
-const packagedDrugStockDexie = PackagedDrugStock.entity;
+const packagedDrugStockDexie = db[PackagedDrugStock.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile && !isOnline) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -61,7 +61,7 @@ export default {
           packagedDrugStock.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           } else {
             closeLoading();
           }
@@ -94,10 +94,10 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[packagedDrugStockDexie]
+    return packagedDrugStockDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
-        packagedDrugStock.save(JSON.parse(params));
+        packagedDrugStock.save(JSON.parse(JSON.stringify(params)));
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
@@ -105,7 +105,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[packagedDrugStockDexie]
+    return packagedDrugStockDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         packagedDrugStock.save(JSON.parse(params));
@@ -116,7 +116,7 @@ export default {
       });
   },
   getMobile() {
-    return db[packagedDrugStockDexie]
+    return packagedDrugStockDexie
       .toArray()
       .then((rows: any) => {
         packagedDrugStock.save(rows);
@@ -127,7 +127,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[packagedDrugStockDexie]
+    return packagedDrugStockDexie
       .delete(paramsId)
       .then(() => {
         packagedDrugStock.destroy(paramsId);
@@ -139,7 +139,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[packagedDrugStockDexie]
+    return packagedDrugStockDexie
       .bulkAdd(params)
       .then(() => {
         packagedDrugStock.save(params);

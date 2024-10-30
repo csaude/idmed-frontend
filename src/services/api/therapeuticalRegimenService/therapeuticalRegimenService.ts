@@ -7,7 +7,7 @@ import db from '../../../stores/dexie';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const therapeuticRegimen = useRepo(TherapeuticRegimen);
-const therapeuticRegimenDexie = TherapeuticRegimen.entity;
+const therapeuticRegimenDexie = db[TherapeuticRegimen.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -61,13 +61,10 @@ export default {
           therapeuticRegimen.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -109,7 +106,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[therapeuticRegimenDexie]
+    return therapeuticRegimenDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         therapeuticRegimen.save(JSON.parse(params));
@@ -119,7 +116,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[therapeuticRegimenDexie]
+    return therapeuticRegimenDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         therapeuticRegimen.save(JSON.parse(params));
@@ -131,7 +128,7 @@ export default {
       });
   },
   getMobile() {
-    return db[therapeuticRegimenDexie]
+    return therapeuticRegimenDexie
       .toArray()
       .then((rows: any) => {
         therapeuticRegimen.save(rows);
@@ -142,7 +139,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[therapeuticRegimenDexie]
+    return therapeuticRegimenDexie
       .delete(paramsId)
       .then(() => {
         therapeuticRegimen.destroy(paramsId);
@@ -154,7 +151,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[therapeuticRegimenDexie]
+    return therapeuticRegimenDexie
       .bulkPut(params)
       .then(() => {
         therapeuticRegimen.save(params);
@@ -164,8 +161,8 @@ export default {
       });
   },
 
-  async getInMobileById(id: String) {
-    const resp = await db[therapeuticRegimenDexie]
+  async getInMobileById(id: string) {
+    const resp = await therapeuticRegimenDexie
       .where('id')
       .equalsIgnoreCase(id)
       .first();
@@ -277,5 +274,12 @@ export default {
         return therapeuticRegimen.id === id;
       })
       .first();
+  },
+  //Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await therapeuticRegimenDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
   },
 };

@@ -6,7 +6,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 
 const prescribedDrug = useRepo(PrescribedDrug);
-const prescribedDrugDexie = PrescribedDrug.entity;
+const prescribedDrugDexie = db[PrescribedDrug.entity];
 
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -35,7 +35,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -56,7 +56,7 @@ export default {
           prescribedDrug.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -80,21 +80,21 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[prescribedDrugDexie]
+    return prescribedDrugDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         prescribedDrug.save(JSON.parse(JSON.stringify(params)));
       });
   },
   putMobile(params: string) {
-    return db[prescribedDrugDexie]
+    return prescribedDrugDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         prescribedDrug.save(JSON.parse(JSON.stringify(params)));
       });
   },
   getMobile() {
-    return db[prescribedDrugDexie]
+    return prescribedDrugDexie
       .toArray()
       .then((rows: any) => {
         prescribedDrug.save(rows);
@@ -105,7 +105,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[prescribedDrugDexie]
+    return prescribedDrugDexie
       .delete(paramsId)
       .then(() => {
         prescribedDrug.destroy(paramsId);
@@ -116,15 +116,22 @@ export default {
         console.log(error);
       });
   },
-  addBulkMobile(params: any) {
-    return db[prescribedDrugDexie]
-      .bulkAdd(params)
-      .then(() => {
-        prescribedDrug.save(params);
-      })
+  addBulkMobile() {
+    const prescribedDrugFromPinia = this.getAllFromStorageForDexie();
+
+    return prescribedDrugDexie
+      .bulkAdd(prescribedDrugFromPinia)
       .catch((error: any) => {
         console.log(error);
       });
+  },
+  async getLastByPrescriprionIdFromDexie(prescriptionId: string) {
+    const prescribedDrugs = await prescribedDrugDexie
+      .where('prescription_id')
+      .equals(prescriptionId)
+      .toArray();
+    prescribedDrug.save(prescribedDrugs);
+    return prescribedDrugs;
   },
   async apiGetAllByPrescriptionId(prescriptionId: string) {
     return await api()
@@ -143,6 +150,9 @@ export default {
   },
   getAllFromStorage() {
     return prescribedDrug.all();
+  },
+  getAllFromStorageForDexie() {
+    return prescribedDrug.makeHidden(['prescription', 'drug']).all();
   },
   deleteAllFromStorage() {
     prescribedDrug.flush();

@@ -4,7 +4,6 @@ import Episode from 'src/stores/models/episode/Episode';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import clinicSectorService from '../clinicSectorService/clinicSectorService';
 import patientServiceIdentifierService from '../patientServiceIdentifier/patientServiceIdentifierService';
 import db from '../../../stores/dexie';
 import patientVisitDetailsService from '../patientVisitDetails/patientVisitDetailsService';
@@ -13,9 +12,12 @@ import patientVisitService from '../patientVisit/patientVisitService';
 import packService from '../pack/packService';
 import ChunkArray from 'src/utils/ChunkArray';
 import clinicService from '../clinicService/clinicService';
+import startStopReasonService from '../startStopReasonService/startStopReasonService';
+import episodeTypeService from '../episodeType/episodeTypeService';
+import clinicSectorService from '../clinicSectorService/clinicSectorService';
 
 const episode = useRepo(Episode);
-const episodeDexie = Episode.entity;
+const episodeDexie = db[Episode.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -45,7 +47,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -66,7 +68,7 @@ export default {
           episode.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -93,7 +95,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[episodeDexie]
+    return episodeDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         episode.save(params);
@@ -103,7 +105,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[episodeDexie]
+    return episodeDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         episode.save(params);
@@ -114,7 +116,7 @@ export default {
   },
   async getMobile() {
     try {
-      const rows = await db[episodeDexie].toArray();
+      const rows = await episodeDexie.toArray();
       if (rows.length === 0) {
         api()
           .get('episode?offset=0&max=700')
@@ -130,7 +132,7 @@ export default {
     }
   },
   async deleteMobile(paramsId: string) {
-    return db[episodeDexie]
+    return episodeDexie
       .delete(paramsId)
       .then(() => {
         episode.destroy(paramsId);
@@ -139,15 +141,11 @@ export default {
         console.log(error);
       });
   },
-  addBulkMobile(params: any) {
-    return db[episodeDexie]
-      .bulkPut(params)
-      .then(() => {
-        episode.save(params);
-      })
-      .catch((error: any) => {
-        console.log(error);
-      });
+  addBulkMobile() {
+    const episodesFromPinia = this.getAllFromStorageForDexie();
+    return episodeDexie.bulkPut(episodesFromPinia).catch((error: any) => {
+      console.log(error);
+    });
   },
   async apiSave(episodeParams: any, isNew: boolean) {
     if (isNew) {
@@ -173,7 +171,7 @@ export default {
 
   async apiFetchById(id: string) {
     if (isMobile.value && !isOnline.value) {
-      return db[episodeDexie]
+      return episodeDexie
         .where('id')
         .equalsIgnoreCase(id)
         .first()
@@ -220,7 +218,7 @@ export default {
   },
 
   async getLocalDbEpisodesToSync() {
-    return await db[episodeDexie]
+    return await episodeDexie
       .where('syncStatus')
       .equalsIgnoreCase('R')
       .or('syncStatus')
@@ -231,14 +229,14 @@ export default {
       });
   },
   async getAllMobileByIds(episodeIds: any) {
-    const resp = await db[episodeDexie].where('id').anyOf(episodeIds).toArray();
+    const resp = await episodeDexie.where('id').anyOf(episodeIds).toArray();
 
     episode.save(resp);
     return resp;
   },
 
   async getAllMobileByPatientServiceIds(patientServiceIds: []) {
-    const resp = await db[episodeDexie]
+    const resp = await episodeDexie
       .where('patientServiceIdentifier_id')
       .anyOf(patientServiceIds)
       .toArray();
@@ -253,6 +251,18 @@ export default {
   },
   getAllFromStorage() {
     return episode.all();
+  },
+  getAllFromStorageForDexie() {
+    return episode
+      .makeHidden([
+        'referralClinic',
+        'startStopReason',
+        'episodeType',
+        'clinicSector',
+        'patientServiceIdentifier',
+        'patientVisitDetails',
+      ])
+      .all();
   },
   deleteAllFromStorage() {
     episode.flush();
@@ -445,5 +455,132 @@ export default {
     }
 
     this.addBulkMobile(allEpisodes);
+  },
+
+  //Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    const episodes = await episodeDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+
+    const referralClinicIds = episodes.map(
+      (episode: any) => episode.referralClinic_id
+    );
+
+    const startStopReasonIds = episodes.map(
+      (episode: any) => episode.startStopReason_id
+    );
+
+    const episodeTypeIds = episodes.map(
+      (episode: any) => episode.episodeType_id
+    );
+
+    const clinicSectorIds = episodes.map(
+      (episode: any) => episode.clinicSector_id
+    );
+
+    const patientServiceIdentifierIds = episodes.map(
+      (episode: any) => episode.patientServiceIdentifier_id
+    );
+
+    const [
+      referralClinics,
+      startStopReasons,
+      episodeTypes,
+      clinicSectors,
+      patientServiceIdentifiers,
+    ] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(referralClinicIds),
+      startStopReasonService.getAllByIDsFromDexie(startStopReasonIds),
+      episodeTypeService.getAllByIDsFromDexie(episodeTypeIds),
+      clinicSectorService.getAllByIDsFromDexie(clinicSectorIds),
+      patientServiceIdentifierService.getAllByIDsFromDexie(
+        patientServiceIdentifierIds
+      ),
+    ]);
+    episodes.map((episode: any) => {
+      episode.referralClinic = referralClinics.find(
+        (referralClinic: any) => referralClinic.id === episode.referralClinic_id
+      );
+      episode.startStopReason = startStopReasons.find(
+        (startStopReason: any) =>
+          startStopReason.id === episode.startStopReason_id
+      );
+      episode.episodeType = episodeTypes.find(
+        (episodeType: any) => episodeType.id === episode.episodeType_id
+      );
+      episode.clinicSector = clinicSectors.find(
+        (clinicSector: any) => clinicSector.id === episode.clinicSector_id
+      );
+      episode.patientServiceIdentifier = patientServiceIdentifiers.find(
+        (patientServiceIdentifier: any) =>
+          patientServiceIdentifier.id === episode.patientServiceIdentifier_id
+      );
+    });
+
+    return episodes;
+  },
+
+  async getByIDFromDexie(id: string) {
+    const episodes = await episodeDexie.where('id').equals(id).toArray();
+
+    const referralClinicIds = episodes.map(
+      (episode: any) => episode.referralClinic_id
+    );
+
+    const startStopReasonIds = episodes.map(
+      (episode: any) => episode.startStopReason_id
+    );
+
+    const episodeTypeIds = episodes.map(
+      (episode: any) => episode.episodeType_id
+    );
+
+    const clinicSectorIds = episodes.map(
+      (episode: any) => episode.clinicSector_id
+    );
+
+    const patientServiceIdentifierIds = episodes.map(
+      (episode: any) => episode.patientServiceIdentifier_id
+    );
+
+    const [
+      referralClinics,
+      startStopReasons,
+      episodeTypes,
+      clinicSectors,
+      patientServiceIdentifiers,
+    ] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(referralClinicIds),
+      startStopReasonService.getAllByIDsFromDexie(startStopReasonIds),
+      episodeTypeService.getAllByIDsFromDexie(episodeTypeIds),
+      clinicSectorService.getAllByIDsFromDexie(clinicSectorIds),
+      patientServiceIdentifierService.getAllByIDsFromDexie(
+        patientServiceIdentifierIds
+      ),
+    ]);
+
+    episodes.map((episode: any) => {
+      episode.referralClinic = referralClinics.find(
+        (referralClinic: any) => referralClinic.id === episode.referralClinic_id
+      );
+      episode.startStopReason = startStopReasons.find(
+        (startStopReason: any) =>
+          startStopReason.id === episode.startStopReason_id
+      );
+      episode.episodeType = episodeTypes.find(
+        (episodeType: any) => episodeType.id === episode.episodeType_id
+      );
+      episode.clinicSector = clinicSectors.find(
+        (clinicSector: any) => clinicSector.id === episode.clinicSector_id
+      );
+      episode.patientServiceIdentifier = patientServiceIdentifiers.find(
+        (patientServiceIdentifier: any) =>
+          patientServiceIdentifier.id === episode.patientServiceIdentifier_id
+      );
+    });
+
+    return episodes[0];
   },
 };

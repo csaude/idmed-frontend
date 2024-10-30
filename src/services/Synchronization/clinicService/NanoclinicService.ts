@@ -5,8 +5,11 @@ import Clinic from 'src/stores/models/clinic/Clinic';
 import { useRepo } from 'pinia-orm';
 
 import { useLoading } from 'src/composables/shared/loading/loading';
+import db from 'src/stores/dexie';
+import SynchronizationService from '../SynchronizationService';
 const { closeLoading, showloading } = useLoading();
 const clinic = useRepo(Clinic);
+const clinicDexie = db[Clinic.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -31,5 +34,18 @@ export default {
           closeLoading();
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania Clinic');
+    (await SynchronizationService.hasData(clinicDexie))
+      ? await clinicService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie Clinic');
+    const getAllclinics = clinicService.getAllFromStorage();
+    await clinicDexie.bulkPut(getAllclinics);
   },
 };

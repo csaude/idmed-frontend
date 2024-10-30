@@ -665,7 +665,8 @@ const localSearch = async () => {
     currPatient.value.offset = offset.value;
     patientService.apiSearch(currPatient.value);
   } else {
-    patientService.get(0);
+    patientService.getMobile();
+    patientServiceIdentifierService.getMobile();
   }
 };
 

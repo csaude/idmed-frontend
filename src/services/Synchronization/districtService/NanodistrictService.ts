@@ -1,5 +1,10 @@
 import districtService from 'src/services/api/districtService/districtService';
 import api from '../../api/apiService/apiService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
+import District from 'src/stores/models/district/District';
+
+const districtDexie = db[District.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -19,5 +24,18 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania District');
+    (await SynchronizationService.hasData(districtDexie))
+      ? await districtService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie District');
+    const getAllDistrict = districtService.getAllFromStorage();
+    await districtDexie.bulkPut(getAllDistrict);
   },
 };

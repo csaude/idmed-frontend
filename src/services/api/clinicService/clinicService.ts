@@ -6,12 +6,11 @@ import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
-import { SessionStorage } from 'quasar';
 import db from '../../../stores/dexie';
 import systemConfigsService from '../systemConfigs/systemConfigsService';
 
 const clinic = useRepo(Clinic);
-const clinicDexie = Clinic.entity;
+const clinicDexie = db[Clinic.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError, alertWarning } = useSwal();
@@ -42,9 +41,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -65,13 +64,10 @@ export default {
           clinic.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -97,7 +93,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[clinicDexie]
+    return clinicDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         clinic.save(params);
@@ -107,7 +103,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[clinicDexie]
+    return clinicDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         clinic.save(params);
@@ -119,7 +115,7 @@ export default {
       });
   },
   getMobile() {
-    return db[clinicDexie]
+    return clinicDexie
       .toArray()
       .then((rows: any) => {
         clinic.save(rows);
@@ -129,7 +125,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[clinicDexie]
+    return clinicDexie
       .delete(paramsId)
       .then(() => {
         clinic.destroy(paramsId);
@@ -140,7 +136,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[clinicDexie]
+    return clinicDexie
       .bulkPut(params)
       .then(() => {
         clinic.save(params);
@@ -185,7 +181,7 @@ export default {
     return clinic.getModel().$newInstance();
   },
   getAllFromStorage() {
-    return clinic.all();
+    return clinic.query().withAllRecursive(1).get();
   },
   getClinicsByDistrictId(districtid: string) {
     return clinic
@@ -201,6 +197,7 @@ export default {
   currClinic() {
     const instalationType = systemConfigsService.getInstallationType();
     const clinicUser = localStorage.getItem('clinicUsers');
+
     if (
       (clinicUser === 'undefined' && !isProvincialInstalation()) ||
       (clinicUser === '' && !isProvincialInstalation()) ||
@@ -367,5 +364,14 @@ export default {
 
   isPrivatePharmacy(currClinic: Clinic) {
     return currClinic && currClinic.facilityType.code == 'FP';
+  },
+
+  // Dexie Block
+  async getByIdFromDexie(id: string) {
+    return await clinicDexie.get(id);
+  },
+
+  async getAllByIDsFromDexie(ids: []) {
+    return await clinicDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

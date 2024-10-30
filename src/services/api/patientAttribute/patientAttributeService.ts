@@ -37,7 +37,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -58,7 +58,7 @@ export default {
           patientAttribute.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {

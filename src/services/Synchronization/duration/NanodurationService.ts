@@ -1,5 +1,10 @@
 import api from '../../api/apiService/apiService';
 import durationService from 'src/services/api/duration/durationService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
+import Duration from 'src/stores/models/duration/Duration';
+
+const durationDexie = db[Duration.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -19,5 +24,18 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania Duration');
+    (await SynchronizationService.hasData(durationDexie))
+      ? await durationService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie Duration');
+    const getAllDuration = durationService.getAllFromStorage();
+    await durationDexie.bulkPut(getAllDuration);
   },
 };

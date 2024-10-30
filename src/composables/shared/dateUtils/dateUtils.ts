@@ -107,6 +107,13 @@ export function useDateUtils() {
     }
   }
 
+  function addDays(date: Date, days: number) {
+    const result = new Date(date);
+    result.setDate(result.getDate() + days);
+    const formattedDateTime1 = moment(result).format('YYYY-MM-DD');
+    return formattedDateTime1;
+  }
+
   function returnEstatisticMonth(thedate) {
     const startOfYear = new Date(thedate.getFullYear(), 0, 1);
 
@@ -243,6 +250,51 @@ export function useDateUtils() {
     return monthNames[monthNumber - 1];
   }
 
+  function getMonthsDateOfTheYear(year: number) {
+    const monthsOfTheYear = [];
+
+    for (let month = 1; month <= 12; ++month) {
+      const item = {
+        month: 0,
+        startDate: '',
+        endDate: '',
+      };
+
+      item.month = month;
+      item.startDate = moment(new Date(year, month - 1, 21)).format(
+        'YYYY-MM-DD'
+      );
+      item.endDate = moment(new Date(year, month, 20)).format('YYYY-MM-DD');
+      monthsOfTheYear.push(item);
+    }
+    return monthsOfTheYear;
+  }
+
+  function getStatisticMonthFromDate(date: Date) {
+    for (let month = 1; month <= 12; ++month) {
+      const startDate = new Date(date.getFullYear(), month - 1, 21);
+      const endDate = new Date(date.getFullYear(), month, 20);
+      ('YYYY-MM-DD');
+
+      if (date >= startDate && date <= endDate) {
+        return month;
+      }
+    }
+    return 0;
+  }
+  function getPreviousStatisticMonthsDateFromDate(date: Date) {
+    const currentMonth = getStatisticMonthFromDate(date);
+
+    if (currentMonth > 1) {
+      return getMonthsDateOfTheYear(date.getFullYear()).filter(
+        (returnMonth) => returnMonth.month === currentMonth - 1
+      );
+    } else {
+      return getMonthsDateOfTheYear(date.getFullYear() - 1).filter(
+        (returnMonth) => returnMonth.month === 12
+      );
+    }
+  }
   return {
     isValidDate,
     formatDate,
@@ -267,6 +319,10 @@ export function useDateUtils() {
     idadeReportCalculator,
     getDateFromHyphenDDMMYYYYWithTime,
     returnEstatisticMonth,
+    getStatisticMonthFromDate,
     getMonthName,
+    getMonthsDateOfTheYear,
+    addDays,
+    getPreviousStatisticMonthsDateFromDate,
   };
 }

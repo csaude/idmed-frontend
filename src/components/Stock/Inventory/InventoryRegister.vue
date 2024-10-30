@@ -28,7 +28,7 @@
                     <q-date
                       v-model="currInventory.startDate"
                       mask="DD-MM-YYYY"
-                      :options="blockData"
+                      :options="blockStartDate"
                     >
                       <div class="row items-center justify-end">
                         <q-btn
@@ -64,7 +64,7 @@
             />
           </div>
         </div>
-        <div v-if="isGeneric" class="row q-mt-md">
+        <div v-if="isGeneric !== true" class="row q-mt-md">
           <q-table
             class="col q-ml-md"
             dense
@@ -136,6 +136,8 @@ const { alertError } = useSwal();
 
 const loadingIventory = ref(false);
 
+const { getPreviousStatisticMonthsDateFromDate } = useDateUtils();
+
 const loading = ref(false);
 
 const currClinic = inject('currClinic');
@@ -203,7 +205,7 @@ const submitForm = () => {
     );
   } else if (
     currInventory.value.generic &&
-    currInventory.value.generic === 'true'
+    String(currInventory.value.generic) === 'true'
   ) {
     if (
       verifyGeneralInventoryExist(
@@ -264,9 +266,10 @@ const initInventory = () => {
     selected.value.forEach((drug) => {
       selectedLocalDrugsId.push(drug.id);
     });
-  if (currInventory.value.generic !== 'true')
+  if (!isGeneric.value) {
     localStorage.setItem('selectedDrugs', selectedLocalDrugsId);
-
+  }
+  currInventory.value.generic = isGeneric.value;
   inventoryService.post(currInventory.value).then((resp) => {
     readyToRoute.value = resp;
     localStorage.setItem('currInventory', currInventory.value.id);
@@ -275,104 +278,54 @@ const initInventory = () => {
 };
 
 const isGeneric = computed(() => {
-  return currInventory.value.generic !== 'true';
+  return (
+    String(currInventory.value.generic).includes('true') ||
+    currInventory.value.generic
+  );
 });
 
 const activeDrugs = computed(() => {
   return drugService.getDrugsWithValidStockInList();
 });
 
-const blockData = (date) => {
+const blockStartDate = (date) => {
   const currentDate = new Date();
+
   const startDate = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() - 1,
-    21
+    getPreviousStatisticMonthsDateFromDate(currentDate)[0].startDate
   );
 
   const endDate = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth(),
-    20
+    getPreviousStatisticMonthsDateFromDate(currentDate)[0].endDate
   );
 
-  const inventory = InventoryService.getInventoryInPreviousMonth(
-    startDate,
-    endDate
-  );
+  const lastInventoryBeforeCurrentDate =
+    InventoryService.lastInventoryBeforeDate(currentDate);
 
-  const lastDayStatisticMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() - 1,
-    20
-  );
-
-  const lastDateStatisticBeforeMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() - 2,
-    20
-  );
-
-  if (!inventory) {
-    // verificar os meses antes do mes anterior se existe algum
-
-    const hastInventories = InventoryService.hasInventoryBeforeDate(
-      lastDateStatisticBeforeMonth
+  if (lastInventoryBeforeCurrentDate) {
+    const inventory = InventoryService.getInventoryInPreviousMonth(
+      startDate,
+      endDate
     );
 
-    if (hastInventories) {
-      currInventory.value.startDate = moment
-        .utc(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 20))
-        .local()
-        .format('DD-MM-YYYY');
-      return date === moment(lastDayStatisticMonth).format('YYYY/MM/DD');
+    if (inventory || lastInventoryBeforeCurrentDate) {
+      return (
+        date >=
+          moment(lastInventoryBeforeCurrentDate.endDate).format('YYYY/MM/DD') &&
+        date <= moment(currentDate).format('YYYY/MM/DD')
+      );
     } else {
-      return true;
+      return date === moment(endDate).format('YYYY/MM/DD');
     }
   } else {
-    return true;
+    return (
+      date > moment(endDate).format('YYYY/MM/DD') &&
+      date <= moment(currentDate).format('YYYY/MM/DD')
+    );
   }
 };
 
 onMounted(() => {
-  const currentDate = new Date();
-  const startDate = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() - 1,
-    21
-  );
-
-  const endDate = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth(),
-    20
-  );
-
-  const inventory = InventoryService.getInventoryInPreviousMonth(
-    startDate,
-    endDate
-  );
-
-  const lastDateStatisticBeforePreviousMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() - 1,
-    20
-  );
-
-  if (!inventory) {
-    // verificar os meses antes do mes anterior se existe algum
-    const hastInventories = InventoryService.hasInventoryBeforeDate(
-      lastDateStatisticBeforePreviousMonth
-    );
-
-    if (hastInventories) {
-      currInventory.value.startDate = moment
-        .utc(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 20))
-        .local()
-        .format('DD-MM-YYYY');
-    }
-  }
-
   currInventory.value.generic = 'true';
   if (
     currInventory.value.startDate === null ||

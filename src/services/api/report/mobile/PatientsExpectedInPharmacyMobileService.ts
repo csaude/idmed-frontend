@@ -12,12 +12,56 @@ import patientVisitDetailsService from '../../patientVisitDetails/patientVisitDe
 import PatientExpectedReport from 'src/stores/models/report/patient/PatientExpectedReport';
 import prescriptionService from '../../prescription/prescriptionService';
 import patientVisitService from '../../patientVisit/patientVisitService';
+import packService from '../../pack/packService';
 
-const patientExpectedReportDexie = PatientExpectedReport.entity;
+const patientExpectedReportDexie = db[PatientExpectedReport.entity];
 
 export default {
-  async getDataLocalDb(params) {
+  async getDataLocalDb(params: any) {
     const reportParams = ReportDatesParams.determineStartEndDate(params);
+
+    const [activePacks] = await Promise.all([
+      packService.getAllExpectedPacksByStartDateAndEndDateFromDexie(
+        reportParams.startDate,
+        reportParams.endDate
+      ),
+    ]);
+
+    for (const pack of activePacks) {
+      const patient = pack.patientvisitDetails.patientVisit.patient;
+      const identifier =
+        pack.patientvisitDetails.episode.patientServiceIdentifier;
+      const therapeuticRegimen =
+        pack.patientvisitDetails.prescription.prescriptionDetails
+          .therapeuticRegimen;
+
+      const dispenseType =
+        pack.patientvisitDetails.prescription.prescriptionDetails.dispenseType;
+
+      if (identifier.service.id === reportParams.clinicalService) {
+        const patientExpectedReports = new PatientExpectedReport();
+        patientExpectedReports.dispenseType = dispenseType.description;
+        patientExpectedReports.reportId = reportParams.id;
+        patientExpectedReports.year = reportParams.year;
+        patientExpectedReports.startDate = reportParams.startDate;
+        patientExpectedReports.endDate = reportParams.endDate;
+        patientExpectedReports.nid = identifier.value;
+        patientExpectedReports.firstNames = patient.firstNames;
+        patientExpectedReports.middleNames = patient.middleNames;
+        patientExpectedReports.lastNames = patient.lastNames;
+        patientExpectedReports.cellphone = patient.cellphone;
+        patientExpectedReports.pickUpDate = pack.pickupDate;
+        patientExpectedReports.nextPickUpDate = pack.nextPickUpDate;
+        patientExpectedReports.therapeuticRegimen =
+          therapeuticRegimen.description;
+        patientExpectedReports.dispenseMode = pack.dispenseMode.description;
+        patientExpectedReports.clinicalService = identifier.service.description;
+        patientExpectedReports.clinic = pack.clinic.clinicName;
+        patientExpectedReports.id = uuidv4();
+        this.localDbAddOrUpdate(patientExpectedReports);
+        console.log(patientExpectedReports);
+      }
+    }
 
     const patientVisitDetailsList =
       await patientVisitDetailsService.getLocalDbPatientVisitsExpectedOnDay(
@@ -25,6 +69,7 @@ export default {
         reportParams.startDate,
         reportParams.endDate
       );
+
     for (const patientVisitDetail of patientVisitDetailsList) {
       if (patientVisitDetail.pack !== undefined) {
         const patientExpectedReports = new PatientExpectedReport();
@@ -110,13 +155,13 @@ export default {
   },
 
   localDbAddOrUpdate(data: any) {
-    return db[patientExpectedReportDexie].add(data).catch((error: any) => {
+    return patientExpectedReportDexie.add(data).catch((error: any) => {
       console.log(error);
     });
   },
 
   async localDbGetAllByReportId(reportId: any) {
-    return db[patientExpectedReportDexie]
+    return patientExpectedReportDexie
       .where('reportId')
       .equalsIgnoreCase(reportId)
       .toArray()

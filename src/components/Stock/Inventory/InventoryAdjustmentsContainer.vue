@@ -345,6 +345,7 @@ const doSave = async (adjustment, contagem) => {
     } else {
       showloading();
       if (contagem <= numberOfValidStockPerDrug.value) {
+        adjustment.balance = Number(adjustment.balance);
         if (adjustment.id === null) {
           adjustment.id = uuidv4();
           await InventoryStockAdjustmentService.post(adjustment).then(
@@ -353,7 +354,6 @@ const doSave = async (adjustment, contagem) => {
             }
           );
         } else {
-          console.log('Ajuste Patch', adjustment);
           await InventoryStockAdjustmentService.patch(
             adjustment.id,
             adjustment

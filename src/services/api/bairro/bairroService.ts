@@ -61,7 +61,7 @@ export default {
           localidade.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           } else {
             closeLoading();
           }

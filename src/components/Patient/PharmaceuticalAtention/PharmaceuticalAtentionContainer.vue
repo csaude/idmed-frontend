@@ -322,30 +322,25 @@ const editButtonActions = inject('editButtonActions');
 //Methods
 const promptToConfirm = (patientVisitParams) => {
   showloading();
-  if (website.value) {
-    alertWarningAction('Deseja Apagar a atenção farmaceutica?').then(
-      (result) => {
-        console.log(result);
-        if (result) {
-          patientVisitService
-            .delete(patientVisitParams.id)
-            .then((resp) => {
-              closeLoading();
-              console.log(resp);
-              alertSucess('Atenção farmaceutica removida com sucesso');
-            })
-            .catch((error) => {
-              closeLoading();
-              console.log(error);
-              alertError('Aconteceu um erro ao remover a Atenção Farmaceutica');
-            });
-        } else {
+  alertWarningAction('Deseja Apagar a atenção farmaceutica?').then((result) => {
+    if (result) {
+      patientVisitService
+        .delete(patientVisitParams.id)
+        .then((resp) => {
           closeLoading();
-          alertInfo('Operação cancelada');
-        }
-      }
-    );
-  }
+          console.log(resp);
+          alertSucess('Atenção farmaceutica removida com sucesso');
+        })
+        .catch((error) => {
+          closeLoading();
+          console.log(error);
+          alertError('Aconteceu um erro ao remover a Atenção Farmaceutica');
+        });
+    } else {
+      closeLoading();
+      alertInfo('Operação cancelada');
+    }
+  });
 };
 </script>
 

@@ -40,7 +40,22 @@ export default {
       }
     }
   },
-
+  getWeb(offset: number) {
+    if (offset >= 0) {
+      return api()
+        .get('stockOperationType?offset=' + offset + '&max=100')
+        .then((resp) => {
+          stockOperationRepo.save(resp.data);
+          offset = offset + 100;
+          if (resp.data.length > 0) {
+            this.getWeb(offset);
+          }
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    }
+  },
   //mobile
   addBulkMobile(params: string) {
     return db[stockOperationDexie]
@@ -64,7 +79,9 @@ export default {
     return stockOperationRepo.query().where('id', Id).first();
   },
   //Pinia
-
+  getAllFromStorage() {
+    return stockOperationRepo.all();
+  },
   savePinia(st: any) {
     stockOperationRepo.save(st);
   },

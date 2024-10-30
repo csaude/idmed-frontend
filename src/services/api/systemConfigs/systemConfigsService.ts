@@ -7,7 +7,7 @@ import db from '../../../stores/dexie';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const systemConfigs = useRepo(SystemConfigs);
-const systemConfigsDexie = SystemConfigs.entity;
+const systemConfigsDexie = db[SystemConfigs.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -62,13 +62,10 @@ export default {
           systemConfigs.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -95,7 +92,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[systemConfigsDexie]
+    return systemConfigsDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         systemConfigs.save(JSON.parse(params));
@@ -105,7 +102,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[systemConfigsDexie]
+    return systemConfigsDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         systemConfigs.save(JSON.parse(params));
@@ -115,7 +112,7 @@ export default {
       });
   },
   getMobile() {
-    return db[systemConfigsDexie]
+    return systemConfigsDexie
       .toArray()
       .then((rows: any) => {
         systemConfigs.save(rows);
@@ -126,7 +123,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[systemConfigsDexie]
+    return systemConfigsDexie
       .delete(paramsId)
       .then(() => {
         systemConfigs.destroy(paramsId);
@@ -138,7 +135,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[systemConfigsDexie]
+    return systemConfigsDexie
       .bulkPut(params)
       .then(() => {
         systemConfigs.save(params);

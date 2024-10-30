@@ -14,7 +14,7 @@ const userLogin = useRepo(UserLogin);
 const userRoles = useRepo(UserRole);
 const { isMobile, isOnline } = useSystemUtils();
 const { deleteStorageInfo } = useOnline();
-const userLoginDexie = UserLogin.entity;
+const userLoginDexie = db[UserLogin.entity];
 
 export default {
   logout() {
@@ -156,28 +156,28 @@ export default {
   // Mobile
 
   addMobile(params: string) {
-    return db[userLoginDexie]
-      .add(JSON.parse(JSON.stringify(params)))
-      .then(() => {
-        userLogin.save(JSON.parse(JSON.stringify(params)));
-      });
+    return userLoginDexie.add(JSON.parse(JSON.stringify(params))).then(() => {
+      userLogin.save(JSON.parse(JSON.stringify(params)));
+    });
   },
 
   putMobile(params: string) {
-    return db[userLoginDexie]
-      .put(JSON.parse(JSON.stringify(params)))
-      .then(() => {
-        userLogin.save(JSON.parse(JSON.stringify(params)));
-      });
+    return userLoginDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
+      userLogin.save(JSON.parse(JSON.stringify(params)));
+    });
   },
   async getMobile() {
     try {
-      const rows = await db[userLoginDexie].toArray();
+      const rows = await userLoginDexie.toArray();
       userLogin.save(rows);
       return rows;
     } catch (error) {
       // alertError('Aconteceu um erro inesperado nesta operação.');
       console.log(error);
     }
+  },
+
+  async getLogedUser() {
+    return await userLoginDexie.orderBy('id').first();
   },
 };

@@ -11,24 +11,7 @@ export function useSystemUtils() {
   const isDeskTop = computed(() => (Platform.is.desktop ? true : false));
   const isMobile = computed(() => (Platform.is.mobile ? true : false));
   const isElectron = computed(() => (Platform.is.electron ? true : false));
-  /*
-  const isOnline = computed(() =>
-    website.value
-      ? true
-      : SessionStorage.getItem('clinicUsers') === null ||
-        (SessionStorage.getItem('clinicUsers') !== null &&
-          SessionStorage.getItem('clinicUsers').includes('NORMAL')) ||
-        (SessionStorage.getItem('userFacilityTypeCode') !== null &&
-          SessionStorage.getItem('userFacilityTypeCode').includes('FP')) ||
-        SessionStorage.getItem('userFacilityTypeCode').includes('FC') ||
-        SessionStorage.getItem('userFacilityTypeCode').includes('PROVEDOR') ||
-        SessionStorage.getItem('userFacilityTypeCode').includes('APE') ||
-        SessionStorage.getItem('userFacilityTypeCode').includes(
-          'CLINICA_MOVEL'
-        ) ||
-        SessionStorage.getItem('userFacilityTypeCode').includes('BRIGADA_MOVEL')
-  );
-*/
+
   const isOnline = computed(() => {
     if (website.value) return true;
 

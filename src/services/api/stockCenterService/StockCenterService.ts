@@ -11,7 +11,7 @@ const { alertSucess, alertError, alertWarning } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
 
 const stockCenter = useRepo(StockCenter);
-const stockCenterDexie = StockCenter.entity;
+const stockCenterDexie = db[StockCenter.entity];
 
 export default {
   // Axios API call
@@ -56,17 +56,18 @@ export default {
           stockCenter.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
+        })
+        .catch((error: any) => {
+          console.log(error);
         });
     }
   },
 
   //mobile
   getMobile() {
-    return db[stockCenterDexie]
+    return stockCenterDexie
       .toArray()
       .then((rows: any) => {
         stockCenter.save(rows);
@@ -97,7 +98,7 @@ export default {
   },
   //mobile
   addBulkMobile(params: string) {
-    return db[stockCenterDexie]
+    return stockCenterDexie
       .bulkPut(params)
       .then(() => {
         stockCenter.save(params);
@@ -114,5 +115,8 @@ export default {
 
   getStockCenter() {
     return stockCenter.withAllRecursive(3).where('prefered', true).first();
+  },
+  getAllFromStorage() {
+    return stockCenter.all();
   },
 };

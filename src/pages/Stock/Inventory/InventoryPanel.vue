@@ -186,16 +186,15 @@
                 </q-icon>
               </template>
             </q-input>
-
             <q-input
               dense
               outlined
-              :disable="isEndDateDisabled"
+              disable
               class="col q-ma-sm"
-              v-model="endDate"
+              v-model="closeDate"
               ref="dataFecho"
               label="Data de Fecho"
-              v-if="isDataFechoVisible"
+              lazy-rules
             >
               <template v-slot:append>
                 <q-icon name="event" class="cursor-pointer">
@@ -205,7 +204,7 @@
                     transition-hide="scale"
                   >
                     <q-date
-                      v-model="endDate"
+                      v-model="closeDate"
                       mask="DD-MM-YYYY"
                       :options="blockData"
                     >
@@ -268,7 +267,6 @@
 
 <script setup>
 import { ref, computed, onMounted, provide, reactive } from 'vue';
-import { InventoryStockAdjustment } from 'src/stores/models/stockadjustment/InventoryStockAdjustment';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import moment from 'moment';
@@ -289,17 +287,23 @@ import StockOperationTypeService from 'src/services/api/stockOperationTypeServic
 import { useInventoryStockAdjustment } from 'src/composables/stockAdjustment/InventoryStockAdjustmentMethod';
 import StockAlertService from 'src/services/api/stockAlertService/StockAlertService';
 import { v4 as uuidv4 } from 'uuid';
+import { useDateUtils } from 'src/composables/shared/dateUtils/dateUtils';
 
-const { isMobile, isOnline } = useSystemUtils();
+const { isMobile } = useSystemUtils();
 const inventoryMethod = useInventory();
 const router = useRouter();
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertWarningAction } = useSwal();
 const inventoryStockAdjMethod = useInventoryStockAdjustment();
+const {
+  getDateFromHyphenYYYYMMDD,
+  getDateFromHyphenDDMMYYYY,
+  getPreviousStatisticMonthsDateFromDate,
+} = useDateUtils();
 const inventoryTemp = reactive(ref());
 const isDataFechoVisible = ref(false);
 const isEndDateDisabled = ref(false);
-let step = 'display';
+const closeDate = ref();
 const title = ref('Detalhes do Inventário');
 const processedAdjustments = [];
 const contentStyle = {
@@ -426,8 +430,8 @@ const saveAllAdjustments = (inventory, hasAdjustments) => {
 const closeClassInventory = (inventory) => {
   if (!isMobile.value) {
     inventory.endDate = isDataFechoVisible.value
-      ? endDate.value
-      : moment.utc(new Date()).local().format('DD-MM-YYYY');
+      ? inventory.endDate
+      : moment.utc(new Date()).local().format('YYYY-MM-DD');
     InventoryService.apiClose(inventory.id, inventory.endDate).then((resp) => {
       step = 'display';
       InventoryService.closeInventoryPinia(inventory, inventory.endDate);
@@ -437,9 +441,9 @@ const closeClassInventory = (inventory) => {
     });
   } else {
     inventory.open = false;
-    inventory.endDate = isDataFechoVisible.value
-      ? endDate.value
-      : moment.utc(new Date()).local().format('DD-MM-YYYY');
+    inventory.endDate = moment(
+      getDateFromHyphenDDMMYYYY(closeDate.value)
+    ).format('YYYY-MM-DD');
     inventory.adjustments.forEach((item) => {
       item.inventory_id = inventory.id;
       item.finalised = true;
@@ -449,9 +453,8 @@ const closeClassInventory = (inventory) => {
       InventoryStockAdjustmentService.putMobile(item);
     });
     inventory.open = false;
-    // inventory.endDate = new Date();
     InventoryService.putMobile(inventory).then(() => {
-      //InventoryService.closeInventoryPinia(inventory);
+      InventoryStockAdjustmentService.apiGetAllMobile();
       closeLoading();
       alertSucess('Operação efectuada com sucesso.');
     });
@@ -564,56 +567,6 @@ const startDate = computed(() => {
     : '';
 });
 
-const endDate = computed(() => {
-  const currentDate = new Date();
-  const startDate = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() - 1,
-    21
-  );
-
-  const endDate = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth(),
-    20
-  );
-
-  if (currInventory.value.endDate === null) {
-    const inventory = InventoryService.getInventoryInPreviousMonth(
-      startDate,
-      endDate
-    );
-
-    if (inventory === null) {
-      const hasInventoryBeforeDate = InventoryService.hasInventoryBeforeDate(
-        new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 20)
-      );
-
-      if (hasInventoryBeforeDate) {
-        return moment
-          .utc(new Date(new Date().getFullYear(), new Date().getMonth(), 20))
-          .local()
-          .format('DD-MM-YYYY');
-      } else {
-        return moment.utc(new Date()).local().format('DD-MM-YYYY');
-      }
-    } else {
-      if (InventoryService.isDateBetween21And25(new Date())) {
-        // Mostrar as datas de fecho entre 21 a 25
-        isEndDateDisabled.value = false;
-        isDataFechoVisible.value = true;
-        return moment.utc(new Date()).local().format('DD-MM-YYYY');
-      } else {
-        isDataFechoVisible.value = false;
-        return moment.utc(new Date()).local().format('DD-MM-YYYY');
-      }
-    }
-  } else {
-    isEndDateDisabled.value = true;
-    return moment.utc(currInventory.value.endDate).local().format('DD-MM-YYYY');
-  }
-});
-
 const currInventory = computed(() => {
   return InventoryService.getInvnetoryById(
     localStorage.getItem('currInventory')
@@ -624,134 +577,33 @@ onMounted(() => {
   closeLoading();
 
   const currentDate = new Date();
-  const startDate = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() - 1,
-    21
-  );
-
-  const endDate = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth(),
-    20
-  );
+  closeDate.value =
+    currInventory.value.endDate !== null
+      ? moment(currInventory.value.endDate).format('DD-MM-YYYY')
+      : moment.utc(currentDate).local().format('DD-MM-YYYY');
 
   inventoryTemp.value = currInventory.value;
-  const inventory = InventoryService.getInventoryInPreviousMonth(
-    startDate,
-    endDate
-  );
-
-  if (!inventory) {
-    isDataFechoVisible.value = true;
-    const lastDateStatisticBeforePreviousMonth = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() - 2,
-      20
-    );
-    // verificar os meses antes do mes anterior se existe algum
-    const hastInventories = InventoryService.hasInventoryBeforeDate(
-      lastDateStatisticBeforePreviousMonth
-    );
-
-    if (hastInventories) {
-      currInventory.value.startDate = moment
-        .utc(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 20))
-        .local()
-        .format('DD-MM-YYYY');
-    } else {
-      if (InventoryService.isDateBetween21And25(new Date())) {
-        // Mostrar as datas de fecho entre 21 a 25
-        isEndDateDisabled.value = false;
-        isDataFechoVisible.value = true;
-        return moment.utc(new Date()).local().format('DD-MM-YYYY');
-      } else {
-        isDataFechoVisible.value = false;
-        return moment.utc(new Date()).local().format('DD-MM-YYYY');
-      }
-    }
-  } else {
-    if (InventoryService.isDateBetween21And25(new Date())) {
-      // Mostrar as datas de fecho entre 21 a 25
-      isEndDateDisabled.value = false;
-      isDataFechoVisible.value = true;
-      return moment.utc(new Date()).local().format('DD-MM-YYYY');
-    } else {
-      isDataFechoVisible.value = false;
-      return moment.utc(new Date()).local().format('DD-MM-YYYY');
-    }
-  }
 });
 
 const blockData = (date) => {
   const currentDate = new Date();
+
   const startDate = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() - 1,
-    21
+    getPreviousStatisticMonthsDateFromDate(currentDate)[0].startDate
   );
+
   const endDate = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth(),
-    20
-  );
-  //
-
-  const lastDateStatisticBeforePreviousMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() - 2,
-    20
-  );
-  // verificar os meses antes do mes anterior se existe algum
-  const hastInventories = InventoryService.hasInventoryBeforeDate(
-    lastDateStatisticBeforePreviousMonth
-  );
-  const inventory = currInventory.value;
-
-  const startDate21 = moment(
-    new Date(currentDate.getFullYear(), currentDate.getMonth(), 21),
-    'YYYY-MM-DD'
+    getPreviousStatisticMonthsDateFromDate(currentDate)[0].endDate
   );
 
-  const inventoryClosedInPreviousMonth =
-    InventoryService.getInventoryInPreviousMonth(startDate, endDate);
-
-  // se startDate for deste mes.
-  if (inventory.endDate === null) {
-    // se tiver algum inventario fechado no mes estatistico anterior
-    if (inventoryClosedInPreviousMonth) {
-      if (InventoryService.isDateBetween21And25(new Date())) {
-        // Mostrar as datas de fecho entre 21 a 25
-
-        return (
-          date >= startDate21.format('YYYY/MM/DD') &&
-          date <= startDate21.add(4, 'd').format('YYYY/MM/DD')
-        );
-      } else {
-        return true;
-      }
-    } else {
-      // verifica se nao existe nenhum invetario fechado no mes anterior no entanto existe algum inventario no passado
-      if (hastInventories) {
-        return (
-          date ===
-          moment(
-            new Date(new Date().getFullYear(), new Date().getMonth(), 20)
-          ).format('YYYY/MM/DD')
-        );
-      } else {
-        if (InventoryService.isDateBetween21And25(new Date())) {
-          // Mostrar as datas de fecho entre 21 a 25
-
-          return (
-            date >= startDate21.format('YYYY/MM/DD') &&
-            date <= startDate21.add(4, 'd').format('YYYY/MM/DD')
-          );
-        } else {
-          return true;
-        }
-      }
-    }
+  const inventory = InventoryService.getInventoryInPreviousMonth(
+    startDate,
+    endDate
+  );
+  if (InventoryService.isDateBetween21And25(currentDate) && !inventory) {
+    return date === moment(endDate).format('YYYY/MM/DD');
+  } else {
+    return date === moment(currentDate).format('YYYY/MM/DD');
   }
 };
 

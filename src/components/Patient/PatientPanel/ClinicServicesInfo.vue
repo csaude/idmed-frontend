@@ -86,8 +86,8 @@ const currIdentifier = computed(() => {
 
 //Hook
 onMounted(() => {
-  console.log(isProvincialInstalation());
-  console.log(isProvincialInstalationMobileClinic());
+  // console.log(isProvincialInstalation());
+  // console.log(isProvincialInstalationMobileClinic());
   /*
   console.log(isProvincialInstalation());
   console.log(isProvincialInstalationPharmacysMode());

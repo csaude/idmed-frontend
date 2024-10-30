@@ -11,7 +11,7 @@ import ClinicalServiceSector from 'src/stores/models/ClinicalServiceClinicSector
 const clinicalService = useRepo(ClinicalService);
 const clinicalServiceAttribute = useRepo(ClinicalServiceAttribute);
 const clinicalServiceSector = useRepo(ClinicalServiceSector);
-const clinicalServiceDexie = ClinicalService.entity;
+const clinicalServiceDexie = db[ClinicalService.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -43,7 +43,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -64,14 +64,11 @@ export default {
           clinicalService.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
-          // console.log(error);
+          console.log(error);
         });
     }
   },
@@ -106,7 +103,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[clinicalServiceDexie]
+    return clinicalServiceDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         clinicalServiceAttributeType.save(JSON.parse(params));
@@ -116,7 +113,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[clinicalServiceDexie]
+    return clinicalServiceDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         clinicalService.save(params);
@@ -128,7 +125,7 @@ export default {
       });
   },
   getMobile() {
-    return db[clinicalServiceDexie]
+    return clinicalServiceDexie
       .toArray()
       .then((rows: any) => {
         clinicalService.save(rows);
@@ -139,7 +136,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[clinicalServiceDexie]
+    return clinicalServiceDexie
       .delete(paramsId)
       .then(() => {
         clinicalService.destroy(paramsId);
@@ -151,7 +148,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[clinicalServiceDexie]
+    return clinicalServiceDexie
       .bulkPut(params)
       .then(() => {
         clinicalService.save(params);
@@ -161,7 +158,7 @@ export default {
       });
   },
   async localDbGetById(id: any) {
-    return db[clinicalServiceDexie]
+    return clinicalServiceDexie
       .where('id')
       .equalsIgnoreCase(id)
       .first()
@@ -216,5 +213,13 @@ export default {
 
   getClinicalServiceByCode(code: string) {
     return clinicalService.query().where('code', code).first();
+  },
+
+  //Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await clinicalServiceDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
   },
 };

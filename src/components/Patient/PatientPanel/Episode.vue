@@ -175,7 +175,6 @@ import { useSwal } from 'src/composables/shared/dialog/dialog';
 import episodeService from 'src/services/api/episode/episodeService';
 import AddEditEpisode from 'components/Patient/PatientPanel/AddEditEpisode.vue';
 import { computed, provide, inject, ref } from 'vue';
-// import patientVisitDetailsService from 'src/services/api/patientVisitDetails/patientVisitDetailsService';
 import packService from 'src/services/api/pack/packService';
 import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
 import { useLoading } from 'src/composables/shared/loading/loading';
@@ -271,7 +270,7 @@ const doOnConfirm = () => {
       const episodes = episodeService.getlast3EpisodesByIdentifier(
         currIdentifier.value.id
       );
-      if (checkIsReferedToRemove(episodes)) {
+      if (episodes.length > 0 && checkIsReferedToRemove(episodes)) {
         episodeService.deletePinia(episodes[0].id);
       }
       closeLoading();

@@ -7,7 +7,7 @@ import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const tBScreening = useRepo(TBScreening);
-const tBScreeningDexie = TBScreening.entity;
+const tBScreeningDexie = db[TBScreening.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -37,7 +37,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -58,7 +58,7 @@ export default {
           tBScreening.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -82,7 +82,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[tBScreeningDexie]
+    return tBScreeningDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         tBScreening.save(JSON.parse(params));
@@ -92,14 +92,12 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[tBScreeningDexie]
-      .put(JSON.parse(JSON.stringify(params)))
-      .then(() => {
-        tBScreening.save(JSON.parse(JSON.stringify(params)));
-      });
+    return tBScreeningDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
+      tBScreening.save(JSON.parse(JSON.stringify(params)));
+    });
   },
   getMobile() {
-    return db[tBScreeningDexie]
+    return tBScreeningDexie
       .toArray()
       .then((rows: any) => {
         tBScreening.save(rows);
@@ -110,7 +108,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[tBScreeningDexie]
+    return tBScreeningDexie
       .delete(paramsId)
       .then(() => {
         tBScreening.destroy(paramsId);
@@ -121,15 +119,22 @@ export default {
         console.log(error);
       });
   },
-  addBulkMobile(params: any) {
-    return db[tBScreeningDexie]
-      .bulkAdd(params)
-      .then(() => {
-        tBScreening.save(params);
-      })
+  addBulkMobile() {
+    const tBScreeningFromPinia = this.getAllFromStorageForDexie();
+
+    return tBScreeningDexie
+      .bulkAdd(tBScreeningFromPinia)
       .catch((error: any) => {
         console.log(error);
       });
+  },
+  async getTBScreeningsByVisitIdMobile(id: string) {
+    const tBScreenings = await tBScreeningDexie
+      .where('patient_visit_id')
+      .equalsIgnoreCase(id)
+      .toArray();
+    tBScreening.save(tBScreenings);
+    return tBScreenings;
   },
   async apiGetAll(offset: number, max: number) {
     return this.get(offset);
@@ -141,7 +146,24 @@ export default {
   getAllFromStorage() {
     return tBScreening.all();
   },
+  getAllFromStorageForDexie() {
+    return tBScreening.makeHidden(['visit']).all();
+  },
   deleteAllFromStorage() {
     tBScreening.flush();
   },
+    // Dexie Block
+    async getAllByIDsFromDexie(ids: []) {
+      return await tBScreeningDexie
+        .where('id')
+        .anyOfIgnoreCase(ids)
+        .toArray();
+    },
+
+    async getAllByPatientVisitIDsFromDexie(ids: []) {
+      return await tBScreeningDexie
+        .where('patient_visit_id')
+        .anyOfIgnoreCase(ids)
+        .toArray();
+    },
 };

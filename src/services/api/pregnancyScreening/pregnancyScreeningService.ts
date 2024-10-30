@@ -6,7 +6,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 
 const pregnancyScreening = useRepo(PregnancyScreening);
-const pregnancyScreeningDexie = PregnancyScreening.entity;
+const pregnancyScreeningDexie = db[PregnancyScreening.entity];
 
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -35,7 +35,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -56,7 +56,7 @@ export default {
           pregnancyScreening.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -80,21 +80,21 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[pregnancyScreeningDexie]
+    return pregnancyScreeningDexie
       .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         pregnancyScreening.save(JSON.parse(JSON.stringify(params)));
       });
   },
   putMobile(params: string) {
-    return db[pregnancyScreeningDexie]
+    return pregnancyScreeningDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         pregnancyScreening.save(JSON.parse(JSON.stringify(params)));
       });
   },
   getMobile() {
-    return db[pregnancyScreeningDexie]
+    return pregnancyScreeningDexie
       .toArray()
       .then((rows: any) => {
         pregnancyScreening.save(rows);
@@ -105,7 +105,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[pregnancyScreeningDexie]
+    return pregnancyScreeningDexie
       .delete(paramsId)
       .then(() => {
         pregnancyScreening.destroy(paramsId);
@@ -116,15 +116,21 @@ export default {
         console.log(error);
       });
   },
-  addBulkMobile(params: any) {
-    return db[pregnancyScreeningDexie]
-      .bulkPut(params)
-      .then(() => {
-        pregnancyScreening.save(params);
-      })
+  addBulkMobile() {
+    const pregnancyScreeningFromPinia = this.getAllFromStorageForDexie();
+    return pregnancyScreeningDexie
+      .bulkPut(pregnancyScreeningFromPinia)
       .catch((error: any) => {
         console.log(error);
       });
+  },
+  async getPregnancyScreeningsByVisitIdMobile(id: string) {
+    const pregnancyScreenings = await pregnancyScreeningDexie
+      .where('patient_visit_id')
+      .equalsIgnoreCase(id)
+      .toArray();
+    pregnancyScreening.save(pregnancyScreenings);
+    return pregnancyScreenings;
   },
   async apiGetAll(offset: number, max: number) {
     return await api().get(
@@ -153,7 +159,25 @@ export default {
   getAllFromStorage() {
     return pregnancyScreening.all();
   },
+  getAllFromStorageForDexie() {
+    return pregnancyScreening.makeHidden(['visit']).all();
+  },
   deleteAllFromStorage() {
     pregnancyScreening.flush();
+  },
+
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await pregnancyScreeningDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+  },
+
+  async getAllByPatientVisitIDsFromDexie(ids: []) {
+    return await pregnancyScreeningDexie
+      .where('patient_visit_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
   },
 };
