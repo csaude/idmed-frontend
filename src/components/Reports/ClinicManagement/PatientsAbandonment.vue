@@ -7,7 +7,8 @@
       :closeVisible="true"
       @closeSection="closeSection(params)"
       bgColor="bg-orange-5"
-    >Serviço {{ serviceAux !== null ? serviceAux.code : '' }}: Pacientes Abandono
+      >Serviço {{ serviceAux !== null ? serviceAux.code : '' }}: Pacientes
+      Abandono
     </ListHeader>
     <ListHeader
       v-else
@@ -16,7 +17,7 @@
       :closeVisible="true"
       @closeSection="closeSection(params)"
       bgColor="bg-orange-5"
-    >Serviço {{ selectedService !== null ? selectedService.code : '' }}:
+      >Serviço {{ selectedService !== null ? selectedService.code : '' }}:
       Pacientes Abandono
     </ListHeader>
     <div class="param-container">
@@ -85,11 +86,13 @@ const initReportProcessing = (params) => {
   progress.value = 0.001;
   if (isOnline.value) {
     updateParamsOnLocalStrage(params, isReportClosed);
-    Report.apiInitReportProcess('patientsAbandonmentReport', params).then((resp) => {
-      setTimeout(() => {
-        getProcessingStatus(params);
-      }, 3000);
-    });
+    Report.apiInitReportProcess('patientsAbandonmentReport', params).then(
+      (resp) => {
+        setTimeout(() => {
+          getProcessingStatus(params);
+        }, 3000);
+      }
+    );
   } else {
     updateParamsOnLocalStrage(params, isReportClosed);
     PatientHistoryMobileService.getDataLocalDb(params);
@@ -99,26 +102,28 @@ const initReportProcessing = (params) => {
 };
 
 const getProcessingStatus = (params) => {
-  Report.getProcessingStatus('patientsAbandonmentReport', params).then((resp) => {
-    if (resp.data.progress > 0.001) {
-      progress.value = resp.data.progress;
-      if (progress.value < 100) {
-        updateParamsOnLocalStrage(params, isReportClosed);
-        params.progress = resp.data.progress;
+  Report.getProcessingStatus('patientsAbandonmentReport', params).then(
+    (resp) => {
+      if (resp.data.progress > 0.001) {
+        progress.value = resp.data.progress;
+        if (progress.value < 100) {
+          updateParamsOnLocalStrage(params, isReportClosed);
+          params.progress = resp.data.progress;
+          setTimeout(() => {
+            getProcessingStatus(params);
+          }, 3000);
+        } else {
+          progress.value = 100;
+          params.progress = 100;
+          updateParamsOnLocalStrage(params, isReportClosed);
+        }
+      } else {
         setTimeout(() => {
           getProcessingStatus(params);
         }, 3000);
-      } else {
-        progress.value = 100;
-        params.progress = 100;
-        updateParamsOnLocalStrage(params, isReportClosed);
       }
-    } else {
-      setTimeout(() => {
-        getProcessingStatus(params);
-      }, 3000);
     }
-  });
+  );
 };
 
 const generateReport = (id, fileType, params) => {
@@ -126,15 +131,11 @@ const generateReport = (id, fileType, params) => {
   if (isOnline.value) {
     if (fileType === 'PDF') {
       downloadingPdf.value = true;
-      patientsAbandonmentTS.downloadPDF(
-          id, fileType, params
-      );
+      patientsAbandonmentTS.downloadPDF(id, fileType, params);
       downloadingPdf.value = false;
     } else {
       downloadingXls.value = true;
-      patientsAbandonmentTS.downloadExcel(
-          id, fileType, params
-      );
+      patientsAbandonmentTS.downloadExcel(id, fileType, params);
       downloadingXls.value = false;
     }
   } else {

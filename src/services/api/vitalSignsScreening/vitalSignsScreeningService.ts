@@ -83,9 +83,9 @@ export default {
   // Mobile
   addMobile(params: string) {
     return vitalSignsScreeningDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
-        vitalSignsScreening.save(JSON.parse(params));
+        vitalSignsScreening.save(JSON.parse(JSON.stringify(params)));
         // alertSucess('O Registo foi efectuado com sucesso');
       })
       .catch((error: any) => {
@@ -97,7 +97,7 @@ export default {
     return vitalSignsScreeningDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
-        vitalSignsScreening.save(JSON.parse(params));
+        vitalSignsScreening.save(JSON.parse(JSON.stringify(params)));
       });
   },
   getMobile() {

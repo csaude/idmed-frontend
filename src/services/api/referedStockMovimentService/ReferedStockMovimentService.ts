@@ -137,7 +137,7 @@ export default {
 
   addMobile(params: string) {
     return db[referedStockMovimentDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         referedStockMoviment.save(JSON.parse(JSON.stringify(params)));
       });

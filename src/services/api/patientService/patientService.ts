@@ -22,6 +22,7 @@ import rAMScreeningService from '../rAMScreening/rAMScreeningService';
 import tBScreeningService from '../tBScreening/tBScreeningService';
 import adherenceScreeningService from '../adherenceScreening/adherenceScreeningService';
 import pregnancyScreeningService from '../pregnancyScreening/pregnancyScreeningService';
+import { Notify } from 'quasar';
 
 const patient = useRepo(Patient);
 const patientDexie = db[Patient.entity];
@@ -120,7 +121,7 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return patientDexie.add(JSON.parse(JSON.stringify(params))).then(() => {
+    return patientDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
       patient.save(JSON.parse(JSON.stringify(params)));
       return params;
     });
@@ -315,7 +316,20 @@ export default {
     // const allPatients = [];
     let hasMorePatients = true;
 
+    let percentage = 0;
+
+    const notif = Notify.create({
+      group: false, // required to be updatable
+      timeout: 0, // we want to be in control when it gets dismissed
+      spinner: true,
+      message: 'Carregando dados de pacientes ...',
+      caption: '1%',
+      color: 'white',
+      textColor: 'primary',
+    });
+
     while (hasMorePatients) {
+      percentage = Math.min(100, percentage + Math.floor(Math.random() * 22));
       const response = await this.apiGetPatientsByClinicSectorId(
         clinicSectorId,
         offset,
@@ -325,12 +339,23 @@ export default {
       if (patients.length > 0) {
         //  allPatients.push(...patients);
         patient.save(patients);
+        notif({
+          caption: `${percentage}%`,
+        });
         offset += patients.length;
       } else {
+        percentage = 100;
         hasMorePatients = false;
       }
     }
-
+    percentage = 100;
+    notif({
+      icon: 'done', // we add an icon
+      spinner: false, // we reset the spinner setting so the icon can be displayed
+      message: 'Terminado!',
+      timeout: 2500, // we will timeout it in 2.5s
+      caption: `${percentage}%`,
+    });
     return hasMorePatients;
   },
 
@@ -511,13 +536,15 @@ export default {
   },
 
   async getPatientByIdMobile(id: string) {
-    return patientDexie
-      .where('id')
-      .equalsIgnoreCase(id)
-      .first()
-      .then((row: any) => {
-        return row;
-      });
+    const patient = await patientDexie.where('id').equalsIgnoreCase(id).first();
+
+    const [identifiers] = await Promise.all([
+      patientServiceIdentifierService.getAllByPatientIDsFromDexie(patient.id),
+    ]);
+
+    patient.identifiers = identifiers;
+
+    return patient;
   },
 
   async getAllPatientFromDexie() {

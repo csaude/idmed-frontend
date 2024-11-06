@@ -32,11 +32,11 @@ export default {
       const identifier =
         pack.patientvisitDetails.episode.patientServiceIdentifier;
       const therapeuticRegimen =
-        pack.patientvisitDetails.prescription.prescriptionDetails
+        pack.patientvisitDetails.prescription.prescriptionDetails[0]
           .therapeuticRegimen;
 
       const dispenseType =
-        pack.patientvisitDetails.prescription.prescriptionDetails.dispenseType;
+        pack.patientvisitDetails.prescription.prescriptionDetails[0].dispenseType;
 
       if (identifier.service.id === reportParams.clinicalService) {
         const patientExpectedReports = new PatientExpectedReport();

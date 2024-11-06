@@ -83,7 +83,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     return spetialPrescriptionMotiveDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         spetialPrescriptionMotive.save(JSON.parse(params));
         // alertSucess('O Registo foi efectuado com sucesso');

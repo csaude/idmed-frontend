@@ -7,7 +7,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 
 const postoAdministrativo = useRepo(PostoAdministrativo);
-const postoAdministrativoDexie = PostoAdministrativo.entity;
+const postoAdministrativoDexie = db[PostoAdministrativo.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -16,9 +16,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile && !isOnline) {
-      this.addMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -94,8 +94,8 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[postoAdministrativoDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return postoAdministrativoDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         postoAdministrativo.save(JSON.parse(params));
         // alertSucess('O Registo foi efectuado com sucesso');
@@ -106,7 +106,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[postoAdministrativoDexie]
+    return postoAdministrativoDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         postoAdministrativo.save(JSON.parse(params));
@@ -118,7 +118,7 @@ export default {
       });
   },
   getMobile() {
-    return db[postoAdministrativoDexie]
+    return postoAdministrativoDexie
       .toArray()
       .then((rows: any) => {
         postoAdministrativo.save(rows);
@@ -129,7 +129,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[postoAdministrativoDexie]
+    return postoAdministrativoDexie
       .delete(paramsId)
       .then(() => {
         postoAdministrativo.destroy(paramsId);
@@ -141,7 +141,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[postoAdministrativoDexie]
+    return postoAdministrativoDexie
       .bulkPut(params)
       .then(() => {
         postoAdministrativo.save(params);

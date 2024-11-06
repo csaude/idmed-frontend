@@ -9,6 +9,8 @@ import { v4 as uuidv4 } from 'uuid';
 import moment from 'moment';
 import InventoryStockAdjustmentService from '../stockAdjustment/InventoryStockAdjustmentService';
 import StockService from '../stockService/StockService';
+import formService from '../formService/formService';
+import clinicalServiceService from '../clinicalServiceService/clinicalServiceService';
 
 const { isMobile, isOnline } = useSystemUtils();
 
@@ -255,6 +257,26 @@ export default {
       });
   },
   async getAllByIDsFromDexie(ids: []) {
-    return await drugDexie.where('id').anyOf(ids).toArray();
+    const drugs = await drugDexie.where('id').anyOf(ids).toArray();
+
+    const formsIds = drugs.map((drug: any) => drug.form_id);
+
+    const clinicalServiceIds = drugs.map(
+      (drug: any) => drug.clinical_service_id
+    );
+
+    const [forms, clinicalServices] = await Promise.all([
+      formService.getAllByIDsFromDexie(formsIds),
+      clinicalServiceService.getAllByIDsFromDexie(clinicalServiceIds),
+    ]);
+
+    drugs.map((drug: any) => {
+      drug.form = forms.find((form: any) => form.id === drug.form_id);
+      drug.clinicalService = clinicalServices.find(
+        (clinicalService: any) =>
+          clinicalService.id === drug.clinical_service_id
+      );
+    });
+    return drugs;
   },
 };

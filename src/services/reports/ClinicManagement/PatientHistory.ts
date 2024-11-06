@@ -22,7 +22,7 @@ const img = new Image();
 img.src = 'data:image/png;base64,' + MOHIMAGELOG;
 
 export default {
-  async downloadPDF(province, startDate, endDate, result, tipoPacient) {
+  async downloadPDF(province, startDate, endDate, result, tipoPacient, loading) {
     const fontBase64 = await fetchFontAsBase64(fontPath);
     const doc = new JsPDF({
       orientation: 'l',
@@ -221,10 +221,10 @@ export default {
       window.open(doc.output('bloburl'));
     } else {
       const pdfOutput = doc.output();
-      DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput);
+      DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput, loading);
     }
   },
-  async downloadExcel(province, startDate, endDate, result, tipoPacient) {
+  async downloadExcel(province, startDate, endDate, result, tipoPacient, loading) {
     const rows = result;
     const data = this.createArrayOfArrayRow(rows);
 
@@ -495,7 +495,7 @@ export default {
     } else {
       const titleFile = 'HistoricoDeLevantamento.xlsx';
       console.log('result' + titleFile);
-      DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob);
+      DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob, loading);
     }
   },
   createArrayOfArrayRow(rows) {

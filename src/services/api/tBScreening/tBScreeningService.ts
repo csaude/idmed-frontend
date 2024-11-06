@@ -83,9 +83,9 @@ export default {
   // Mobile
   addMobile(params: string) {
     return tBScreeningDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
-        tBScreening.save(JSON.parse(params));
+        tBScreening.save(JSON.parse(JSON.stringify(params)));
       })
       .catch((error: any) => {
         console.log(error);

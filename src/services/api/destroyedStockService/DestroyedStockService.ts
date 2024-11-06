@@ -12,7 +12,7 @@ const { closeLoading, showloading } = useLoading();
 
 const { isMobile, isOnline } = useSystemUtils();
 const destroyedStockRepo = useRepo(destroyedStock);
-const destroyedStockDexie = DestroyedStock.entity;
+const destroyedStockDexie = db[DestroyedStock.entity];
 
 export default {
   // Axios API call
@@ -110,15 +110,15 @@ export default {
   // Mobile
 
   addMobile(params: string) {
-    return db[destroyedStockDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return destroyedStockDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         destroyedStockRepo.save(JSON.parse(JSON.stringify(params)));
       });
   },
 
   async putMobile(params: any) {
-    return db[destroyedStockDexie]
+    return destroyedStockDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         destroyedStockRepo.save(JSON.parse(JSON.stringify(params)));
@@ -126,7 +126,7 @@ export default {
   },
 
   getMobile() {
-    return db[destroyedStockDexie]
+    return destroyedStockDexie
       .toArray()
       .then((rows: any) => {
         destroyedStockRepo.save(rows);
@@ -137,17 +137,17 @@ export default {
   },
 
   getDestroyedStocksMobile() {
-    const rows = db[destroyedStockDexie].toArray();
+    const rows = destroyedStockDexie.toArray();
     return rows;
   },
 
   async getReferedStockMovimentsMobile() {
-    const rows = await db[destroyedStockDexie].toArray();
+    const rows = await destroyedStockDexie.toArray();
     return rows;
   },
 
   getAllByClinicMobile(clinicId: any) {
-    return db[destroyedStockDexie]
+    return destroyedStockDexie
       .where('clinic_id')
       .equalsIgnoreCase(clinicId)
       .toArray()
@@ -158,7 +158,7 @@ export default {
   },
 
   getBystockMobile(stock: any) {
-    return db[destroyedStockDexie]
+    return destroyedStockDexie
       .where('stock_id')
       .equalsIgnoreCase(stock.id)
       .toArray()
@@ -169,7 +169,7 @@ export default {
   },
 
   async localDbGetAll() {
-    return db[destroyedStockDexie].toArray().then((rows: any) => {
+    return destroyedStockDexie.toArray().then((rows: any) => {
       destroyedStockRepo.save(rows);
       return rows;
     });

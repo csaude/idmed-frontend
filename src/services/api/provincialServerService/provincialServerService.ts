@@ -7,7 +7,7 @@ import db from '../../../stores/dexie';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const provincialServer = useRepo(ProvincialServer);
-const provincialServerDexie = ProvincialServer.entity;
+const provincialServerDexie = db[ProvincialServer.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -91,21 +91,21 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[provincialServerDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return provincialServerDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         provincialServer.save(JSON.parse(JSON.stringify(params)));
       });
   },
   putMobile(params: string) {
-    return db[provincialServerDexie]
+    return provincialServerDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         provincialServer.save(JSON.parse(JSON.stringify(params)));
       });
   },
   getMobile() {
-    return db[provincialServerDexie]
+    return provincialServerDexie
       .toArray()
       .then((rows: any) => {
         provincialServer.save(rows);
@@ -116,7 +116,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[provincialServerDexie]
+    return provincialServerDexie
       .delete(paramsId)
       .then(() => {
         provincialServer.destroy(paramsId);
@@ -128,7 +128,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[provincialServerDexie]
+    return provincialServerDexie
       .bulkPut(params)
       .then(() => {
         provincialServer.save(params);

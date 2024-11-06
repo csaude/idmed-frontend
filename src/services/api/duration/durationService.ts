@@ -92,7 +92,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     return durationDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         duration.save(JSON.parse(params));
       })

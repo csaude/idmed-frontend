@@ -16,16 +16,16 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.putMobile(params);
+      return this.putMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
     if (isMobile.value && !isOnline.value) {
-      this.getMobile();
+      return this.getMobile();
     } else {
-      this.getWeb(offset);
+      return this.getWeb(offset);
     }
   },
   async patch(uuid: string, params: string) {
@@ -93,7 +93,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     return systemConfigsDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         systemConfigs.save(JSON.parse(params));
       })

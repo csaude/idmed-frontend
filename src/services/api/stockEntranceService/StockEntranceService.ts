@@ -11,7 +11,7 @@ const { closeLoading, showloading } = useLoading();
 const { isMobile, isOnline } = useSystemUtils();
 const { alertSucess, alertError } = useSwal();
 const stockEntrance = useRepo(StockEntrance);
-const stockEntranceDexie = StockEntrance.entity;
+const stockEntranceDexie = db[StockEntrance.entity];
 
 export default {
   // Axios API call
@@ -88,11 +88,11 @@ export default {
   },
 
   async getStockEntrancesByIds(entranceIds: any) {
-    return db[stockEntranceDexie].where('id').anyOf(entranceIds).toArray();
+    return stockEntranceDexie.where('id').anyOf(entranceIds).toArray();
   },
 
   addBulkMobile(params: string) {
-    return db[stockEntranceDexie]
+    return stockEntranceDexie
       .bulkPut(params)
       .then(() => {
         stockEntrance.save(params);
@@ -180,15 +180,15 @@ export default {
   //Mobile
 
   addMobile(params: string) {
-    return db[stockEntranceDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return stockEntranceDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         stockEntrance.save(JSON.parse(JSON.stringify(params)));
       });
   },
 
   async putMobile(params: any) {
-    return db[stockEntranceDexie]
+    return stockEntranceDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         stockEntrance.save(JSON.parse(JSON.stringify(params)));
@@ -197,7 +197,7 @@ export default {
 
   async getMobile() {
     try {
-      const rows = await db[stockEntranceDexie].toArray();
+      const rows = await stockEntranceDexie.toArray();
       stockEntrance.save(rows);
     } catch (error) {
       // alertError('Aconteceu um erro inesperado nesta operação.');
@@ -206,7 +206,7 @@ export default {
   },
 
   getByStockEntranceMobile(stockEntrance: any) {
-    return db[stockEntranceDexie]
+    return stockEntranceDexie
       .where('id')
       .equalsIgnoreCase(stockEntrance.id)
       .toArray()
@@ -218,7 +218,7 @@ export default {
 
   async deleteMobile(paramsId: any) {
     try {
-      await db[stockEntranceDexie].delete(paramsId);
+      await stockEntranceDexie.delete(paramsId);
       stockEntrance.destroy(paramsId);
       alertSucess('O Registo foi removido com sucesso');
     } catch (error) {
@@ -228,7 +228,7 @@ export default {
   },
 
   apiFetchByIdMobile(id: any) {
-    return db[stockEntranceDexie]
+    return stockEntranceDexie
       .where('id')
       .equalsIgnoreCase(id)
       .first()
@@ -239,7 +239,7 @@ export default {
   },
 
   apiGetAllByClinicIdMobile(id: any) {
-    return db[stockEntranceDexie]
+    return stockEntranceDexie
       .where('clinic_id')
       .equalsIgnoreCase(id)
       .toArray()

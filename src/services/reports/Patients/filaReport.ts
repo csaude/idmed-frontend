@@ -207,14 +207,15 @@ export default {
       head: [cols],
       body: data,
     });
-    loadingPDF.value = false;
+    // loadingPDF.value = false;
 
     if (isOnline.value && !isMobile.value) {
       // return doc.save('PacientesActivos.pdf')
       window.open(doc.output('bloburl'));
+      loadingPDF.value = false;
     } else {
       const pdfOutput = doc.output();
-      DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput);
+      DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput, loadingPDF);
     }
 
     // return doc.save(fileName.concat('.pdf'));

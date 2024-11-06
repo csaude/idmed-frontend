@@ -6,7 +6,7 @@ import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const userRole = useRepo(UserRoles);
-const userRoleDexie = UserRoles.entity;
+const userRoleDexie = db[UserRoles.entity];
 
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -14,9 +14,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile && !isOnline) {
-      this.addMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -90,10 +90,10 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[userRoleDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return userRoleDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
-        userRole.save(JSON.parse(params));
+        userRole.save(JSON.parse(JSON.stringify(params)));
         // alertSucess('O Registo foi efectuado com sucesso');
       })
       .catch((error: any) => {
@@ -102,7 +102,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[userRoleDexie]
+    return userRoleDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         userRole.save(JSON.parse(params));
@@ -114,7 +114,7 @@ export default {
       });
   },
   getMobile() {
-    return db[userRoleDexie]
+    return userRoleDexie
       .toArray()
       .then((rows: any) => {
         userRole.save(rows);
@@ -125,7 +125,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[userRoleDexie]
+    return userRoleDexie
       .delete(paramsId)
       .then(() => {
         userRole.destroy(paramsId);
@@ -137,7 +137,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[userRoleDexie]
+    return userRoleDexie
       .bulkAdd(params)
       .then(() => {
         userRole.save(params);

@@ -7,7 +7,7 @@ import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const therapeuticRegimensDrug = useRepo(TherapeuticRegimensDrug);
-const therapeuticRegimensDrugDexie = TherapeuticRegimensDrug.entity;
+const therapeuticRegimensDrugDexie = db[TherapeuticRegimensDrug.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -16,9 +16,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile && !isOnline) {
-      this.addMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -94,8 +94,8 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[therapeuticRegimensDrugDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return therapeuticRegimensDrugDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         therapeuticRegimensDrug.save(JSON.parse(params));
       })
@@ -104,7 +104,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[therapeuticRegimensDrugDexie]
+    return therapeuticRegimensDrugDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         therapeuticRegimensDrug.save(JSON.parse(params));
@@ -114,7 +114,7 @@ export default {
       });
   },
   getMobile() {
-    return db[therapeuticRegimensDrugDexie]
+    return therapeuticRegimensDrugDexie
       .toArray()
       .then((rows: any) => {
         therapeuticRegimensDrug.save(rows);
@@ -125,7 +125,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[therapeuticRegimensDrugDexie]
+    return therapeuticRegimensDrugDexie
       .delete(paramsId)
       .then(() => {
         therapeuticRegimensDrug.destroy(paramsId);
@@ -137,7 +137,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[therapeuticRegimensDrugDexie]
+    return therapeuticRegimensDrugDexie
       .bulkPut(params)
       .then(() => {
         therapeuticRegimensDrug.save(params);

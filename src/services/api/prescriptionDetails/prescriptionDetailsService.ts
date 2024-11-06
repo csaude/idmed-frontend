@@ -88,7 +88,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     return prescriptionDetailsDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         prescriptionDetails.save(JSON.parse(JSON.stringify(params)));
       });
@@ -243,7 +243,7 @@ export default {
     prescriptionsDetails.map((prescriptionsDetail: any) => {
       prescriptionsDetail.therapeuticLine = therapeuticLines.find(
         (therapeuticLine: any) =>
-          (therapeuticLine.id === prescriptionsDetail.therapeutic_line_id)
+          therapeuticLine.id === prescriptionsDetail.therapeutic_line_id
       );
       prescriptionsDetail.therapeuticRegimen = therapeuticRegimens.find(
         (therapeuticRegimen: any) =>

@@ -7,7 +7,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 
 const district = useRepo(District);
-const districtDexie = District.entity;
+const districtDexie = db[District.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -91,8 +91,8 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[districtDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return districtDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         district.save(JSON.parse(params));
       })
@@ -101,7 +101,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[districtDexie]
+    return districtDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         district.save(JSON.parse(params));
@@ -113,7 +113,7 @@ export default {
       });
   },
   getMobile() {
-    return db[districtDexie]
+    return districtDexie
       .toArray()
       .then((rows: any) => {
         district.save(rows);
@@ -124,7 +124,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[districtDexie]
+    return districtDexie
       .delete(JSON.parse(paramsId))
       .then(() => {
         district.destroy(paramsId);
@@ -136,7 +136,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[districtDexie]
+    return districtDexie
       .bulkPut(params)
       .then(() => {
         district.save(params);

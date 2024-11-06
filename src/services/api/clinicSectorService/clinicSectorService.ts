@@ -1,12 +1,9 @@
 import { useRepo } from 'pinia-orm';
 import { ClinicSector } from '../../../stores/models/clinic/ClinicHierarchy';
 import api from '../apiService/apiService';
-import { useStorage } from '@vueuse/core';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { nSQL } from 'nano-sql';
-import { v4 as uuidv4 } from 'uuid';
 import db from '../../../stores/dexie';
 
 const clinicSector = useRepo(ClinicSector);
@@ -20,7 +17,7 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.addMobile(params);
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
@@ -92,7 +89,7 @@ export default {
   addMobile(params: string) {
     showloading();
     return clinicSectorDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         clinicSector.save(params);
         // alertSucess('O Registo foi efectuado com sucesso');

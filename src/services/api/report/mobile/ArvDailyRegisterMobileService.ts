@@ -7,7 +7,7 @@ import db from 'src/stores/dexie';
 import { v4 as uuidv4 } from 'uuid';
 import packService from '../../pack/packService';
 
-const arvDailyRegisterReportDexie = ArvDailyRegisterTempReport.entity;
+const arvDailyRegisterReportDexie = db[ArvDailyRegisterTempReport.entity];
 const arvDailyRegisterRepo = useRepo(ArvDailyRegisterTempReport);
 
 export default {
@@ -28,10 +28,10 @@ export default {
       const identifier =
         pack.patientvisitDetails.episode.patientServiceIdentifier;
       const therapeuticLine =
-        pack.patientvisitDetails.prescription.prescriptionDetails
+        pack.patientvisitDetails.prescription.prescriptionDetails[0]
           .therapeuticLine;
       const therapeuticRegimen =
-        pack.patientvisitDetails.prescription.prescriptionDetails
+        pack.patientvisitDetails.prescription.prescriptionDetails[0]
           .therapeuticRegimen;
       const patientType =
         pack.patientvisitDetails.prescription.patientType === 'N/A'
@@ -39,7 +39,7 @@ export default {
           : pack.patientvisitDetails.prescription.patientType;
 
       const dispenseType =
-        pack.patientvisitDetails.prescription.prescriptionDetails.dispenseType;
+        pack.patientvisitDetails.prescription.prescriptionDetails[0].dispenseType;
 
       if (identifier.service.id === reportParams.clinicalService) {
         const arvDailyRegisterReport = new ArvDailyRegisterTempReport();
@@ -98,52 +98,10 @@ export default {
         this.localDbAddOrUpdate(arvDailyRegisterReport);
       }
     }
-
-    // const patientVisits = await patientVisitService.localDbGetAllPatientVisit();
-    // for (const patientVisit of patientVisits) {
-    //   for (const patientVisitDetail of patientVisit.patientVisitDetails) {
-    //     if (patientVisitDetail.pack !== undefined) {
-    //       const pickupDate = moment(patientVisitDetail.pack.pickupDate).format(
-    //         'YYYY-MM-DD'
-    //       );
-    //       const endDate = moment(params.endDate).format('YYYY-MM-DD');
-    //       const days = moment(endDate).diff(pickupDate, 'days');
-    //       const newDate = moment(patientVisitDetail.pack.pickupDate).add(
-    //         days,
-    //         'd'
-    //       );
-
-    //       const patient = await patientService.getPatientByIdMobile(
-    //         patientVisit.patient.id
-    //       );
-    //       if (
-    //         (patientVisit.visitDate >= reportParams.startDate &&
-    //           patientVisit.visitDate <= reportParams.endDate) ||
-    //         (newDate >= moment(params.startDate) &&
-    //           newDate <= moment(params.endDate))
-    //       ) {
-    //         let identifier;
-    //         if (patient.identifiers.length > 0) {
-    //           identifier = patient.identifiers[0];
-    //         }
-    //         if (!identifier) {
-    //           const identifierAux =
-    //             await patientServiceIdentifierService.localDbGetByPatientId(
-    //               patientVisit.patient.id
-    //             );
-    //           identifier = identifierAux[0];
-    //         }
-    //         if (identifier) {
-    //           //patientVisitDetail.episode.patientServiceIdentifier
-    //         }
-    //       }
-    //     }
-    //   }
-    // }
   },
 
   localDbAddOrUpdate(data: any) {
-    return db[arvDailyRegisterReportDexie]
+    return arvDailyRegisterReportDexie
       .add(JSON.parse(JSON.stringify(data)))
       .then(() => {
         arvDailyRegisterRepo.save(data);
@@ -154,7 +112,7 @@ export default {
   },
 
   async localDbGetAllByReportId(reportId: any) {
-    return db[arvDailyRegisterReportDexie]
+    return arvDailyRegisterReportDexie
       .where('reportId')
       .equalsIgnoreCase(reportId)
       .toArray()

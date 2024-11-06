@@ -1,32 +1,23 @@
 import moment from 'moment';
 export default {
-  downloadFile(fileName, fileType, blop) {
-    // console.log(blop)
-    // var pdfOutput = blop.output()
-    //  console.log(pdfOutput)
-    //  if (typeof cordova !== 'undefined') {
-    //   var blob = new Blob(materialEducativo.blop)
-    //  const bytes = new Uint8Array(materialEducativo.blop)
-    // var UTF8_STR = new Uint8Array(pdfOutput)
-    //   var BINARY_ARR = UTF8_STR.buffer
+  downloadFile(fileName, fileType, blop, loading) {
     const titleFile =
       fileName + moment(new Date()).format('DD-MM-YYYY_HHmmss') + fileType;
     console.log('result' + titleFile);
     saveBlob2File(titleFile, blop);
+
     function saveBlob2File(fileName, blob) {
       const folder = cordova.file.externalRootDirectory + 'Download';
-      //  var folder = 'Download'
       window.resolveLocalFileSystemURL(
         folder,
         function (dirEntry) {
           createFile(dirEntry, fileName, blob);
-          // $q.loading.hide()
         },
         onErrorLoadFs
       );
     }
+
     function createFile(dirEntry, fileName, blob) {
-      // Creates a new file
       dirEntry.getFile(
         fileName,
         { create: true, exclusive: false },
@@ -38,7 +29,6 @@ export default {
     }
 
     function writeFile(fileEntry, dataObj) {
-      // Create a FileWriter object for our FileEntry
       fileEntry.createWriter(function (fileWriter) {
         fileWriter.onwriteend = function () {
           console.log('Successful file write...');
@@ -46,32 +36,38 @@ export default {
         };
 
         fileWriter.onerror = function (error) {
+          loading.value = false
           console.log('Failed file write: ' + error);
         };
         fileWriter.write(dataObj);
       });
     }
+
     function onErrorLoadFs(error) {
+      loading.value = false
       console.log(error);
     }
 
     function onErrorCreateFile(error) {
+      loading.value = false
       console.log('errorr: ' + error.toString());
     }
+
     function openFile() {
       const strTitle = titleFile;
-      console.log('file system 44444: ' + strTitle);
       const folder =
         cordova.file.externalRootDirectory + 'Download/' + strTitle;
-      console.log('file system 2222: ' + folder);
       const documentURL = decodeURIComponent(folder);
       cordova.plugins.fileOpener2.open(documentURL, 'application/pdf', {
         error: function (e) {
-          console.log('file system open3333366: ' + e + documentURL);
+          loading.value = false
+          console.log('Report not processed: ' + e + documentURL);
         },
-        success: function () {},
+        success: function () {
+          loading.value = false
+          console.log('Report processed');
+        },
       });
     }
-    // }
   },
 };

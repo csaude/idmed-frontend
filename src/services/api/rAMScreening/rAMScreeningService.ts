@@ -83,7 +83,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     return rAMScreeningDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         rAMScreening.save(JSON.parse(JSON.stringify(params)));
       });

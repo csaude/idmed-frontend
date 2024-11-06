@@ -63,9 +63,6 @@ export default {
     doc.addFileToVFS('NotoSans-Regular.ttf', fontBase64.split(',')[1]);
     doc.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
     doc.setFont('NotoSans');
-    // doc.setProperties({
-    //   title: fileName.concat('.pdf'),
-    // });
 
     const headerReport = [
       [
@@ -331,34 +328,15 @@ export default {
           horizontal: 'left',
           wrapText: false,
         };
-    // Border Format
-    /*  cellTitle.border =
-      cellPharm.border =
-      cellDistrictParamValue.border =
-      cellDistrict.border =
-      cellPharmParamValue.border =
-      cellProvince.border =
-      cellProvinceParamValue.border =
-      cellStartDate.border =
-      cellStartDateParamValue.border =
-      cellEndDate.border =
-      cellEndDateParamValue.border = */
-    // cellRepublica.border =
-    // cellPharm.border =
+
     cellDistrictParamValue.border =
       cellDistrict.border =
-      // cellPharmParamValue.border =
       cellProvince.border =
       cellProvinceParamValue.border =
-      //  cellStartDate.border =
-      // cellStartDateParamValue.border =
       cellEndDate.border =
       cellEndDateParamValue.border =
         {
-          // top: { style: 'thin' },
-          // left: { style: 'thin' },
           bottom: { style: 'thin' },
-          //  right: { style: 'thin' }
         };
 
     cellProfilaxia.border = cellFaixaEtaria.border = {
@@ -383,20 +361,11 @@ export default {
     cellFaixaEtaria.value = 'Faixa Etária';
     cellProfilaxia.value = 'Profilaxia';
     // merge a range of cells
-    // worksheet.mergeCells('A1:A7')
     worksheet.mergeCells('A9:G9');
     worksheet.mergeCells('B11:E11');
     worksheet.mergeCells('B12:C12');
     worksheet.mergeCells('E13:G13');
     worksheet.mergeCells('P13:R13');
-    // worksheet.mergeCells('E12:F12')
-    // worksheet.mergeCells('A13:G13')
-    /* row13Header.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: '1fa37b' },
-    bgColor: { argb: '1fa37b' }
-  } */
     worksheet.getCell('A13').fill =
       worksheet.getCell('B13').fill =
       worksheet.getCell('C13').fill =
@@ -598,27 +567,6 @@ export default {
       row.halign = 'left';
       row.wrapText = true;
 
-      /*  worksheet.mergeCells('A' + (x + 1) + ':A' + (x + 3))
-      worksheet.mergeCells('B' + (x + 1) + ':B' + (x + 3))
-      worksheet.mergeCells('C' + (x + 1) + ':C' + (x + 3))
-      worksheet.mergeCells('D' + (x + 1) + ':D' + (x + 3))
-      worksheet.mergeCells('E' + (x + 1) + ':E' + (x + 3))
-      worksheet.mergeCells('F' + (x + 1) + ':F' + (x + 3))
-      worksheet.mergeCells('G' + (x + 1) + ':G' + (x + 3))
-      worksheet.mergeCells('H' + (x + 1) + ':H' + (x + 3))
-      worksheet.mergeCells('I' + (x + 1) + ':I' + (x + 3))
-      worksheet.mergeCells('J' + (x + 1) + ':J' + (x + 3))
-     // worksheet.mergeCells('K' + (i + 1) + ':K' + (i + 3))
-     // worksheet.mergeCells('L' + (i + 1) + ':L' + (i + 3))
-      worksheet.mergeCells('M' + (x + 1) + ':M' + (x + 3))
-      worksheet.mergeCells('N' + (x + 1) + ':N' + (x + 3))
-      worksheet.mergeCells('O' + (x + 1) + ':O' + (x + 3))
-      worksheet.mergeCells('P' + (x + 1) + ':P' + (x + 3))
-      worksheet.mergeCells('Q' + (x + 1) + ':Q' + (x + 3))
-      worksheet.mergeCells('R' + (x + 1) + ':R' + (x + 3))
-      worksheet.mergeCells('S' + (x + 1) + ':S' + (x + 3)) */
-      //  x += 3
-      // worksheet.mergeCells('A' + i + ':A' + ((Number(worksheet.lastRow.number) + 3)))
       row.eachCell({ includeEmpty: true }, (cell) => {
         cell.border = {
           top: { style: 'thin' },

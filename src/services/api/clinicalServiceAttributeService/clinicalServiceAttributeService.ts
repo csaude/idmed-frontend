@@ -7,7 +7,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 
 const clinicalServiceAttribute = useRepo(ClinicalServiceAttribute);
-const clinicalServiceAttributeDexie = ClinicalServiceAttribute.entity;
+const clinicalServiceAttributeDexie = db[ClinicalServiceAttribute.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -16,9 +16,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.addMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -94,17 +94,17 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[clinicalServiceAttributeDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return clinicalServiceAttributeDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
-        clinicalServiceAttribute.save(JSON.parse(params));
+        clinicalServiceAttribute.save(JSON.parse(JSON.stringify(params)));
       })
       .catch((error: any) => {
         console.log(error);
       });
   },
   putMobile(params: string) {
-    return db[clinicalServiceAttributeDexie]
+    return clinicalServiceAttributeDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         clinicalServiceAttribute.save(JSON.parse(params));
@@ -114,7 +114,7 @@ export default {
       });
   },
   getMobile() {
-    return db[clinicalServiceAttributeDexie]
+    return clinicalServiceAttributeDexie
       .toArray()
       .then((rows: any) => {
         clinicalServiceAttribute.save(rows);
@@ -125,7 +125,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[clinicalServiceAttributeDexie]
+    return clinicalServiceAttributeDexie
       .delete(paramsId)
       .then(() => {
         clinicalServiceAttribute.destroy(paramsId);
@@ -137,7 +137,7 @@ export default {
       });
   },
   addBulkMobile(params: string) {
-    return db[clinicalServiceAttributeDexie]
+    return clinicalServiceAttributeDexie
       .bulkAdd(params)
       .then(() => {
         clinicalServiceAttribute.save(params);

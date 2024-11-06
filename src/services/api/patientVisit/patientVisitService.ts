@@ -21,6 +21,9 @@ import pregnancyScreeningService from '../pregnancyScreening/pregnancyScreeningS
 import rAMScreeningService from '../rAMScreening/rAMScreeningService';
 import tBScreeningService from '../tBScreening/tBScreeningService';
 import adherenceScreeningService from '../adherenceScreening/adherenceScreeningService';
+import prescribedDrugService from '../prescribedDrug/prescribedDrugService';
+import prescriptionService from '../prescription/prescriptionService';
+import prescriptionDetailsService from '../prescriptionDetails/prescriptionDetailsService';
 
 const patientVisit = useRepo(PatientVisit);
 const patientVisitDexie = db[PatientVisit.entity];
@@ -101,28 +104,78 @@ export default {
   addMobile(params: any) {
     params.syncStatus = 'R';
     return patientVisitDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
-        params.patientVisitDetails.forEach((pvd) => {
-          pvd.pack.packagedDrugs.forEach((pcd) => {
-            pcd.packagedDrugStocks.forEach((pcs) => {
+        params.patientVisitDetails.forEach((pvd: any) => {
+          pvd.pack.packagedDrugs.forEach((pcd: any) => {
+            pcd.packagedDrugStocks.forEach((pcs: any) => {
               const stock = StockService.getStockById(pcs.stock.id);
               stock.stockMoviment -= pcd.quantitySupplied;
               StockService.patch(stock.id, stock);
               packagedDrugStockService.addMobile(pcs);
             });
+            pvd.pack.dispenseMode_id = pvd.pack.dispenseMode.id;
             packService.addMobile(pvd.pack);
+            pcd.pack_id = pvd.pack.id;
+            pcd.drug_id = pcd.drug.id;
             packagedDrugService.addMobile(pcd);
           });
+          pvd.prescription.prescribedDrugs.forEach((pd: any) => {
+            pd.prescription_id = pvd.prescription.id;
+            pd.drug_id = pd.drug.id;
+            prescribedDrugService.addMobile(pd);
+          });
+
+          pvd.prescription.prescriptionDetails.forEach((pds: any) => {
+            pds.prescription_id = pvd.prescription.id;
+            prescriptionDetailsService.addMobile(pds);
+          });
+
+          prescriptionService.addMobile(pvd.prescription);
           patientVisitDetailsService.addMobile(pvd);
+        });
+        params.vitalSignsScreenings.forEach((vitalSignsScreening: any) => {
+          vitalSignsScreening.patient_visit_id = params.id;
+          vitalSignsScreeningService.addMobile(vitalSignsScreening);
+        });
+        params.tbScreenings.forEach((tbScreening: any) => {
+          tbScreening.patient_visit_id = params.id;
+          tBScreeningService.addMobile(tbScreening);
+        });
+        params.pregnancyScreenings.forEach((pregnancyScreening: any) => {
+          pregnancyScreening.patient_visit_id = params.id;
+          pregnancyScreeningService.addMobile(pregnancyScreening);
+        });
+        params.adherenceScreenings.forEach((adherenceScreening: any) => {
+          adherenceScreening.patient_visit_id = params.id;
+          adherenceScreeningService.addMobile(adherenceScreening);
+        });
+        params.ramScreenings.forEach((ramScreening: any) => {
+          ramScreening.patient_visit_id = params.id;
+          rAMScreeningService.addMobile(ramScreening);
         });
         patientVisit.save(params);
       });
   },
-  putMobile(params: string) {
+  putMobile(params: any) {
     return patientVisitDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
+        params.vitalSignsScreenings.forEach((vitalSignsScreening: any) => {
+          vitalSignsScreeningService.addMobile(vitalSignsScreening);
+        });
+        params.tbScreenings.forEach((tbScreening: any) => {
+          tBScreeningService.addMobile(tbScreening);
+        });
+        params.pregnancyScreenings.forEach((pregnancyScreening: any) => {
+          pregnancyScreeningService.addMobile(pregnancyScreening);
+        });
+        params.adherenceScreenings.forEach((adherenceScreening: any) => {
+          adherenceScreeningService.addMobile(adherenceScreening);
+        });
+        params.ramScreenings.forEach((ramScreening: any) => {
+          rAMScreeningService.addMobile(ramScreening);
+        });
         patientVisit.save(JSON.parse(JSON.stringify(params)));
       });
   },
@@ -135,7 +188,7 @@ export default {
   async getPatientVisitMobile() {
     const rows = await patientVisitDexie.toArray();
     const records = rows.filter(
-      (row) =>
+      (row: any) =>
         row.syncStatus !== undefined &&
         row.syncStatus !== null &&
         row.syncStatus !== ''
@@ -254,15 +307,85 @@ export default {
   },
 
   async getLocalDbPatientVisitsToSync() {
-    return patientVisitDexie
+    const patientVisits = await patientVisitDexie
       .where('syncStatus')
       .equalsIgnoreCase('R')
       .or('syncStatus')
       .equalsIgnoreCase('U')
-      .toArray()
-      .then((result: any) => {
-        return result;
-      });
+      .toArray();
+
+    const patientVisitIds = patientVisits.map(
+      (patientVisit: any) => patientVisit.id
+    );
+
+    const patientIds = patientVisits.map(
+      (patientVisit: any) => patientVisit.patient_id
+    );
+
+    const clinicIds = patientVisits.map(
+      (patientVisit: any) => patientVisit.clinic_id
+    );
+
+    const [
+      clinics,
+      patients,
+      patientVisitDetails,
+      vitalSignsScreenings,
+      pregnancyScreenings,
+      ramScreenings,
+      tbScreenings,
+      adherenceScreenings,
+    ] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(clinicIds),
+      patientService.getAllByIDsFromDexie(patientIds),
+      patientVisitDetailsService.getAllByPatientVisitIdsFromDexie(
+        patientVisitIds
+      ),
+      vitalSignsScreeningService.getAllByPatientVisitIDsFromDexie(
+        patientVisitIds
+      ),
+      pregnancyScreeningService.getAllByPatientVisitIDsFromDexie(
+        patientVisitIds
+      ),
+      rAMScreeningService.getAllByPatientVisitIDsFromDexie(patientVisitIds),
+      tBScreeningService.getAllByPatientVisitIDsFromDexie(patientVisitIds),
+      adherenceScreeningService.getAllByPatientVisitIDsFromDexie(
+        patientVisitIds
+      ),
+    ]);
+
+    patientVisits.map((patientVisit: any) => {
+      patientVisit.clinic = clinics.find(
+        (clinic: any) => clinic.id === patientVisit.clinic_id
+      );
+      patientVisit.patient = patients.find(
+        (patient: any) => patient.id === patientVisit.patient_id
+      );
+      patientVisit.patientVisitDetails = patientVisitDetails.filter(
+        (patientVisitDetail: any) =>
+          patientVisitDetail.patient_visit_id === patientVisit.id
+      );
+      patientVisit.vitalSignsScreenings = vitalSignsScreenings.filter(
+        (vitalSignsScreening: any) =>
+          vitalSignsScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.pregnancyScreenings = pregnancyScreenings.filter(
+        (pregnancyScreening: any) =>
+          pregnancyScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.ramScreenings = ramScreenings.filter(
+        (ramScreening: any) => ramScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.tbScreenings = tbScreenings.filter(
+        (tbScreening: any) => tbScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.adherenceScreenings = adherenceScreenings.filter(
+        (adherenceScreening: any) =>
+          adherenceScreening.patient_visit_id === patientVisit.id
+      );
+    });
+
+    return patientVisits;
   },
 
   async getLocalDbPatientVisitsNotSynced(startDate: any, endDate: any) {
@@ -632,11 +755,32 @@ export default {
   },
 
   setPackagedDrugStockNullToSend(patientVis: any) {
-    patientVis.patientVisitDetails.forEach((pvd) => {
-      pvd.pack.packagedDrugs.forEach((pcd) => {
-        pcd.packagedDrugStocks = null;
+    patientVis.patientVisitDetails.forEach((patientVisitDetail: any) => {
+      patientVisitDetail.clinic = {};
+      patientVisitDetail.clinic.id = patientVis.clinic_id;
+      patientVisitDetail.patientVisit = {};
+      patientVisitDetail.patientVisit.id = patientVis.id;
+      patientVisitDetail.pack.clinic = {};
+      patientVisitDetail.pack.clinic.id = patientVis.clinic_id;
+
+      patientVisitDetail.pack.packagedDrugs.forEach((packagedDrug: any) => {
+        const drugID = packagedDrug.drug.id;
+        packagedDrug.drug = {};
+        packagedDrug.drug.id = drugID;
+        packagedDrug.packagedDrugStocks = null;
       });
+      patientVisitDetail.prescription.clinic = {};
+      patientVisitDetail.prescription.clinic.id = patientVis.clinic_id;
+
+      patientVisitDetail.prescription.prescribedDrugs.forEach(
+        (prescribedDrug: any) => {
+          const drugID = prescribedDrug.drug.id;
+          prescribedDrug.drug = {};
+          prescribedDrug.drug.id = drugID;
+        }
+      );
     });
+
     return patientVis;
   },
 

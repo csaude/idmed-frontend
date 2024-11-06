@@ -156,7 +156,7 @@ export default {
   // Mobile
 
   addMobile(params: string) {
-    return userLoginDexie.add(JSON.parse(JSON.stringify(params))).then(() => {
+    return userLoginDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
       userLogin.save(JSON.parse(JSON.stringify(params)));
     });
   },

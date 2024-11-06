@@ -22,7 +22,7 @@ const fileName = reportName.concat(
 );
 // const fontPath = '/src/assets/NotoSans-Regular.ttf';
 export default {
-  async downloadPDF(id, fileType, params) {
+  async downloadPDF(id, fileType, params, loading) {
     const clinic = clinicService.currClinic();
     const fontBase64 = await fetchFontAsBase64(fontPath);
     const doc = new JsPDF({
@@ -190,10 +190,10 @@ export default {
       window.open(doc.output('bloburl'));
     } else {
       const pdfOutput = doc.output();
-      DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput);
+      DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput, loading);
     }
   },
-  async downloadExcel(id, fileType, params) {
+  async downloadExcel(id, fileType, params, loading) {
     const clinic = clinicService.currClinic();
     let data = '';
     let rowsAux = [];
@@ -422,7 +422,7 @@ export default {
       // var UTF8_STR = new Uint8Array(pdfOutput)
       //   var BINARY_ARR = UTF8_STR.buffer
       const titleFile = 'PacientesFaltosos.xlsx';
-      DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob);
+      DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob, loading);
     }
   },
   createArrayOfArrayRow(rows) {

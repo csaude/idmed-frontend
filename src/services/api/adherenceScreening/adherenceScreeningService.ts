@@ -84,9 +84,9 @@ export default {
   addMobile(params: string) {
     showloading();
     return adherenceScreeningDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
-        adherenceScreening.save(params);
+        adherenceScreening.save(JSON.parse(JSON.stringify(params)));
         // alertSucess('O Registo foi efectuado com sucesso');
         closeLoading();
       })
@@ -100,7 +100,7 @@ export default {
     return adherenceScreeningDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
-        adherenceScreening.save(params);
+        adherenceScreening.save(JSON.parse(JSON.stringify(params)));
         // alertSucess('O Registo foi efectuado com sucesso');
         closeLoading();
       })

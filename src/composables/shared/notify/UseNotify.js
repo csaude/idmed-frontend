@@ -41,6 +41,7 @@ export default function useNotify() {
       classes: 'glossy',
     });
   };
+
   return {
     notifySuccess,
     notifyError,

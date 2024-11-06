@@ -9,13 +9,13 @@ import dispenseTypeService from '../dispenseType/dispenseTypeService';
 import moment from 'moment';
 import prescriptionService from '../prescription/prescriptionService';
 import clinicService from '../clinicService/clinicService';
-import Pack from 'src/stores/models/packaging/Pack';
 import patientService from '../patientService/patientService';
 import ChunkArray from 'src/utils/ChunkArray';
 import useNotify from 'src/composables/shared/notify/UseNotify';
 import episodeService from '../episode/episodeService';
 import patientVisitService from '../patientVisit/patientVisitService';
 import packService from '../pack/packService';
+import { Notify } from 'quasar';
 
 const patientVisitDetails = useRepo(PatientVisitDetails);
 const patientVisitDetailsDexie = db[PatientVisitDetails.entity];
@@ -95,7 +95,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     return patientVisitDetailsDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         patientVisitDetails.save(params);
       });
@@ -202,28 +202,61 @@ export default {
       const patients = await patientService.getMobile();
       const ids = patients.map((pat: any) => pat.id);
       const clinicSector = clinicService.currClinic();
-      console.log(ids);
 
       const limit = 100; // Define your limit
       const offset = 0; // Define your offset
+      let percentage = 0;
+
+      const notif = Notify.create({
+        group: false, // required to be updatable
+        timeout: 0, // we want to be in control when it gets dismissed
+        spinner: true,
+        message: 'Carregando dispensas ...',
+        caption: '2%',
+        color: 'white',
+        textColor: 'primary',
+      });
 
       const chunks = ChunkArray.chunkArrayWithOffset(ids, limit, offset);
       // const allVisits = [];
       //const allVisitDetailsIds = [];
+
       for (const chunk of chunks) {
+        percentage = Math.min(100, percentage + Math.floor(Math.random() * 20));
+
         const listParams = {
           ids: chunk,
           clinicSector: clinicSector,
         };
-        // let visitDetails;
 
         await api()
           .post('/patientVisitDetails/getLastAllByPatientIds/', listParams)
           .then((resp) => {
             patientVisitDetails.save(resp.data);
+            notif({
+              caption: `${percentage}%`,
+            });
+          })
+          .catch((error) => {
+            notif({
+              type: 'negative',
+              spinner: false,
+              message: 'Ocorreu um erro durante o carregamento de dispensas!',
+              timeout: 2500, // we will timeout it in 2.5s
+              caption: `${percentage}%`,
+              color: 'red',
+              textColor: 'white',
+            });
           });
       }
-
+      // if we are done...
+      percentage = 100;
+      notif({
+        icon: 'done', // we add an icon
+        spinner: false, // we reset the spinner setting so the icon can be displayed
+        message: 'Terminado!',
+        timeout: 2500, // we will timeout it in 2.5s
+      });
       closeLoading();
       notifySuccess('Carregamento de Dispensas Terminado');
       return true;

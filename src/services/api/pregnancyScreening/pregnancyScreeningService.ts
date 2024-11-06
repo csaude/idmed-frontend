@@ -81,7 +81,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     return pregnancyScreeningDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         pregnancyScreening.save(JSON.parse(JSON.stringify(params)));
       });

@@ -136,8 +136,7 @@ export function sendData() {
   async function apiSendPatientVisit(patientVisitToSync: any, i: number) {
     const patientVisit = patientVisitToSync[i];
     if (patientVisit !== undefined) {
-      const patientVisitModified =
-        patientVisitService.setPackagedDrugStockNullToSend(patientVisit);
+      const patientVisitModified = patientVisitService.setPackagedDrugStockNullToSend(patientVisit);
       console.log(patientVisitModified);
       await patientVisitService
         .postWeb(patientVisitModified)
@@ -157,7 +156,7 @@ export function sendData() {
     } else {
       // getGroupsToSend();
       notifySuccess('Envio de Dados do Paciente Terminado');
-      loadSettingParamsToOffline();
+      // loadSettingParamsToOffline();
       loadPatientDataToOffline();
     }
   }

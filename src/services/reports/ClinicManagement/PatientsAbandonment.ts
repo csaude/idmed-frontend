@@ -13,22 +13,25 @@ const { isMobile, isOnline } = useSystemUtils();
 
 const reportName = 'PacientesAbandono';
 const logoTitle =
-    'REPÚBLICA DE MOÇAMBIQUE \n MINISTÉRIO DA SAÚDE \n SERVIÇO NACIONAL DE SAÚDE';
-const title =
-    "Pacientes Abandono";
+  'REPÚBLICA DE MOÇAMBIQUE \n MINISTÉRIO DA SAÚDE \n SERVIÇO NACIONAL DE SAÚDE';
+const title = 'Pacientes Abandono';
 const fileName = reportName.concat(
-    '_' + moment(new Date()).format('DD-MM-YYYY')
+  '_' + moment(new Date()).format('DD-MM-YYYY')
 );
 
 export default {
   async downloadPDF(id, fileType, params) {
-    console.log(params)
+    console.log(params);
     let data = '';
     let rowsAux = [];
     let firstReg = {};
     if (isOnline.value) {
-      const rowsAux = await Report.printReport('patientsAbandonmentReport', id, fileType);
-      console.log(rowsAux)
+      const rowsAux = await Report.printReport(
+        'patientsAbandonmentReport',
+        id,
+        fileType
+      );
+      console.log(rowsAux);
       if (rowsAux.status === 204 || rowsAux.data.length === 0) return 204;
       const firstReg = rowsAux.data[0];
       if (firstReg.startDate !== null && firstReg.startDate !== undefined) {
@@ -84,7 +87,7 @@ export default {
         },
         {
           content:
-              'Período: ' + params.startDateParam + ' à ' + params.endDateParam,
+            'Período: ' + params.startDateParam + ' à ' + params.endDateParam,
           colSpan: 1,
           halign: 'center',
           valign: 'middle',
@@ -95,10 +98,10 @@ export default {
       [
         {
           content:
-              'Distrito: ' +
-              (params.district === null
-                  ? clinic.district.description
-                  : params.district.description),
+            'Distrito: ' +
+            (params.district === null
+              ? clinic.district.description
+              : params.district.description),
           halign: 'center',
           valign: 'middle',
           fontStyle: 'bold',
@@ -106,10 +109,10 @@ export default {
         },
         {
           content:
-              'Província: ' +
-              (params.province === null
-                  ? clinic.province.description
-                  : params.province.description),
+            'Província: ' +
+            (params.province === null
+              ? clinic.province.description
+              : params.province.description),
           halign: 'center',
           valign: 'left',
           fontStyle: 'bold',
@@ -156,7 +159,6 @@ export default {
       'Contacto',
     ];
 
-
     autoTable(doc, {
       bodyStyles: {
         halign: 'center',
@@ -178,8 +180,8 @@ export default {
         // jsPDF 1.4+ uses getWidth, <1.4 uses .width
         const pageSize = doc.internal.pageSize;
         const pageHeight = pageSize.height
-            ? pageSize.height
-            : pageSize.getHeight();
+          ? pageSize.height
+          : pageSize.getHeight();
         doc.text(str, data.settings.margin.right, pageHeight - 10);
       },
       startY: doc.lastAutoTable.finalY,
@@ -189,7 +191,6 @@ export default {
     });
     // params.value.loading.loading.hide()
     if (isOnline.value && !isMobile.value) {
-      // return doc.save('PacientesFaltosos.pdf');
       window.open(doc.output('bloburl'));
     } else {
       const pdfOutput = doc.output();
@@ -202,7 +203,11 @@ export default {
     let rowsAux = [];
     let firstReg = {};
     if (isOnline.value) {
-      const rowsAux = await Report.printReport('patientsAbandonmentReport', id, fileType);
+      const rowsAux = await Report.printReport(
+        'patientsAbandonmentReport',
+        id,
+        fileType
+      );
       if (rowsAux.status === 204 || rowsAux.data.length === 0) return 204;
       const firstReg = rowsAux.data[0];
       params.startDateParam = Report.getFormatDDMMYYYY(firstReg.startDate);
@@ -254,38 +259,38 @@ export default {
     // Format Table Cells
     // Alignment Format
     cellRepublica.alignment =
-        cellTitle.alignment =
-            headerRow.alignment =
-                {
-                  vertical: 'middle',
-                  horizontal: 'center',
-                  wrapText: true,
-                };
+      cellTitle.alignment =
+      headerRow.alignment =
+        {
+          vertical: 'middle',
+          horizontal: 'center',
+          wrapText: true,
+        };
 
     cellPharm.alignment =
-        cellStartDate.alignment =
-            cellEndDate.alignment =
-                {
-                  vertical: 'middle',
-                  horizontal: 'left',
-                  wrapText: false,
-                };
+      cellStartDate.alignment =
+      cellEndDate.alignment =
+        {
+          vertical: 'middle',
+          horizontal: 'left',
+          wrapText: false,
+        };
 
     // Border Format
     // cellRepublica.border =
     cellTitle.border =
-        cellPharm.border =
-            cellPharmParamValue.border =
-                cellStartDate.border =
-                    cellStartDateParamValue.border =
-                        cellEndDate.border =
-                            cellEndDateParamValue.border =
-                                {
-                                  top: { style: 'thin' },
-                                  left: { style: 'thin' },
-                                  bottom: { style: 'thin' },
-                                  right: { style: 'thin' },
-                                };
+      cellPharm.border =
+      cellPharmParamValue.border =
+      cellStartDate.border =
+      cellStartDateParamValue.border =
+      cellEndDate.border =
+      cellEndDateParamValue.border =
+        {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        };
 
     // Assign Value to Cell
     cellRepublica.value = logoTitle;
@@ -315,16 +320,16 @@ export default {
 
     // Add Style
     cellTitle.font =
-        cellStartDate.font =
-            cellEndDate.font =
-                cellPharm.font =
-                    {
-                      name: 'Arial',
-                      family: 2,
-                      size: 11,
-                      italic: false,
-                      bold: true,
-                    };
+      cellStartDate.font =
+      cellEndDate.font =
+      cellPharm.font =
+        {
+          name: 'Arial',
+          family: 2,
+          size: 11,
+          italic: false,
+          bold: true,
+        };
 
     // Add Image
     worksheet.addImage(imageId, {
@@ -373,7 +378,7 @@ export default {
 
     // Format all data cells
     const lastRowNum =
-        worksheet.lastRow.number !== undefined ? worksheet.lastRow.number : 0;
+      worksheet.lastRow.number !== undefined ? worksheet.lastRow.number : 0;
     const lastTableRowNum = lastRowNum;
 
     // Loop through all table's row
@@ -414,7 +419,7 @@ export default {
 
     const buffer = await workbook.xlsx.writeBuffer();
     const fileTypePa =
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     const fileExtension = '.xlsx';
 
     const blob = new Blob([buffer], { type: fileTypePa });
@@ -428,23 +433,23 @@ export default {
         const folder = cordova.file.externalRootDirectory + 'Download';
         //  var folder = 'Download'
         window.resolveLocalFileSystemURL(
-            folder,
-            function (dirEntry) {
-              createFile(dirEntry, fileName, blob);
-              // $q.loading.hide()
-            },
-            onErrorLoadFs
+          folder,
+          function (dirEntry) {
+            createFile(dirEntry, fileName, blob);
+            // $q.loading.hide()
+          },
+          onErrorLoadFs
         );
       }
       function createFile(dirEntry, fileName, blob) {
         // Creates a new file
         dirEntry.getFile(
-            fileName,
-            { create: true, exclusive: false },
-            function (fileEntry) {
-              writeFile(fileEntry, blob);
-            },
-            onErrorCreateFile
+          fileName,
+          { create: true, exclusive: false },
+          function (fileEntry) {
+            writeFile(fileEntry, blob);
+          },
+          onErrorCreateFile
         );
       }
 
@@ -471,17 +476,17 @@ export default {
       function openFile() {
         const strTitle = titleFile;
         const folder =
-            cordova.file.externalRootDirectory + 'Download/' + strTitle;
+          cordova.file.externalRootDirectory + 'Download/' + strTitle;
         const documentURL = decodeURIComponent(folder);
         cordova.plugins.fileOpener2.open(
-            documentURL,
-            'application/vnd.ms-excel',
-            {
-              error: function (e) {
-                console.log('file system open3333366: ' + e + documentURL);
-              },
-              success: function () {},
-            }
+          documentURL,
+          'application/vnd.ms-excel',
+          {
+            error: function (e) {
+              console.log('file system open3333366: ' + e + documentURL);
+            },
+            success: function () {},
+          }
         );
       }
     }
@@ -495,20 +500,20 @@ export default {
       createRow.push(rows[row].name);
       createRow.push(rows[row].address);
       createRow.push(
-          moment(new Date(rows[row].dateMissedPickUp)).format('DD-MM-YYYY')
+        moment(new Date(rows[row].dateMissedPickUp)).format('DD-MM-YYYY')
       );
       const dataIdent = rows[row].dateIdentifiedAbandonment;
       createRow.push(
-          dataIdent !== null && dataIdent !== ''
-              ? moment(new Date(rows[row].dateIdentifiedAbandonment)).format(
-                  'DD-MM-YYYY'
-              )
-              : ''
+        dataIdent !== null && dataIdent !== ''
+          ? moment(new Date(rows[row].dateIdentifiedAbandonment)).format(
+              'DD-MM-YYYY'
+            )
+          : ''
       );
       createRow.push(
-          rows[row].returnedPickUp !== null
-              ? moment(new Date(rows[row].returnedPickUp)).format('DD-MM-YYYY')
-              : ''
+        rows[row].returnedPickUp !== null
+          ? moment(new Date(rows[row].returnedPickUp)).format('DD-MM-YYYY')
+          : ''
       );
       createRow.push(rows[row].contact);
 
@@ -533,23 +538,23 @@ export default {
       const folder = cordova.file.externalRootDirectory + 'Download';
       //  var folder = 'Download'
       window.resolveLocalFileSystemURL(
-          folder,
-          function (dirEntry) {
-            createFile(dirEntry, fileName, blob);
-            // $q.loading.hide()
-          },
-          onErrorLoadFs
+        folder,
+        function (dirEntry) {
+          createFile(dirEntry, fileName, blob);
+          // $q.loading.hide()
+        },
+        onErrorLoadFs
       );
     }
     function createFile(dirEntry, fileName, blob) {
       // Creates a new file
       dirEntry.getFile(
-          fileName,
-          { create: true, exclusive: false },
-          function (fileEntry) {
-            writeFile(fileEntry, blob);
-          },
-          onErrorCreateFile
+        fileName,
+        { create: true, exclusive: false },
+        function (fileEntry) {
+          writeFile(fileEntry, blob);
+        },
+        onErrorCreateFile
       );
     }
 
@@ -576,7 +581,7 @@ export default {
     function openFile() {
       const strTitle = titleFile;
       const folder =
-          cordova.file.externalRootDirectory + 'Download/' + strTitle;
+        cordova.file.externalRootDirectory + 'Download/' + strTitle;
       const documentURL = decodeURIComponent(folder);
       cordova.plugins.fileOpener2.open(documentURL, 'application/pdf', {
         error: function (e) {

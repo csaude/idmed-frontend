@@ -1,6 +1,4 @@
 import SecUser from 'src/stores/models/userLogin/User';
-import ClinicSectorUsers from 'src/stores/models/userLogin/ClinicSectorUsers';
-import SecUserRole from 'src/stores/models/userLogin/SecUserRole';
 import { useRepo } from 'pinia-orm';
 import api from '../apiService/apiService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
@@ -9,9 +7,7 @@ import db from '../../../stores/dexie';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const secUserRepo = useRepo(SecUser);
-const secUserDexie = SecUser.entity;
-const clinicSectorUsersRepo = useRepo(ClinicSectorUsers);
-const secUserRoleRepo = useRepo(SecUserRole);
+const secUserDexie = db[SecUser.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -20,7 +16,7 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.addMobile(params);
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
@@ -93,8 +89,8 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[secUserDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return secUserDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         secUserRepo.save(JSON.parse(params));
       })
@@ -103,7 +99,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[secUserDexie]
+    return secUserDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         secUserRepo.save(JSON.parse(params));
@@ -115,7 +111,7 @@ export default {
       });
   },
   getMobile() {
-    return db[secUserDexie]
+    return secUserDexie
       .toArray()
       .then((rows: any) => {
         secUserRepo.save(rows);
@@ -126,7 +122,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[secUserDexie]
+    return secUserDexie
       .delete(paramsId)
       .then(() => {
         secUserRepo.destroy(paramsId);
@@ -138,7 +134,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[secUserDexie]
+    return secUserDexie
       .bulkAdd(params)
       .then(() => {
         secUserRepo.save(params);

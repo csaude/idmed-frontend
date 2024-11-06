@@ -6,7 +6,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 
 const appointment = useRepo(Appointment);
-const appointmenDexie = Appointment.entity;
+const appointmenDexie = db[Appointment.entity];
 
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -80,8 +80,8 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[appointmenDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return appointmenDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         appointment.save(params);
         // alertSucess('O Registo foi efectuado com sucesso');
@@ -92,7 +92,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[appointmenDexie]
+    return appointmenDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         appointment.save(params);
@@ -104,7 +104,7 @@ export default {
       });
   },
   getMobile() {
-    return db[appointmenDexie]
+    return appointmenDexie
       .toArray()
       .then((rows: any) => {
         appointment.save(rows);
@@ -115,7 +115,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[appointmenDexie]
+    return appointmenDexie
       .delete(paramsId)
       .then(() => {
         appointment.destroy(paramsId);
@@ -127,7 +127,7 @@ export default {
       });
   },
   addBulkMobile(params: string) {
-    return db[appointmenDexie]
+    return appointmenDexie
       .bulkAdd(params)
       .then(() => {
         appointment.save(params);

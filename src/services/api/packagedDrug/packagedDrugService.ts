@@ -84,7 +84,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     return packagedDrugDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         packagedDrug.save(JSON.parse(JSON.stringify(params)));
       });
