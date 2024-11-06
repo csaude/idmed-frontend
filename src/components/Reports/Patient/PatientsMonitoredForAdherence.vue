@@ -45,7 +45,7 @@
 import Report from 'src/services/api/report/ReportService';
 import { v4 as uuidv4 } from 'uuid';
 import { LocalStorage } from 'quasar';
-import { ref, onMounted, provide } from 'vue';
+import { ref, onMounted, provide, reactive } from 'vue';
 //compontes
 import ListHeader from 'components/Shared/ListHeader.vue';
 import FiltersInput from 'components/Reports/shared/FiltersInput.vue';
@@ -63,8 +63,8 @@ const filterDrugStoreSection = ref('');
 const report = 'Patients_monitored_for_adherence';
 const serviceAux = ref(null);
 const resultFromLocalStorage = ref(false);
-const downloadingPdf = ref(false);
-const downloadingXls = ref(false);
+const downloadingPdf = reactive(ref(false));
+const downloadingXls = reactive(ref(false));
 
 onMounted(() => {
   if (props.params) {
@@ -106,17 +106,23 @@ const getProcessingStatus = (params) => {
 
 const generateReport = (id, fileType, params) => {
   if (fileType === 'PDF') {
-    PatientsMonitoredForAdhrence.downloadPDF(params).then((resp) => {
-      if (resp === 204)
-        alertError('Não existem Dados para o período selecionado');
-      downloadingPdf.value = false;
-    });
+    PatientsMonitoredForAdhrence.downloadPDF(params, downloadingPdf).then(
+      (resp) => {
+        if (resp === 204) {
+          alertError('Não existem Dados para o período selecionado');
+          downloadingPdf.value = false;
+        }
+      }
+    );
   } else {
-    PatientsMonitoredForAdhrence.downloadExcel(params).then((resp) => {
-      if (resp === 204)
-        alertError('Não existem Dados para o período selecionado');
-      downloadingXls.value = false;
-    });
+    PatientsMonitoredForAdhrence.downloadExcel(params, downloadingXls).then(
+      (resp) => {
+        if (resp === 204) {
+          alertError('Não existem Dados para o período selecionado');
+          downloadingXls.value = false;
+        }
+      }
+    );
   }
 };
 

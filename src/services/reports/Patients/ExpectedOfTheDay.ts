@@ -20,7 +20,7 @@ const fileName = reportName.concat(
 // const fontPath = '/src/assets/NotoSans-Regular.ttf';
 
 export default {
-  async downloadPDF(province, startDate, endDate, result) {
+  async downloadPDF(province, startDate, endDate, result, loading) {
     const fontBase64 = await fetchFontAsBase64(fontPath);
     const clinic = clinicService.currClinic();
     const doc = new JsPDF({
@@ -200,14 +200,10 @@ export default {
       window.open(doc.output('bloburl'));
     } else {
       const pdfOutput = doc.output();
-      DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput);
+      DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput, loading);
     }
-    // params.value.loading.loading.hide()
-    // return doc.save('HistoricoDeLevantamento.pdf')
-
-    // params.value.loading.loading.hide()
   },
-  async downloadExcel(province, startDate, endDate, result, params) {
+  async downloadExcel(province, startDate, endDate, result, params, loading) {
     const clinic = clinicService.currClinic();
     const rows = result;
     const data = this.createArrayOfArrayRow(rows);
@@ -443,7 +439,7 @@ export default {
     } else {
       const titleFile = 'PacientesEsperadosNoDia.xlsx';
       console.log('result' + titleFile);
-      DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob);
+      DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob, loading);
     }
   },
   createArrayOfArrayRow(rows) {

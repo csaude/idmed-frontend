@@ -55,8 +55,17 @@ import pregnancyScreeningService from 'src/services/api/pregnancyScreening/pregn
 import rAMScreeningService from 'src/services/api/rAMScreening/rAMScreeningService';
 import tBScreeningService from 'src/services/api/tBScreening/tBScreeningService';
 import vitalSignsScreeningService from 'src/services/api/vitalSignsScreening/vitalSignsScreeningService';
+import systemConfigsService from 'src/services/api/systemConfigs/systemConfigsService';
 
 export function useOnline() {
+  async function loadConfigsSettings() {
+    systemConfigsService.get(0);
+    provinceService.get(0);
+    districtService.get(0);
+    clinicService.get(0);
+    menuService.get(0);
+  }
+
   async function loadSettingParams() {
     therapeuticalRegimenService.get(0);
 
@@ -176,5 +185,6 @@ export function useOnline() {
     loadPatientData,
     deleteStorageInfo,
     deleteStorageWithoutPatientInfo,
+    loadConfigsSettings,
   };
 }

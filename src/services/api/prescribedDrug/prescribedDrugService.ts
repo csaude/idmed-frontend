@@ -4,6 +4,7 @@ import PrescribedDrug from 'src/stores/models/prescriptionDrug/PrescribedDrug';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
+import drugService from '../drugService/drugService';
 
 const prescribedDrug = useRepo(PrescribedDrug);
 const prescribedDrugDexie = db[PrescribedDrug.entity];
@@ -81,7 +82,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     return prescribedDrugDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         prescribedDrug.save(JSON.parse(JSON.stringify(params)));
       });
@@ -159,5 +160,26 @@ export default {
   },
   getLastByPrescriprionId(prescriptionId: string) {
     return prescribedDrug.where('prescription_id', prescriptionId).first();
+  },
+  async getAllByPrescriprionIdListFromDexie(prescriptionIds: []) {
+    const prescribedDrugs = await prescribedDrugDexie
+      .where('prescription_id')
+      .anyOf(prescriptionIds)
+      .toArray();
+
+    const drugIds = prescribedDrugs.map(
+      (prescribedDrug: any) => prescribedDrug.drug_id
+    );
+
+    const [drugs] = await Promise.all([
+      drugService.getAllByIDsFromDexie(drugIds),
+    ]);
+
+    prescribedDrugs.map((prescribedDrug: any) => {
+      prescribedDrug.drug = drugs.find(
+        (drug: any) => drug.id === prescribedDrug.drug_id
+      );
+    });
+    return prescribedDrugs;
   },
 };

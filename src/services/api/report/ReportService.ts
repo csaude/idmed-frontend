@@ -769,7 +769,8 @@ export default {
 
         if (service.code === serviceCode) {
           if (prescription !== null && prescription !== undefined) {
-            dispenseType = prescription.prescriptionDetails.dispenseType;
+            dispenseType =
+              prescription.prescriptionDetails[0].dispenseType.code;
           }
         }
 
@@ -785,7 +786,7 @@ export default {
             existingItem.quantity++;
           } else {
             dispensesPerMonthsByGenderInYear.push({
-              dispenseTypeCode: dispenseType.code,
+              dispenseTypeCode: dispenseType,
               month: i,
               service: service.code,
               gender: patient.gender,
@@ -819,7 +820,8 @@ export default {
 
         if (service.code === serviceCode) {
           if (prescription !== null && prescription !== undefined) {
-            dispenseType = prescription.prescriptionDetails.dispenseType;
+            dispenseType =
+              prescription.prescriptionDetails[0].dispenseType.code;
           }
           const existingItem = dispensesPerMonthsByAgeInYear.find((item) => {
             return (
@@ -835,7 +837,7 @@ export default {
             existingItem.quantity++;
           } else {
             dispensesPerMonthsByAgeInYear.push({
-              dispenseTypeCode: dispenseType.code,
+              dispenseTypeCode: dispenseType,
               month: i,
               service: service.code,
               faixa:
@@ -856,8 +858,10 @@ export default {
     const patientsInService: any[] = [];
 
     const [dataPacksList] = await Promise.all([
-      packService.getTotalPacksInYear(year),
+      // packService.getTotalPacksInYear(year),
+      packService.getAllActivePacksInYear(year),
     ]);
+
     for (let i = 0; i < dataPacksList.length; i++) {
       const dataMonths = dataPacksList[i];
 
@@ -875,17 +879,23 @@ export default {
           );
         });
 
-        if (existingItem) {
-          existingItem.quantity++;
-        } else {
+        const existingService = patientsInYear.find((item) => {
+          return item.service === service.code;
+        });
+
+        if (!existingItem) {
           patientsInService.push({
             service: service.code,
             patient_id: patient.id,
           });
-          patientsInYear.push({
-            service: service.code,
-            quantity: 1,
-          });
+          if (existingService) {
+            existingService.quantity++;
+          } else {
+            patientsInYear.push({
+              service: service.code,
+              quantity: 1,
+            });
+          }
         }
       }
     }
@@ -898,7 +908,8 @@ export default {
     const patientsInService: any[] = [];
 
     const [dataPacksList] = await Promise.all([
-      packService.getTotalPacksInYear(year),
+      packService.getAllActivePacksInYear(year),
+      // packService.getTotalPacksInYear(year),
     ]);
     for (let i = 0; i < dataPacksList.length; i++) {
       const dataMonths = dataPacksList[i];
@@ -918,19 +929,27 @@ export default {
               item.gender === patient.gender
             );
           });
+          const existingService = patientsInYear.find((item) => {
+            return (
+              item.service === service.code && item.gender === patient.gender
+            );
+          });
 
-          if (existingItem) {
-            existingItem.quantity++;
-          } else {
+          if (!existingItem) {
             patientsInService.push({
               gender: patient.gender,
               service: service.code,
               patient_id: patient.id,
             });
-            patientsInYear.push({
-              service: service.code,
-              quantity: 1,
-            });
+            if (existingService) {
+              existingService.quantity++;
+            } else {
+              patientsInYear.push({
+                gender: patient.gender,
+                service: service.code,
+                quantity: 1,
+              });
+            }
           }
         }
       }
@@ -960,7 +979,8 @@ export default {
 
         if (service.code === serviceCode) {
           if (prescription !== null && prescription !== undefined) {
-            dispenseType = prescription.prescriptionDetails.dispenseType;
+            dispenseType =
+              prescription.prescriptionDetails[0].dispenseType.description;
           }
           const existingItem = patientsInService.find((item) => {
             return (
@@ -969,7 +989,7 @@ export default {
                 (this.calcularIdade(patient.dateOfBirth) >= 15
                   ? 'ADULTO'
                   : 'MENOR') &&
-              item.dispenseTypeCode === dispenseType.description
+              item.dispenseTypeCode === dispenseType
             );
           });
 
@@ -977,7 +997,7 @@ export default {
             existingItem.quantity++;
           } else {
             patientsInService.push({
-              dispenseTypeCode: dispenseType.description,
+              dispenseTypeCode: dispenseType,
               faixa:
                 this.calcularIdade(patient.dateOfBirth) >= 15
                   ? 'ADULTO'
@@ -1013,12 +1033,13 @@ export default {
 
         if (service.code === serviceCode) {
           if (prescription !== null && prescription !== undefined) {
-            dispenseType = prescription.prescriptionDetails.dispenseType;
+            dispenseType =
+              prescription.prescriptionDetails[0].dispenseType.code;
           }
 
           const existingItem = dispensesPerMonthsInYear.find((item) => {
             return (
-              item.dispense_type === dispenseType.code &&
+              item.dispense_type === dispenseType &&
               item.month === i &&
               service.code === serviceCode
             );
@@ -1028,7 +1049,7 @@ export default {
             existingItem.quantity++;
           } else {
             dispensesPerMonthsInYear.push({
-              dispense_type: dispenseType.code,
+              dispense_type: dispenseType,
               month: i,
               service: serviceCode,
               quantity: 1,

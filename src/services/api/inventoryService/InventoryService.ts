@@ -272,7 +272,7 @@ export default {
 
   //Mobile
   addMobile(params: string) {
-    return inventoryDexie.add(JSON.parse(JSON.stringify(params))).then(() => {
+    return inventoryDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
       inventory.save(JSON.parse(JSON.stringify(params)));
     });
   },

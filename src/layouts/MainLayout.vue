@@ -207,6 +207,9 @@
         <component :is="Component" />
       </router-view>
     </q-page-container>
+    <q-footer class="text-right text-caption" style="font-family: 'Gill Sans'">
+      <span class="gt-sm inline">iDMED v{{ version }}</span>
+    </q-footer>
   </q-layout>
 </template>
 
@@ -219,6 +222,7 @@ import {
   provide,
   onBeforeMount,
 } from 'vue';
+import { version } from '../../package.json';
 import systemConfigsService from 'src/services/api/systemConfigs/systemConfigsService';
 import clinicService from 'src/services/api/clinicService/clinicService';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';

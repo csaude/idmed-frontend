@@ -10,7 +10,7 @@ const { closeLoading, showloading } = useLoading();
 
 const { isMobile, isOnline } = useSystemUtils();
 const stockDistributor = useRepo(StockDistributor);
-const stockDistributorDexie = StockDistributor.entity;
+const stockDistributorDexie = db[StockDistributor.entity];
 
 export default {
   // Axios API call
@@ -123,8 +123,8 @@ export default {
 
   //Mobile
   async addMobile(params: any) {
-    return db[stockDistributorDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return stockDistributorDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         stockDistributor.save(JSON.parse(JSON.stringify(params)));
       });
@@ -150,7 +150,7 @@ export default {
   },
   //mobile
   addBulkMobile(params: string) {
-    return db[stockDistributorDexie]
+    return stockDistributorDexie
       .bulkAdd(params)
       .then(() => {
         stockDistributor.save(JSON.parse(params));
@@ -162,7 +162,7 @@ export default {
 
   async getMobile() {
     try {
-      const rows = await db[stockDistributorDexie].toArray();
+      const rows = await stockDistributorDexie.toArray();
       stockDistributor.save(rows);
       return rows;
     } catch (error) {
@@ -173,7 +173,7 @@ export default {
 
   async deleteMobile(id: any) {
     try {
-      await db[stockDistributorDexie].delete(id);
+      await stockDistributorDexie.delete(id);
       stockDistributor.destroy(id);
       // alertSucess('O Registo foi removido com sucesso');
     } catch (error) {
@@ -183,7 +183,7 @@ export default {
   },
 
   async putMobile(params: any) {
-    return db[stockDistributorDexie]
+    return stockDistributorDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         stockDistributor.save(JSON.parse(JSON.stringify(params)));
@@ -191,7 +191,7 @@ export default {
   },
 
   apiFetchByIdMobile(id: any) {
-    return db[stockDistributorDexie]
+    return stockDistributorDexie
       .where('id')
       .equalsIgnoreCase(id)
       .then((rows: any) => {
@@ -201,7 +201,7 @@ export default {
   },
 
   apiGetAllByClinicIdMobile(clinicId: any) {
-    return db[stockDistributorDexie]
+    return stockDistributorDexie
       .where('clinic_id')
       .equalsIgnoreCase(clinicId)
       .then((rows: any) => {

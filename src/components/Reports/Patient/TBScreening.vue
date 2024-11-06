@@ -43,7 +43,7 @@
 <script setup>
 import Report from 'src/services/api/report/ReportService';
 import { LocalStorage } from 'quasar';
-import { ref, provide, onMounted } from 'vue';
+import { ref, provide, onMounted, reactive } from 'vue';
 import TBScreeningReportTs from 'src/services/reports/Patients/TBScreening.ts';
 import ListHeader from 'components/Shared/ListHeader.vue';
 import FiltersInput from 'components/Reports/shared/FiltersInput.vue';
@@ -61,8 +61,8 @@ const qtyProcessed = ref(0);
 const report = 'TB_SCREENING';
 const progress = ref(0.0);
 const filterTbScreeningSection = ref('');
-const downloadingPdf = ref(false);
-const downloadingXls = ref(false);
+const downloadingPdf = reactive(ref(false));
+const downloadingXls = reactive(ref(false));
 const isReportClosed = ref(false);
 
 const closeSection = (params) => {
@@ -137,17 +137,17 @@ const generateReport = async (id, fileType) => {
           patientAux.province,
           moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
           moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-          data
+          data,
+          downloadingPdf
         );
-        downloadingPdf.value = false;
       } else {
         TBScreeningReportTs.downloadExcel(
           patientAux.province,
           moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
           moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-          data
+          data,
+          downloadingXls
         );
-        downloadingXls.value = false;
       }
     }
   }

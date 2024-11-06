@@ -24,10 +24,10 @@ export default {
       const identifier =
         pack.patientvisitDetails.episode.patientServiceIdentifier;
       const therapeuticLine =
-        pack.patientvisitDetails.prescription.prescriptionDetails
+        pack.patientvisitDetails.prescription.prescriptionDetails[0]
           .therapeuticLine;
       const therapeuticRegimen =
-        pack.patientvisitDetails.prescription.prescriptionDetails
+        pack.patientvisitDetails.prescription.prescriptionDetails[0]
           .therapeuticRegimen;
       const patientType =
         pack.patientvisitDetails.prescription.patientType === 'N/A'
@@ -35,7 +35,7 @@ export default {
           : pack.patientvisitDetails.prescription.patientType;
 
       const dispenseType =
-        pack.patientvisitDetails.prescription.prescriptionDetails.dispenseType;
+        pack.patientvisitDetails.prescription.prescriptionDetails[0].dispenseType;
 
       if (identifier.service.id === reportParams.clinicalService) {
         const arvDailyRegisterReport = new ArvDailyRegisterTempReport();

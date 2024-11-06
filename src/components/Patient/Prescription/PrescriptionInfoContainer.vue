@@ -6,7 +6,7 @@
       expand-icon-class="text-white"
       :default-opened="curIdentifier.service.code === 'TARV' || !website"
     >
-    <!--   <template v-slot:header>
+      <template v-slot:header>
         <q-item-section avatar>
           <q-icon color="white" name="medication" />
         </q-item-section>
@@ -261,7 +261,7 @@
             </div>
           </q-card-section>
         </q-card>
-      </div>-->
+      </div>
     </q-expansion-item>
     <q-separator />
     <q-dialog persistent v-model="showPrescriptionDetails">

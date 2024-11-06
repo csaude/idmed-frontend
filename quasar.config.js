@@ -124,6 +124,16 @@ module.exports = configure(function (/* ctx */) {
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#framework
     framework: {
+      // Quasar plugins
+      plugins: [
+        'Notify',
+        'Dialog',
+        'Loading',
+        'Meta',
+        'LocalStorage',
+        'SessionStorage',
+      ],
+
       config: {
         cordova: {
           // add the dynamic top padding on iOS mobile devices
@@ -136,6 +146,7 @@ module.exports = configure(function (/* ctx */) {
           // disables Quasar's back button management.
           backButton: true / false,
         },
+        notify: {} /* look at QuasarConfOptions from the API card */,
       },
 
       iconSet: 'material-icons', // Quasar icon set
@@ -150,16 +161,6 @@ module.exports = configure(function (/* ctx */) {
       //
       // components: [],
       // directives: [],
-
-      // Quasar plugins
-      plugins: [
-        'Notify',
-        'Dialog',
-        'Loading',
-        'Meta',
-        'LocalStorage',
-        'SessionStorage',
-      ],
     },
 
     animations: 'all', // --- includes all animations

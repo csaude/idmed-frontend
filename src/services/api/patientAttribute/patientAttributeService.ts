@@ -83,7 +83,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     return db[patientAttributeDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         patientAttribute.save(JSON.parse(JSON.stringify(params)));
       });

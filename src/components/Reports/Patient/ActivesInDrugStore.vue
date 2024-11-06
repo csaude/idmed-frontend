@@ -144,17 +144,17 @@ const generateReport = async (id, fileType) => {
             patientAux.province,
             moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
             moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-            resp.data
+            resp.data,
+            downloadingPdf
           );
-          downloadingPdf.value = false;
         } else {
           activePatients.downloadExcel(
             patientAux.province,
             moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
             moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-            resp.data
+            resp.data,
+            downloadingXls
           );
-          downloadingXls.value = false;
         }
       }
     });
@@ -174,17 +174,17 @@ const generateReport = async (id, fileType) => {
           patientAux.province,
           moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
           moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-          data
+          data,
+          downloadingPdf
         );
-        downloadingPdf.value = false;
       } else {
         await activePatients.downloadExcel(
           patientAux.province,
           moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
           moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-          data
+          data,
+          downloadingXls
         );
-        downloadingXls.value = false;
       }
     }
   }

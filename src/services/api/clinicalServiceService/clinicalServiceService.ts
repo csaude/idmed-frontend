@@ -20,7 +20,7 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.addMobile(params);
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
@@ -104,7 +104,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     return clinicalServiceDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         clinicalServiceAttributeType.save(JSON.parse(params));
       })

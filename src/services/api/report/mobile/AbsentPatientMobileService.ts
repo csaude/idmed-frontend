@@ -4,7 +4,7 @@ import AbsentPatientReport from 'src/stores/models/report/pharmacyManagement/Abs
 import db from 'src/stores/dexie';
 import packService from '../../pack/packService';
 import { v4 as uuidv4 } from 'uuid';
-const absentPatientReport = AbsentPatientReport.entity;
+const absentPatientReport = db[AbsentPatientReport.entity];
 // const activeInDrugStore = useRepo(ActiveInDrugStore);
 
 export default {
@@ -97,13 +97,13 @@ export default {
     }, new Map());
   },
   localDbAddOrUpdate(data: any) {
-    return db[absentPatientReport].add(data).catch((error: any) => {
+    return absentPatientReport.add(data).catch((error: any) => {
       console.log(error);
     });
   },
 
   localDbGetAllByReportId(reportId: any) {
-    return db[absentPatientReport]
+    return absentPatientReport
       .where('reportId')
       .equalsIgnoreCase(reportId)
       .toArray()

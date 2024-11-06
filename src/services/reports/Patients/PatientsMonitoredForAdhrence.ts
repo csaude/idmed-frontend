@@ -22,7 +22,7 @@ const img = new Image();
 img.src = 'data:image/png;base64,' + MOHIMAGELOG;
 
 export default {
-  async downloadPDF(params: any) {
+  async downloadPDF(params: any, loading: any) {
     const fontBase64 = await fetchFontAsBase64(fontPath);
     const doc = new JsPDF({
       orientation: 'l',
@@ -149,9 +149,9 @@ export default {
     // window.open(doc.output('bloburl'));
     console.log(doc);
     const pdfOutput = doc.output();
-    DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput);
+    DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput, loading);
   },
-  async downloadExcel(params: any) {
+  async downloadExcel(params: any, loading: any) {
     const result =
       await PatientsWithScreeningMobileService.localDbGetAllByReportId(
         params.id
@@ -390,7 +390,7 @@ export default {
     } else {
       const titleFile = 'RelatorioRastreioDeGravidez';
       console.log('result' + titleFile);
-      DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob);
+      DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob, loading);
     }
   },
   createArrayOfArrayRow(rows: []) {

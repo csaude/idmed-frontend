@@ -7,7 +7,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 
 const localidade = useRepo(Localidade);
-const localidadeDexie = Localidade.entity;
+const localidadeDexie = db[Localidade.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -16,9 +16,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile && !isOnline) {
-      this.addMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -94,8 +94,8 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[localidadeDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return localidadeDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         localidade.save(JSON.parse(params));
       })
@@ -104,7 +104,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[localidadeDexie]
+    return localidadeDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         localidade.save(JSON.parse(params));
@@ -114,7 +114,7 @@ export default {
       });
   },
   getMobile() {
-    return db[localidadeDexie]
+    return localidadeDexie
       .toArray()
       .then((rows: any) => {
         localidade.save(rows);
@@ -125,7 +125,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[localidadeDexie]
+    return localidadeDexie
       .delete(paramsId)
       .then(() => {
         localidade.destroy(paramsId);
@@ -137,7 +137,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[localidadeDexie]
+    return localidadeDexie
       .bulkAdd(params)
       .then(() => {
         localidade.save(params);

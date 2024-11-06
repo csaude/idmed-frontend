@@ -46,13 +46,12 @@ import moment from 'moment';
 import Report from 'src/services/api/report/ReportService';
 import { LocalStorage } from 'quasar';
 import expectedOfTheDay from 'src/services/reports/Patients/ExpectedOfTheDay';
-import { ref, provide } from 'vue';
+import { ref, provide, reactive } from 'vue';
 import reportDatesParams from 'src/services/reports/ReportDatesParams';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import ListHeader from 'components/Shared/ListHeader.vue';
 import FiltersInput from 'components/Reports/shared/FiltersInput.vue';
 import patientsExpectedInPharmacyMobileService from 'src/services/api/report/mobile/PatientsExpectedInPharmacyMobileService';
-import ActiveInDrugStoreMobileService from 'src/services/api/report/mobile/ActiveInDrugStoreMobileService';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const { isOnline } = useSystemUtils();
@@ -64,7 +63,7 @@ const filterExpectedSection = ref('');
 const totalRecords = ref(0);
 const qtyProcessed = ref(0);
 const report = 'EXPECTED_PATIENTS';
-const downloadingPdf = ref(false);
+const downloadingPdf = reactive(ref(false));
 const downloadingXls = ref(false);
 
 const isReportClosed = ref(false);
@@ -150,17 +149,17 @@ const generateReport = async (id, fileType) => {
             patientAux.province,
             moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
             moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-            resp.data
+            resp.data,
+            downloadingPdf
           );
-          downloadingPdf.value = false;
         } else {
           expectedOfTheDay.downloadExcel(
             patientAux.province,
             moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
             moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-            resp.data
+            resp.data,
+            downloadingXls
           );
-          downloadingXls.value = false;
         }
       }
     });
@@ -179,17 +178,17 @@ const generateReport = async (id, fileType) => {
           patientAux.province,
           moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
           moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-          data
+          data,
+          downloadingPdf
         );
-        downloadingPdf.value = false;
       } else {
         await expectedOfTheDay.downloadExcel(
           patientAux.province,
           moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
           moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-          data
+          data,
+          downloadingXls
         );
-        downloadingPdf.value = false;
       }
     }
   }

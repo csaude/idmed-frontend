@@ -317,7 +317,7 @@ export default {
   //Mobile
 
   addMobile(params: string) {
-    return stockDexie.add(JSON.parse(JSON.stringify(params))).then(() => {
+    return stockDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
       stock.save(JSON.parse(JSON.stringify(params)));
     });
   },

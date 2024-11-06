@@ -7,7 +7,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 
 const form = useRepo(Form);
-const formDexie = Form.entity;
+const formDexie = db[Form.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -16,9 +16,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.addMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -91,8 +91,8 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[formDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return formDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         form.save(JSON.parse(params));
         // alertSucess('O Registo foi efectuado com sucesso');
@@ -103,7 +103,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[formDexie]
+    return formDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         form.save(JSON.parse(params));
@@ -115,7 +115,7 @@ export default {
       });
   },
   getMobile() {
-    return db[formDexie]
+    return formDexie
       .toArray()
       .then((rows: any) => {
         form.save(rows);
@@ -126,7 +126,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[formDexie]
+    return formDexie
       .delete(paramsId)
       .then(() => {
         form.destroy(paramsId);
@@ -138,7 +138,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[formDexie]
+    return formDexie
       .bulkPut(params)
       .then(() => {
         form.save(params);
@@ -155,5 +155,9 @@ export default {
 
   getFormById(id: string) {
     return form.query().where('id', id).first();
+  },
+  //Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await formDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

@@ -10,6 +10,7 @@ import durationService from '../duration/durationService';
 import doctorService from '../doctorService/doctorService';
 import clinicService from '../clinicService/clinicService';
 import prescriptionDetailsService from '../prescriptionDetails/prescriptionDetailsService';
+import prescribedDrugService from '../prescribedDrug/prescribedDrugService';
 
 const prescription = useRepo(Prescription);
 const prescriptionDexie = db[Prescription.entity];
@@ -88,7 +89,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     return prescriptionDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         prescription.save(JSON.parse(JSON.stringify(params)));
       });
@@ -292,7 +293,6 @@ export default {
       .where('id')
       .anyOf(ids)
       .toArray();
-
     const prescriptionsIds = prescriptions.map(
       (prescription: any) => prescription.id
     );
@@ -305,12 +305,15 @@ export default {
     const clinicIds = prescriptions.map(
       (prescription: any) => prescription.clinic_id
     );
-    const [clinics, durations, doctors, prescriptionDetails] =
+    const [clinics, durations, doctors, prescriptionDetails, prescribedDrugs] =
       await Promise.all([
         clinicService.getAllByIDsFromDexie(clinicIds),
         durationService.getAllByIDsFromDexie(durationIds),
         doctorService.getAllByIDsFromDexie(doctorIds),
         prescriptionDetailsService.getLastByPrescriprionIdListFromDexie(
+          prescriptionsIds
+        ),
+        prescribedDrugService.getAllByPrescriprionIdListFromDexie(
           prescriptionsIds
         ),
       ]);
@@ -325,9 +328,13 @@ export default {
       prescription.doctor = doctors.find(
         (doctor: any) => doctor.id === prescription.doctor_id
       );
-      prescription.prescriptionDetails = prescriptionDetails.find(
-        (prescriptionDetails: any) =>
-          prescriptionDetails.prescription_id === prescription.id
+      prescription.prescriptionDetails = prescriptionDetails.filter(
+        (prescriptionDetail: any) =>
+          prescriptionDetail.prescription_id === prescription.id
+      );
+      prescription.prescribedDrugs = prescribedDrugs.filter(
+        (prescribedDrug: any) =>
+          prescribedDrug.prescription_id === prescription.id
       );
     });
 

@@ -106,17 +106,23 @@ const getProcessingStatus = (params) => {
 
 const generateReport = (id, fileType, params) => {
   if (fileType === 'PDF') {
-    PatientsWithPregnancyScreening.downloadPDF(params).then((resp) => {
-      if (resp === 204)
-        alertError('Não existem Dados para o período selecionado');
-      downloadingPdf.value = false;
-    });
+    PatientsWithPregnancyScreening.downloadPDF(params, downloadingPdf).then(
+      (resp) => {
+        if (resp === 204) {
+          alertError('Não existem Dados para o período selecionado');
+          downloadingPdf.value = false;
+        }
+      }
+    );
   } else {
-    PatientsWithPregnancyScreening.downloadExcel(params).then((resp) => {
-      if (resp === 204)
-        alertError('Não existem Dados para o período selecionado');
-      downloadingXls.value = false;
-    });
+    PatientsWithPregnancyScreening.downloadExcel(params, downloadingXls).then(
+      (resp) => {
+        if (resp === 204) {
+          alertError('Não existem Dados para o período selecionado');
+          downloadingXls.value = false;
+        }
+      }
+    );
   }
 };
 

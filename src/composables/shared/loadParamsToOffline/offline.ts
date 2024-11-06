@@ -58,7 +58,6 @@ export function useOffline() {
     await NanoclinicService.getFromBackEndToPinia(0);
     await NanosystemConfigsService.getFromBackEndToPinia(0);
     await NanomenuService.getFromBackEndToPinia(0);
-    await NanoclinicService.getFromBackEndToPinia(0);
     return true;
   }
 
@@ -167,7 +166,10 @@ export function useOffline() {
 
   async function loadPatientDataToOffline() {
     await patientService.doPatientsBySectorGet().then((resp) => {
-      if (!resp) patientService.addBulkMobile();
+      if (!resp) {
+        patientService.addBulkMobile();
+        patientServiceIdentifierService.addBulkMobile();
+      }
     });
     await patientVisitDetailsService
       .doPatientVisitServiceBySectorGet()
@@ -179,7 +181,6 @@ export function useOffline() {
   }
 
   async function addBulkToMobile() {
-    patientServiceIdentifierService.addBulkMobile();
     episodeService.addBulkMobile();
     patientVisitService.addBulkMobile();
     patientVisitDetailsService.addBulkMobile();

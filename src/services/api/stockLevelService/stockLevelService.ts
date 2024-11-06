@@ -7,7 +7,7 @@ import db from '../../../stores/dexie';
 import StockLevel from 'src/stores/models/stocklevel/StockLevel';
 
 const stockLevel = useRepo(StockLevel);
-const stockLevelDexie = StockLevel.entity;
+const stockLevelDexie = db[StockLevel.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -16,7 +16,7 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.addMobile(params);
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
@@ -92,8 +92,8 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[stockLevelDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return stockLevelDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         stockLevel.save(JSON.parse(params));
       })
@@ -102,7 +102,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[stockLevelDexie]
+    return stockLevelDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         stockLevel.save(JSON.parse(params));
@@ -114,7 +114,7 @@ export default {
       });
   },
   getMobile() {
-    return db[stockLevelDexie]
+    return stockLevelDexie
       .toArray()
       .then((rows: any) => {
         stockLevel.save(rows);
@@ -125,7 +125,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[stockLevelDexie]
+    return stockLevelDexie
       .put(paramsId)
       .then(() => {
         stockLevel.destroy(paramsId);
@@ -137,7 +137,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[stockLevelDexie]
+    return stockLevelDexie
       .bulkPut(params)
       .then(() => {
         stockLevel.save(params);

@@ -5,12 +5,9 @@ import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
-import InteroperabilityAttribute from 'src/stores/models/interoperabilityAttribute/InteroperabilityAttribute';
-import InteroperabilityAttributeService from '../InteroperabilityAttribute/InteroperabilityAttributeService';
 
 const healthInformationSystem = useRepo(HealthInformationSystem);
-const interoperabilityAttributeRepo = useRepo(InteroperabilityAttribute);
-const healthInformationSystemDexie = HealthInformationSystem.entity;
+const healthInformationSystemDexie = db[HealthInformationSystem.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -85,8 +82,8 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[healthInformationSystemDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return healthInformationSystemDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         healthInformationSystem.save(JSON.parse(params));
       })
@@ -95,7 +92,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[healthInformationSystemDexie]
+    return healthInformationSystemDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         healthInformationSystem.save(JSON.parse(params));
@@ -105,7 +102,7 @@ export default {
       });
   },
   getMobile() {
-    return db[healthInformationSystemDexie]
+    return healthInformationSystemDexie
       .toArray()
       .then((rows: any) => {
         healthInformationSystem.save(rows);
@@ -115,7 +112,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[healthInformationSystemDexie]
+    return healthInformationSystemDexie
       .delete(paramsId)
       .then(() => {
         healthInformationSystem.destroy(paramsId);
@@ -126,7 +123,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[healthInformationSystemDexie]
+    return healthInformationSystemDexie
       .bulkPut(params)
       .then(() => {
         healthInformationSystem.save(params);

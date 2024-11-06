@@ -7,7 +7,7 @@ import db from '../../../stores/dexie';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const province = useRepo(Province);
-const provinceDexie = Province.entity;
+const provinceDexie = db[Province.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -23,9 +23,9 @@ export default {
   },
   get(offset: number) {
     if (isMobile.value && !isOnline.value) {
-      this.getMobile();
+      return this.getMobile();
     } else {
-      this.getWeb(offset);
+      return this.getWeb(offset);
     }
   },
   async patch(uuid: string, params: string) {
@@ -91,21 +91,21 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[provinceDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return provinceDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         province.save(JSON.parse(JSON.stringify(params)));
       });
   },
   putMobile(params: string) {
-    return db[provinceDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return provinceDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         province.save(JSON.parse(JSON.stringify(params)));
       });
   },
   getMobile() {
-    return db[provinceDexie]
+    return provinceDexie
       .toArray()
       .then((rows: any) => {
         province.save(rows);
@@ -116,7 +116,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[provinceDexie]
+    return provinceDexie
       .delete(paramsId)
       .then(() => {
         province.destroy(paramsId);
@@ -128,7 +128,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[provinceDexie]
+    return provinceDexie
       .bulkPut(params)
       .then(() => {
         province.save(params);

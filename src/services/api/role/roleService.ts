@@ -9,7 +9,7 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const role = useRepo(Role);
 const roleMenuRepo = useRepo(RoleMenu);
-const roleDexie = Role.entity;
+const roleDexie = db[Role.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -18,9 +18,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.putMobile(params);
+      return this.putMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -100,8 +100,8 @@ export default {
   },
   // Mobile
   addMobile(params: string) {
-    return db[roleDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return roleDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         role.save(JSON.parse(params));
         // alertSucess('O Registo foi efectuado com sucesso');
@@ -112,7 +112,7 @@ export default {
       });
   },
   putMobile(params: string) {
-    return db[roleDexie]
+    return roleDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         role.save(JSON.parse(params));
@@ -124,7 +124,7 @@ export default {
       });
   },
   getMobile() {
-    return db[roleDexie]
+    return roleDexie
       .toArray()
       .then((rows: any) => {
         role.save(rows);
@@ -135,7 +135,7 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return db[roleDexie]
+    return roleDexie
       .delete(paramsId)
       .then(() => {
         role.destroy(paramsId);
@@ -147,7 +147,7 @@ export default {
       });
   },
   addBulkMobile(params: any) {
-    return db[roleDexie]
+    return roleDexie
       .bulkAdd(params)
       .then(() => {
         role.save(params);

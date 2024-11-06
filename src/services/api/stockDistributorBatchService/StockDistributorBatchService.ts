@@ -12,7 +12,7 @@ const { closeLoading, showloading } = useLoading();
 const { isMobile, isOnline } = useSystemUtils();
 
 const stockDistributorBatch = useRepo(StockDistributorBatch);
-const stockDistributorBatchDexie = StockDistributorBatch.entity;
+const stockDistributorBatchDexie = db[StockDistributorBatch.entity];
 
 export default {
   // Axios API call
@@ -143,8 +143,8 @@ export default {
 
   //Mobile
   async addMobile(params: any) {
-    return db[stockDistributorBatchDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+    return stockDistributorBatchDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         stockDistributorBatch.save(JSON.parse(JSON.stringify(params)));
       });
@@ -152,7 +152,7 @@ export default {
 
   async getMobile() {
     try {
-      const rows = await db[stockDistributorBatchDexie].toArray();
+      const rows = await stockDistributorBatchDexie.toArray();
       stockDistributorBatch.save(rows);
       return rows;
     } catch (error) {
@@ -181,7 +181,7 @@ export default {
   },
   //mobile
   addBulkMobile(params: string) {
-    return db[stockDistributorBatchDexie]
+    return stockDistributorBatchDexie
       .bulkAdd(params)
       .then(() => {
         stockDistributorBatch.save(JSON.parse(params));

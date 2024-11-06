@@ -92,7 +92,7 @@ export default {
   // Mobile
   addMobile(params: string) {
     return db[facilityTypeDexie]
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         facilityType.save(JSON.parse(params));
         // alertSucess('O Registo foi efectuado com sucesso');

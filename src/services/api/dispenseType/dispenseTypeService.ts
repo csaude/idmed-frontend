@@ -68,7 +68,7 @@ export default {
   },
   addMobile(params: string) {
     return dispenseTypeDexie
-      .add(JSON.parse(JSON.stringify(params)))
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         dispenseType.save(JSON.parse(params));
       })

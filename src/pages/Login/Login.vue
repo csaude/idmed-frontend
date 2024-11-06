@@ -232,7 +232,9 @@
                     </q-avatar>
                   </div>
                 </div>
-                <div class="row justify-center">Versão v.1.4.0</div>
+                <div class="row justify-center">
+                  Versão v{{ version }}
+                </div>
               </q-card-section>
             </q-card>
           </transition>
@@ -282,11 +284,11 @@
 </template>
 
 <script setup>
-import { QSpinnerBall, SessionStorage, useQuasar } from 'quasar';
+import { version } from '../../../package.json';
+import { SessionStorage, useQuasar } from 'quasar';
 import UsersService from 'src/services/UsersService';
 import clinicService from 'src/services/api/clinicService/clinicService';
 import districtService from 'src/services/api/districtService/districtService';
-import menuService from 'src/services/api/menu/menuService';
 import provinceService from 'src/services/api/provinceService/provinceService';
 import systemConfigsService from 'src/services/api/systemConfigs/systemConfigsService';
 import SystemConfigs from 'src/stores/models/systemConfigs/SystemConfigs';
@@ -304,8 +306,6 @@ import StockDestructionAdjustmentService from 'src/services/api/stockAdjustment/
 import InventoryStockAdjustmentService from 'src/services/api/stockAdjustment/InventoryStockAdjustmentService';
 import InventoryService from 'src/services/api/inventoryService/InventoryService';
 import eventBus from '../../utils/eventbus';
-import NanoclinicService from 'src/services/Synchronization/clinicService/NanoclinicService';
-import NanosystemConfigsService from 'src/services/Synchronization/systemConfigs/NanosystemConfigsService';
 const { notifyError, notifySuccess } = useNotify();
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -342,7 +342,7 @@ onMounted(async () => {
     InventoryStockAdjustmentService.deleteAllFromStorage();
     InventoryService.deleteAllFromStorage();
     clinicService.deleteFromPinia();
-    systemConfigsService.deleteAllFromStorage();
+    // systemConfigsService.deleteAllFromStorage();
     SessionStorage.clear();
     sessionStorage.setItem('user', null);
     sessionStorage.setItem('id_token', null);
@@ -352,13 +352,8 @@ onMounted(async () => {
     localStorage.setItem('currInventory', '');
     localStorage.setItem('Btoa', '');
   } else {
-    const users = await UsersService.getMobile();
-    if (users.length === 0) {
-      NanoclinicService.getFromBackEnd(0);
-    } else {
-      systemConfigsService.getMobile();
-      clinicService.getMobile()
-    }
+    systemConfigsService.getMobile();
+    clinicService.getMobile();
   }
 
   eventBus.on('notification', (notificationIsOpen) => {
@@ -368,7 +363,7 @@ onMounted(async () => {
       isOpen.value = notificationIsOpen;
     }
   });
-  console.log(isOpen.value);
+  // console.log(isOpen.value);
 });
 
 onBeforeUnmount(() => {

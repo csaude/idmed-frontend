@@ -38,7 +38,7 @@ const months = [
 ];
 
 export default {
-  async downloadPDF(id) {
+  async downloadPDF(id, loading) {
     const fontBase64 = await fetchFontAsBase64(fontPath);
     const doc = new JsPDF({
       orientation: 'p',
@@ -722,10 +722,10 @@ export default {
       window.open(doc.output('bloburl'));
     } else {
       const pdfOutput = doc.output();
-      DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput);
+      DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput, loading);
     }
   },
-  async downloadExcel(id) {
+  async downloadExcel(id, loading) {
     const clinic = clinicService.currClinic();
     let mmiaReport = {};
     let mmiaData = [];
@@ -1429,7 +1429,7 @@ export default {
       saveAs(blob, fileName + fileExtension);
     } else {
       const titleFile = 'Mmia.xlsx';
-      DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob);
+      DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob, loading);
     }
   },
 

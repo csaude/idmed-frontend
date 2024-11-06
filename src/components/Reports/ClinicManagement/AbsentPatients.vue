@@ -43,7 +43,7 @@
 <script setup>
 import Report from 'src/services/api/report/ReportService';
 import { LocalStorage } from 'quasar';
-import { ref, provide, onMounted } from 'vue';
+import { ref, provide, onMounted, reactive } from 'vue';
 import absentPatientsTs from 'src/services/reports/ClinicManagement/AbsentPatients.ts';
 import ListHeader from 'components/Shared/ListHeader.vue';
 import FiltersInput from 'components/Reports/shared/FiltersInput.vue';
@@ -60,8 +60,8 @@ const qtyProcessed = ref(0);
 const report = 'FALTOSOS_AO_LEVANTAMENTO';
 const progress = ref(0.0);
 const filterDrugStoreSection = ref('');
-const downloadingPdf = ref(false);
-const downloadingXls = ref(false);
+const downloadingPdf = reactive(ref(false));
+const downloadingXls = reactive(ref(false));
 const isReportClosed = ref(false);
 
 const closeSection = (params) => {
@@ -127,17 +127,23 @@ const getProcessingStatus = (params) => {
 
 const generateReport = (id, fileType, params) => {
   if (fileType === 'PDF') {
-    absentPatientsTs.downloadPDF(id, fileType, params).then((resp) => {
-      if (resp === 204)
-        alertError('Não existem Dados para o período selecionado');
-      downloadingPdf.value = false;
-    });
+    absentPatientsTs
+      .downloadPDF(id, fileType, params, downloadingPdf)
+      .then((resp) => {
+        if (resp === 204) {
+          alertError('Não existem Dados para o período selecionado');
+          downloadingPdf.value = false;
+        }
+      });
   } else if (fileType === 'XLS') {
-    absentPatientsTs.downloadExcel(id, fileType, params).then((resp) => {
-      if (resp === 204)
-        alertError('Não existem Dados para o período selecionado');
-      downloadingXls.value = false;
-    });
+    absentPatientsTs
+      .downloadExcel(id, fileType, params, downloadingXls)
+      .then((resp) => {
+        if (resp === 204) {
+          alertError('Não existem Dados para o período selecionado');
+          downloadingXls.value = false;
+        }
+      });
   }
 };
 
