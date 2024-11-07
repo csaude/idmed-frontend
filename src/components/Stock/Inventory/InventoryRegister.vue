@@ -278,10 +278,7 @@ const initInventory = () => {
 };
 
 const isGeneric = computed(() => {
-  return (
-    String(currInventory.value.generic).includes('true') ||
-    currInventory.value.generic
-  );
+  return String(currInventory.value.generic).includes('true');
 });
 
 const activeDrugs = computed(() => {
@@ -308,13 +305,14 @@ const blockStartDate = (date) => {
       endDate
     );
 
-    if (inventory || lastInventoryBeforeCurrentDate) {
+    if (inventory) {
       return (
         date >=
           moment(lastInventoryBeforeCurrentDate.endDate).format('YYYY/MM/DD') &&
         date <= moment(currentDate).format('YYYY/MM/DD')
       );
     } else {
+      currInventory.value.startDate = moment(endDate).format('DD-MM-YYYY');
       return date === moment(endDate).format('YYYY/MM/DD');
     }
   } else {
@@ -333,6 +331,7 @@ onMounted(() => {
   ) {
     currInventory.value.startDate = moment().format('DD-MM-YYYY');
   }
+  blockStartDate(currInventory.value.startDate);
 });
 </script>
 

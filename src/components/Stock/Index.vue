@@ -10,13 +10,15 @@
           label="Inventário"
           @click="selectTab('inventory')"
         />
-        <q-tab v-if="isOnline"
+        <q-tab
+          v-if="isOnline"
           name="stockDistributor"
           label="Distribuicao"
           @click="selectTab('stockDistributor')"
         >
         </q-tab>
         <q-tab
+          v-if="!isOnline"
           name="confirmDistribution"
           label="Confirmar Distribuicao"
           @click="selectTab('confirmDistribution')"
