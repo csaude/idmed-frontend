@@ -94,6 +94,7 @@ export default {
   getInventoryInPreviousMonth(startDate: any, endDate: any) {
     return inventory
       .query()
+      .where('generic', true)
       .where('endDate', (value: Date) => {
         const startDateMoment = moment(value, 'YYYY-MM-DD');
         return (

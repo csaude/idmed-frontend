@@ -207,7 +207,10 @@
         <component :is="Component" />
       </router-view>
     </q-page-container>
-    <q-footer class="text-right text-caption" style="font-family: 'Gill Sans'">
+    <q-footer
+      class="text-right text-caption text-italic"
+      style="font-family: 'Gill Sans'"
+    >
       <span class="gt-sm inline">iDMED v{{ version }}</span>
     </q-footer>
   </q-layout>

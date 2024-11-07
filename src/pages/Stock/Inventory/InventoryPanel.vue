@@ -56,12 +56,11 @@
             <q-input
               dense
               outlined
-              :disable="isEndDateDisabled"
+              disable
               class="col q-ma-sm"
-              v-model="endDate"
+              v-model="closeDate"
               ref="dataFecho"
               label="Data de Fecho"
-              v-if="isDataFechoVisible"
             >
               <template v-slot:append>
                 <q-icon name="event" class="cursor-pointer">
@@ -71,7 +70,7 @@
                     transition-hide="scale"
                   >
                     <q-date
-                      v-model="endDate"
+                      v-model="closeDate"
                       mask="DD-MM-YYYY"
                       :options="blockData"
                     >
@@ -429,11 +428,12 @@ const saveAllAdjustments = (inventory, hasAdjustments) => {
 
 const closeClassInventory = (inventory) => {
   if (!isMobile.value) {
-    inventory.endDate = isDataFechoVisible.value
-      ? inventory.endDate
-      : moment.utc(new Date()).local().format('YYYY-MM-DD');
+    inventory.open = false;
+    inventory.endDate = moment(
+      getDateFromHyphenDDMMYYYY(closeDate.value)
+    ).format('YYYY-MM-DD');
     InventoryService.apiClose(inventory.id, inventory.endDate).then((resp) => {
-      step = 'display';
+      let step = 'display';
       InventoryService.closeInventoryPinia(inventory, inventory.endDate);
       StockAlertService.apiGetStockAlertAll(clinicService.currClinic().id);
       closeLoading();
@@ -523,7 +523,7 @@ const doSaveAll = async (i, inventory) => {
         await doSaveAll(i, inventory);
       }
     } else {
-      step = 'display';
+      let step = 'display';
     }
   }
 };
@@ -577,10 +577,12 @@ onMounted(() => {
   closeLoading();
 
   const currentDate = new Date();
-  closeDate.value =
-    currInventory.value.endDate !== null
-      ? moment(currInventory.value.endDate).format('DD-MM-YYYY')
-      : moment.utc(currentDate).local().format('DD-MM-YYYY');
+
+  if (currInventory.value.endDate !== null) {
+    closeDate.value = moment(currInventory.value.endDate).format('DD-MM-YYYY');
+  } else {
+    blockData(currentDate);
+  }
 
   inventoryTemp.value = currInventory.value;
 });
@@ -600,9 +602,11 @@ const blockData = (date) => {
     startDate,
     endDate
   );
-  if (InventoryService.isDateBetween21And25(currentDate) && !inventory) {
+  if (!inventory) {
+    closeDate.value = moment(endDate).format('DD-MM-YYYY');
     return date === moment(endDate).format('YYYY/MM/DD');
   } else {
+    closeDate.value = moment(currentDate).format('DD-MM-YYYY');
     return date === moment(currentDate).format('YYYY/MM/DD');
   }
 };
