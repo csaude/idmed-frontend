@@ -642,8 +642,10 @@ export default {
           if (pvd.pack !== undefined) {
             const pickupDate = moment(pvd.pack.pickupDate);
             const dispenseTypeId =
-              pvd.prescription.prescriptionDetails[0].dispenseType
-                .identifierType;
+              pvd.prescription.prescriptionDetails.length > 0
+                ? pvd.prescription.prescriptionDetails[0].dispenseType
+                    .identifierType
+                : '';
             const codeDispenseType =
               dispenseTypeService.getById(dispenseTypeId);
             if (

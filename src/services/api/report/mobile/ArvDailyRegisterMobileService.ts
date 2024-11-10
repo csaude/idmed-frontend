@@ -27,19 +27,25 @@ export default {
       const episode = pack.patientvisitDetails.episode;
       const identifier =
         pack.patientvisitDetails.episode.patientServiceIdentifier;
+      const prescriptionDetails =
+        pack.patientvisitDetails.prescription.prescriptionDetails;
       const therapeuticLine =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0]
-          .therapeuticLine;
+        prescriptionDetails.length > 0
+          ? prescriptionDetails[0].therapeuticLine
+          : '';
       const therapeuticRegimen =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0]
-          .therapeuticRegimen;
+        prescriptionDetails.length > 0
+          ? prescriptionDetails[0].therapeuticRegimen
+          : '';
       const patientType =
         pack.patientvisitDetails.prescription.patientType === 'N/A'
           ? pack.patientvisitDetails.prescription.patientStatus
           : pack.patientvisitDetails.prescription.patientType;
 
       const dispenseType =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0].dispenseType;
+        prescriptionDetails.length > 0
+          ? prescriptionDetails[0].dispenseType
+          : '';
 
       if (identifier.service.id === reportParams.clinicalService) {
         const arvDailyRegisterReport = new ArvDailyRegisterTempReport();

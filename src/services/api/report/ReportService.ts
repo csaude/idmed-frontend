@@ -761,6 +761,7 @@ export default {
         const patientvisitDetail = data.patientvisitDetails;
         const patientVisit = patientvisitDetail.patientVisit;
         const prescription = patientvisitDetail.prescription;
+        const prescriptionDetails = prescription.prescriptionDetails;
         const episode = patientvisitDetail.episode;
         const identifier = episode.patientServiceIdentifier;
         const service = identifier.service;
@@ -770,7 +771,9 @@ export default {
         if (service.code === serviceCode) {
           if (prescription !== null && prescription !== undefined) {
             dispenseType =
-              prescription.prescriptionDetails[0].dispenseType.code;
+              prescriptionDetails.length > 0
+                ? prescriptionDetails[0].dispenseType.code
+                : '';
           }
         }
 
@@ -812,6 +815,7 @@ export default {
         const patientvisitDetail = data.patientvisitDetails;
         const patientVisit = patientvisitDetail.patientVisit;
         const prescription = patientvisitDetail.prescription;
+        const prescriptionDetails = prescription.prescriptionDetails;
         const episode = patientvisitDetail.episode;
         const identifier = episode.patientServiceIdentifier;
         const service = identifier.service;
@@ -821,7 +825,9 @@ export default {
         if (service.code === serviceCode) {
           if (prescription !== null && prescription !== undefined) {
             dispenseType =
-              prescription.prescriptionDetails[0].dispenseType.code;
+              prescriptionDetails.length > 0
+                ? prescriptionDetails[0].dispenseType.code
+                : '';
           }
           const existingItem = dispensesPerMonthsByAgeInYear.find((item) => {
             return (
@@ -972,6 +978,7 @@ export default {
         const patientVisit = patientvisitDetail.patientVisit;
         const episode = patientvisitDetail.episode;
         const prescription = patientvisitDetail.prescription;
+        const prescriptionDetails = prescription.prescriptionDetails;
         const identifier = episode.patientServiceIdentifier;
         const service = identifier.service;
         const patient = patientVisit.patient;
@@ -980,7 +987,9 @@ export default {
         if (service.code === serviceCode) {
           if (prescription !== null && prescription !== undefined) {
             dispenseType =
-              prescription.prescriptionDetails[0].dispenseType.description;
+              prescriptionDetails.length > 0
+                ? prescriptionDetails[0].dispenseType.description
+                : '';
           }
           const existingItem = patientsInService.find((item) => {
             return (
@@ -1026,6 +1035,7 @@ export default {
       for (const data of dataMonths) {
         const patientvisitDetail = data.patientvisitDetails;
         const prescription = patientvisitDetail.prescription;
+        const prescriptionDetails = prescription.prescriptionDetails;
         const episode = patientvisitDetail.episode;
         const identifier = episode.patientServiceIdentifier;
         const service = identifier.service;
@@ -1034,7 +1044,9 @@ export default {
         if (service.code === serviceCode) {
           if (prescription !== null && prescription !== undefined) {
             dispenseType =
-              prescription.prescriptionDetails[0].dispenseType.code;
+              prescriptionDetails.length > 0
+                ? prescriptionDetails[0].dispenseType.code
+                : '';
           }
 
           const existingItem = dispensesPerMonthsInYear.find((item) => {

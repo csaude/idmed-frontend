@@ -39,12 +39,16 @@ export default {
       const patient = pack.patientvisitDetails.patientVisit.patient;
       const identifier =
         pack.patientvisitDetails.episode.patientServiceIdentifier;
+      const prescriptionDetails =
+        pack.patientvisitDetails.prescription.prescriptionDetails;
       const therapeuticLine =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0]
-          .therapeuticLine;
+        prescriptionDetails.length > 0
+          ? prescriptionDetails[0].therapeuticLine
+          : '';
       const therapeuticRegimen =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0]
-          .therapeuticRegimen;
+        prescriptionDetails.length > 0
+          ? prescriptionDetails[0].therapeuticRegimen
+          : '';
       const patientType =
         pack.patientvisitDetails.prescription.patientType === 'N/A'
           ? pack.patientvisitDetails.prescription.patientStatus
@@ -74,7 +78,6 @@ export default {
       activePatient.id = uuidv4();
       this.localDbAddOrUpdate(activePatient);
     }
-
   },
   groupedPatientVisits(patientVisitDetails: any, reportParams: any) {
     // &&  moment(patientVisitDetail.pack.nextPickUpDate).add(3, 'd').isAfter( moment(reportParams.endDate)

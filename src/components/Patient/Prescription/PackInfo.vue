@@ -107,15 +107,6 @@
                     :props="props"
                   >
                     <div class="col">
-                      <!-- <q-btn
-                        flat
-                        @click="editButtonActions(patientVisit)"
-                        round
-                        color="orange-5"
-                        icon="edit"
-                      >
-                        <q-tooltip class="bg-amber-5">Refazer</q-tooltip>
-                      </q-btn> -->
                       <q-btn
                         flat
                         @click.stop="removePack"

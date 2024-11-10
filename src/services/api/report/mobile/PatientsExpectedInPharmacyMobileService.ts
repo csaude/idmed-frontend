@@ -29,15 +29,20 @@ export default {
 
     for (const pack of activePacks) {
       const patient = pack.patientvisitDetails.patientVisit.patient;
+      const prescriptionDetails =
+        pack.patientvisitDetails.prescription.prescriptionDetails;
       const identifier =
         pack.patientvisitDetails.episode.patientServiceIdentifier;
+
       const therapeuticRegimen =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0]
-          .therapeuticRegimen;
+        prescriptionDetails.length > 0
+          ? prescriptionDetails[0].therapeuticRegimen
+          : '';
 
       const dispenseType =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0].dispenseType;
-
+        prescriptionDetails.length > 0
+          ? prescriptionDetails[0].dispenseType
+          : '';
       if (identifier.service.id === reportParams.clinicalService) {
         const patientExpectedReports = new PatientExpectedReport();
         patientExpectedReports.dispenseType = dispenseType.description;
@@ -73,19 +78,18 @@ export default {
     for (const patientVisitDetail of patientVisitDetailsList) {
       if (patientVisitDetail.pack !== undefined) {
         const patientExpectedReports = new PatientExpectedReport();
+        const prescriptionDetails =
+          patientVisitDetail.prescription.prescriptionDetails;
         let prescription = patientVisitDetail.prescription;
-        if (
-          patientVisitDetail.prescription.prescriptionDetails[0]
-            .dispenseType === null ||
-          patientVisitDetail.prescription.prescriptionDetails[0]
-            .dispenseType === undefined
-        ) {
-          prescription = await prescriptionService.getPrescriptionMobileById(
-            prescription.id
-          );
-        }
+
+        prescription = await prescriptionService.getPrescriptionMobileById(
+          prescription.id
+        );
+
         const dispenseType = dispenseTypeService.getById(
-          prescription.prescriptionDetails[0].dispenseType.id
+          prescriptionDetails.length > 0
+            ? prescriptionDetails[0].dispenseType.id
+            : ''
         );
         let patientVisit = patientVisitDetail.patientVisit;
         if (patientVisit === null) {
@@ -113,12 +117,15 @@ export default {
           // const serviceIdentifier = identifier
           const pack = patientVisitDetail.pack;
           const clinic = patientVisitDetail.clinic;
+          const prescriptionDetails = prescription.prescriptionDetails;
           const clinicalService = await clinicalServiceService.localDbGetById(
             identifier.service.id
           );
           const therapeuticRegimen =
             await therapeuticalRegimenService.getInMobileById(
-              prescription.prescriptionDetails[0].therapeuticRegimen.id
+              prescriptionDetails.length > 0
+                ? prescriptionDetails[0].therapeuticRegimen.id
+                : ''
             );
           const dispenseMode = await dispenseModeService.localDbGetById(
             pack.dispenseMode.id

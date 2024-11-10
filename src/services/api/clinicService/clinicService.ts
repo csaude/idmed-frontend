@@ -197,7 +197,6 @@ export default {
   currClinic() {
     const instalationType = systemConfigsService.getInstallationType();
     const clinicUser = localStorage.getItem('clinicUsers');
-
     if (
       (clinicUser === 'undefined' && !isProvincialInstalation()) ||
       (clinicUser === '' && !isProvincialInstalation()) ||
@@ -209,7 +208,13 @@ export default {
         .where('id', instalationType.description)
         .first();
     } else if (clinicUser !== null && clinicUser !== '') {
-      return this.getByCode(clinicUser);
+      let sectorCode = clinicUser;
+      if (clinicUser.includes(',')) {
+        const arrayOfSectors = clinicUser.split(',');
+        sectorCode = arrayOfSectors[0];
+      }
+
+      return this.getByCode(sectorCode);
     }
     return null;
   },

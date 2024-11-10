@@ -20,14 +20,19 @@ export default {
 
     for (const pack of activePacks) {
       const patient = pack.patientvisitDetails.patientVisit.patient;
+      const prescriptionDetails =
+        pack.patientvisitDetails.prescription.prescriptionDetails;
       const identifier =
         pack.patientvisitDetails.episode.patientServiceIdentifier;
       const therapeuticRegimen =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0]
-          .therapeuticRegimen;
+        prescriptionDetails.length > 0
+          ? prescriptionDetails[0].therapeuticRegimen
+          : '';
 
       const dispenseType =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0].dispenseType;
+        prescriptionDetails.length > 0
+          ? prescriptionDetails[0].dispenseType
+          : '';
 
       if (
         identifier.service.id === reportParams.clinicalService &&
