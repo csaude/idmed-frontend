@@ -179,7 +179,9 @@ export default {
             }
           }
           const dispenseTypeId =
-            prescription.prescriptionDetails[0].dispenseType.id;
+            prescription.prescriptionDetails.length > 0
+              ? prescription.prescriptionDetails[0].dispenseType.id
+              : '';
           const codeDispenseType = dispenseTypeService.getById(dispenseTypeId);
           if (
             pickupDate >= startDate &&

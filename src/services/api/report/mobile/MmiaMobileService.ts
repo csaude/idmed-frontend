@@ -255,6 +255,7 @@ export default {
         console.log(patientVisit);
         for (const patientVisitDetail of patientVisit.patientVisitDetails) {
           let prescription = patientVisitDetail.prescription;
+          const prescriptionDetails = prescription.prescriptionDetails;
           const episode = await episodeService.apiFetchById(
             patientVisitDetail.episode.id
           );
@@ -270,16 +271,21 @@ export default {
             }
 
             const therapeuticRegimenObj =
-              prescription.prescriptionDetails[0].therapeuticRegimen;
+              prescriptionDetails.length > 0
+                ? prescriptionDetails[0].therapeuticRegimen.id
+                : '';
+
             const therapeuticalRegimen = therapeuticalRegimenService.getById(
-              therapeuticRegimenObj.id
+              therapeuticRegimenObj
             );
 
             const therapeuticLineObj =
-              prescription.prescriptionDetails[0].therapeuticLine;
-            const therapeuticalLine = therapeuticLineService.getById(
-              therapeuticLineObj.id
-            );
+              prescriptionDetails.length > 0
+                ? prescriptionDetails[0].therapeuticLine.id
+                : '';
+
+            const therapeuticalLine =
+              therapeuticLineService.getById(therapeuticLineObj);
 
             const regSubReport = new MmiaRegimenSubReport();
             regSubReport.id = uuidv4();
@@ -410,12 +416,14 @@ export default {
         for (const newRegimenSubReport of listRegimenSubReport) {
           this.localDbAddOrUpdateReportRegimen(newRegimenSubReport);
         }
-        if (detail.dispenseType.code === 'DM') {
-          totalDM++;
-        } else if (detail.dispenseType.code === 'DT') {
-          totalDtM0++;
-        } else if (detail.dispenseType.code === 'DS') {
-          totalDsM0++;
+        if (detail !== null && detail !== undefined) {
+          if (detail.dispenseType.code === 'DM') {
+            totalDM++;
+          } else if (detail.dispenseType.code === 'DT') {
+            totalDtM0++;
+          } else if (detail.dispenseType.code === 'DS') {
+            totalDsM0++;
+          }
         }
 
         curMmiaReport.dsM1 =

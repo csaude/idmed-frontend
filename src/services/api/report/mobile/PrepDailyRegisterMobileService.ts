@@ -21,21 +21,26 @@ export default {
     for (const pack of activePacks) {
       const patient = pack.patientvisitDetails.patientVisit.patient;
       const episode = pack.patientvisitDetails.episode;
+      const prescriptionDetails =
+        pack.patientvisitDetails.prescription.prescriptionDetails;
       const identifier =
         pack.patientvisitDetails.episode.patientServiceIdentifier;
       const therapeuticLine =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0]
-          .therapeuticLine;
+        prescriptionDetails.length > 0 ? prescriptionDetails[0].therapeuticLine
+          : '';
       const therapeuticRegimen =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0]
-          .therapeuticRegimen;
+        prescriptionDetails.length > 0
+          ? prescriptionDetails[0].therapeuticRegimen
+          : '';
       const patientType =
         pack.patientvisitDetails.prescription.patientType === 'N/A'
           ? pack.patientvisitDetails.prescription.patientStatus
           : pack.patientvisitDetails.prescription.patientType;
 
       const dispenseType =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0].dispenseType;
+        prescriptionDetails.length > 0
+          ? prescriptionDetails[0].dispenseType
+          : '';
 
       if (identifier.service.id === reportParams.clinicalService) {
         const arvDailyRegisterReport = new ArvDailyRegisterTempReport();
@@ -85,69 +90,6 @@ export default {
         this.localDbAddOrUpdate(arvDailyRegisterReport);
       }
     }
-
-    // const patientVisits = await patientVisitService.localDbGetAllPatientVisit()
-    // for (const patientVisit of patientVisits) {
-    //     for (const patientVisitDetail of patientVisit.patientVisitDetails) {
-    //       if (patientVisitDetail.pack !== undefined) {
-    //       const pickupDate = moment(patientVisitDetail.pack.pickupDate).format('YYYY-MM-DD')
-    //     const endDate = moment(params.endDate).format('YYYY-MM-DD')
-    //     const days = moment(endDate).diff(pickupDate, 'days')
-    //     const newDate = moment(patientVisitDetail.pack.pickupDate).add(days, 'd')
-
-    //     if ((patientVisit.visitDate >= reportParams.startDate && patientVisit.visitDate <= reportParams.endDate) ||
-    //     (newDate >= moment(params.startDate) && newDate <= moment(params.endDate))) {
-    //         const identifier = patientVisitDetail.episode.patientServiceIdentifier
-    //     if (identifier.service.id === reportParams.clinicalService) {
-    //     const arvDailyRegisterReport = new ArvDailyRegisterTempReport()
-    //     arvDailyRegisterReport.reportId = reportParams.id
-    //   // arvDailyRegisterReport.period = reportParams.periodTypeView
-    //   arvDailyRegisterReport.year = reportParams.year
-    //   arvDailyRegisterReport.startDate = reportParams.startDate
-    //   arvDailyRegisterReport.endDate = reportParams.endDate
-    //       const pack = patientVisitDetail.pack
-    //   const clinic = patientVisitDetail.clinic
-    //   const patient = await  patientService.getPatientByIdMobile( patientVisit.patient.id)
-    //   arvDailyRegisterReport.nid = identifier.value
-    //   arvDailyRegisterReport.patientName = patient[0].firstNames + ' ' + patient[0].middleNames + ' ' + patient[0].lastNames
-    //   arvDailyRegisterReport.patientType = patientVisitDetail.prescription.patientType
-    //   arvDailyRegisterReport.startReason = patientVisitDetail.episode.startStopReason.reason
-    //   const age = this.idadeCalculator(patient[0].dateOfBirth)
-    //    console.log(age)
-    //   arvDailyRegisterReport.ageGroup_0_4 = (age >= 0 && age < 4 ? 'Sim' : 'Nao')
-    //   arvDailyRegisterReport.ageGroup_5_9 = (age >= 5 && age <= 9 ? 'Sim' : 'Nao')
-    //   arvDailyRegisterReport.ageGroup_10_14 = (age >= 10 && age <= 14 ? 'Sim' : 'Nao')
-    //  arvDailyRegisterReport.ageGroup_Greater_than_15 = (age >= 15 ? 'Sim' : 'Nao')
-    //  arvDailyRegisterReport.pickUpDate = pack.pickupDate
-    //  arvDailyRegisterReport.nexPickUpDate = pack.nextPickUpDate
-    //  const therapeuticRegimen = await therapeuticalRegimenService.getById(patientVisitDetail.prescription.prescriptionDetails[0].therapeuticRegimen.id)
-    //  const therapeuticLine = await therapeuticLineService.getById(patientVisitDetail.prescription.prescriptionDetails[0].therapeuticLine.id)
-    //  const dispenseType = await dispenseTypeService.getById(patientVisitDetail.prescription.prescriptionDetails[0].dispenseType.id)
-
-    //  arvDailyRegisterReport.regime = therapeuticRegimen.description
-    //  arvDailyRegisterReport.dispensationType = dispenseType[0].description
-    //  arvDailyRegisterReport.therapeuticLine = therapeuticLine.description
-    //  arvDailyRegisterReport.clinic = clinic.clinicName
-    //  arvDailyRegisterReport.prep = (clinicalServiceService.localDbGetById(reportParams.clinicalService).code === 'PREP' ? 'Sim' : '')
-    //  arvDailyRegisterReport.ppe = (clinicalServiceService.localDbGetById(reportParams.clinicalService).code === 'PPE' ? 'Sim' : '')
-    //  const drugQuantityTemps = []
-    //   for (const packagedDrug of patientVisitDetail.pack.packagedDrugs) {
-    //     const drug = drugService.getCleanDrugById(packagedDrug.drug.id)
-    //       const drugQuantityTemp = {}
-    //       drugQuantityTemp.drugName = drug.name
-    //       drugQuantityTemp.quantity = packagedDrug.quantitySupplied
-    //       console.log(drugQuantityTemp)
-    //      drugQuantityTemps.push(drugQuantityTemp)
-    //      console.log(arvDailyRegisterReport)
-    //     }
-    //     console.log(drugQuantityTemps)
-    //     arvDailyRegisterReport.drugQuantityTemps = drugQuantityTemps
-    //    this.localDbAddOrUpdate(arvDailyRegisterReport)
-    //     }
-    //   }
-    // }
-    // }
-    // }
   },
 
   localDbAddOrUpdate(targetCopy: any) {

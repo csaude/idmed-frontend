@@ -24,11 +24,19 @@ export default {
         pack.patientvisitDetails.episode.patientServiceIdentifier;
       const clinicalService =
         pack.patientvisitDetails.episode.patientServiceIdentifier.service;
+
+      const prescriptionDetails =
+        pack.patientvisitDetails.prescription.prescriptionDetails;
       const therapeuticRegimen =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0]
-          .therapeuticRegimen;
+        prescriptionDetails.length > 0
+          ? prescriptionDetails[0].therapeuticRegimen
+          : '';
+
       const dispenseType =
-        pack.patientvisitDetails.prescription.prescriptionDetails[0].dispenseType;
+        prescriptionDetails.length > 0
+          ? prescriptionDetails[0].dispenseType
+          : '';
+
       const dispenseMode = pack.dispenseMode;
 
       if (patientVisit.syncStatus === 'R') {
