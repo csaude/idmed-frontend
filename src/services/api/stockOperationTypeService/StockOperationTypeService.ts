@@ -10,15 +10,14 @@ const { closeLoading, showloading } = useLoading();
 const { isMobile, isOnline } = useSystemUtils();
 
 const stockOperationRepo = useRepo(stockOperationType);
-const stockOperationDexie = stockOperationType.entity;
+const stockOperationDexie = db[stockOperationType.entity];
 
 export default {
   // Axios API call static async
 
   get(offset: number) {
     if (!isOnline.value) {
-      return db[stockOperationDexie].toArray().then((result: any) => {
-        console.log(result);
+      return stockOperationDexie.toArray().then((result: any) => {
         stockOperationRepo.save(result);
         return result;
       });
@@ -58,7 +57,7 @@ export default {
   },
   //mobile
   addBulkMobile(params: string) {
-    return db[stockOperationDexie]
+    return stockOperationDexie
       .bulkPut(params)
       .then(() => {
         stockOperationRepo.save(params);
@@ -77,6 +76,9 @@ export default {
   },
   getStockOperatinTypeById(Id: string) {
     return stockOperationRepo.query().where('id', Id).first();
+  },
+  async getAllByIDsFromDexie(ids: []) {
+    return await stockOperationDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
   //Pinia
   getAllFromStorage() {

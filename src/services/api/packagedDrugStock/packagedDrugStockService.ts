@@ -5,6 +5,7 @@ import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
+import packagedDrugService from '../packagedDrug/packagedDrugService';
 
 const packagedDrugStock = useRepo(PackagedDrugStock);
 const packagedDrugStockDexie = db[PackagedDrugStock.entity];
@@ -147,6 +148,29 @@ export default {
       .catch((error: any) => {
         console.log(error);
       });
+  },
+  async getAllByStockIDsFromDexie(ids: []) {
+    const packagedDrugStocks = await packagedDrugStockDexie
+      .where('stock_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+
+    const packagedDrugIds = packagedDrugStocks.map(
+      (packagedDrugStock: any) => packagedDrugStock.packagedDrug_id
+    );
+
+    const [packagedDrugList] = await Promise.all([
+      packagedDrugService.getAllPackagedDrugByIDsFromDexie(packagedDrugIds),
+    ]);
+
+    packagedDrugStocks.map((packagedDrugStock: any) => {
+      packagedDrugStock.packagedDrug = packagedDrugList.find(
+        (packagedDrug: any) =>
+          packagedDrug.id === packagedDrugStock.packagedDrug_id
+      );
+    });
+
+    return packagedDrugStocks;
   },
   async apiGetAll() {
     return await api().get('/packagedDrugStock?offset=' + 0 + '&max=' + 200);

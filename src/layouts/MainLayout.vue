@@ -301,6 +301,7 @@ onMounted(() => {
   if (website.value || isOnline.value) {
     mobile.value = false;
     systemConfigsService.apiGetAll();
+    clinicService.apiWebGetAll();
   } else {
     mobile.value = true;
   }

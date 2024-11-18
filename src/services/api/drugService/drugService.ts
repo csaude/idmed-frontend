@@ -279,4 +279,25 @@ export default {
     });
     return drugs;
   },
+
+  async getAllWithStocksFromDexie() {
+    const [stocksList] = await Promise.all([
+      StockService.getAllWithPackagedDrugStocksAndAdjustmentsFromDexie(),
+    ]);
+
+    const drugIds = stocksList.map((stock: any) => stock.drug_id);
+
+    const drugsWithStock = await drugDexie
+      .where('id')
+      .anyOfIgnoreCase(drugIds)
+      .toArray();
+
+    drugsWithStock.map((drug: any) => {
+      drug.stocks = stocksList.filter(
+        (stock: any) => stock.drug_id === drug.id
+      );
+    });
+
+    return drugsWithStock;
+  },
 };

@@ -5,13 +5,14 @@ import { nSQL } from 'nano-sql';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import db from 'src/stores/dexie';
+import StockReferenceAdjustmentService from '../stockAdjustment/StockReferenceAdjustmentService';
 
 const { closeLoading, showloading } = useLoading();
 
 const { isMobile, isOnline } = useSystemUtils();
 
 const referedStockMoviment = useRepo(ReferedStockMoviment);
-const referedStockMovimentDexie = ReferedStockMoviment.entity;
+const referedStockMovimentDexie = db[ReferedStockMoviment.entity];
 
 export default {
   // Axios API call
@@ -136,7 +137,7 @@ export default {
   // MOBILE
 
   addMobile(params: string) {
-    return db[referedStockMovimentDexie]
+    return referedStockMovimentDexie
       .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         referedStockMoviment.save(JSON.parse(JSON.stringify(params)));
@@ -144,15 +145,23 @@ export default {
   },
 
   async putMobile(params: any) {
-    return db[referedStockMovimentDexie]
-      .put(JSON.parse(JSON.stringify(params)))
-      .then(() => {
-        referedStockMoviment.save(JSON.parse(JSON.stringify(params)));
-      });
+    const referenceStockMoviment = JSON.parse(JSON.stringify(params));
+
+    return referedStockMovimentDexie.put(referenceStockMoviment).then(() => {
+      if (referenceStockMoviment.adjustments.length > 0) {
+        referenceStockMoviment.adjustments.map((adjustment: any) => {
+          adjustment.adjusted_stock_id = adjustment.adjustedStock.id;
+          adjustment.operation_id = adjustment.operation.id;
+          adjustment.clinic_id = adjustment.clinic.id;
+          StockReferenceAdjustmentService.addMobile(adjustment);
+        });
+      }
+      referedStockMoviment.save(referenceStockMoviment);
+    });
   },
 
   getMobile() {
-    return db[referedStockMovimentDexie]
+    return referedStockMovimentDexie
       .toArray()
       .then((rows: any) => {
         referedStockMoviment.save(rows);
@@ -162,12 +171,12 @@ export default {
       });
   },
   async getReferedStockMovimentsMobile() {
-    const rows = await db[referedStockMovimentDexie].toArray();
+    const rows = await referedStockMovimentDexie.toArray();
     return rows;
   },
 
   getAllByClinicMobile(clinicId: any) {
-    return db[referedStockMovimentDexie]
+    return referedStockMovimentDexie
       .where('clinic_id')
       .equalsIgnoreCase(clinicId)
       .toArray()
@@ -178,14 +187,14 @@ export default {
   },
 
   async localDbGetAll() {
-    return db[referedStockMovimentDexie].toArray().then((rows: any) => {
+    return referedStockMovimentDexie.toArray().then((rows: any) => {
       referedStockMoviment.save(rows);
       return rows;
     });
   },
 
   getBystockMobile(stock: any) {
-    return db[referedStockMovimentDexie]
+    return referedStockMovimentDexie
       .where('stock_id')
       .equalsIgnoreCase(stock.id)
       .toArray()

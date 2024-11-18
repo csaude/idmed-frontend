@@ -12,6 +12,8 @@ import dispenseModeService from '../dispenseMode/dispenseModeService';
 import clinicService from '../clinicService/clinicService';
 import packagedDrugService from '../packagedDrug/packagedDrugService';
 import moment from 'moment';
+import patientVisitService from '../patientVisit/patientVisitService';
+import patientService from '../patientService/patientService';
 
 const pack = useRepo(Pack);
 const packDexie = db[Pack.entity];
@@ -335,7 +337,8 @@ export default {
     const packs = await packDexie
       .where('pickupDate')
       .between(startDate, endDate, true, true)
-      .toArray();
+      .reverse()
+      .sortBy('pickupDate');
 
     const packIds = packs.map((pack: any) => pack.id);
     const clinicIds = packs.map((pack: any) => pack.clinic_id);
@@ -405,7 +408,11 @@ export default {
   },
 
   async getAllByIDsFromDexie(ids: []) {
-    const packs = await packDexie.where('id').anyOf(ids).toArray();
+    const packs = await packDexie
+      .where('id')
+      .anyOf(ids)
+      .reverse()
+      .sortBy('pickupDate');
 
     const packsId = packs.map((pack: any) => pack.id);
     const dispenseModeIds = packs.map((pack: any) => pack.dispenseMode_id);
@@ -433,7 +440,8 @@ export default {
       .where('pickupDate')
       .belowOrEqual(endDate)
       .and((item: any) => item.nextPickUpDate >= endDate)
-      .toArray();
+      .reverse()
+      .sortBy('pickupDate');
 
     const packIds = packs.map((pack: any) => pack.id);
     const clinicIds = packs.map((pack: any) => pack.clinic_id);
@@ -473,7 +481,8 @@ export default {
     const packs = await packDexie
       .where('nextPickUpDate')
       .between(startDate, endDate, true, true)
-      .toArray();
+      .reverse()
+      .sortBy('pickupDate');
 
     const packIds = packs.map((pack: any) => pack.id);
     const clinicIds = packs.map((pack: any) => pack.clinic_id);
@@ -505,5 +514,106 @@ export default {
       pack.clinic = clinics.find((clinic: any) => clinic.id === pack.clinic_id);
     });
     return packs;
+  },
+  async getPacksByIDsFromDexie(ids: []) {
+    return await packDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .reverse()
+      .sortBy('pickupDate');
+  },
+  async getAllAbsentPacksByStartDateAndEndDateFromDexie(
+    startDate: any,
+    endDate: any,
+    listPatientLastPack: []
+  ) {
+    const packs = await packDexie
+      .where('nextPickUpDate')
+      .belowOrEqual(
+        moment(startDate, 'YYYY-MM-DD').add(3, 'days').format('YYYY-MM-DD')
+      )
+      .and(
+        (item: any) =>
+          moment(endDate).diff(moment(item.nextPickUpDate), 'days') > 3 &&
+          moment(endDate).diff(moment(item.nextPickUpDate), 'days') < 60 &&
+          listPatientLastPack.find((pack: any) => pack.id === item.id)
+      )
+      .reverse()
+      .sortBy('pickupDate');
+
+    const packIds = packs.map((pack: any) => pack.id);
+    const clinicIds = packs.map((pack: any) => pack.clinic_id);
+    const dispenseModeIds = packs.map((pack: any) => pack.dispenseMode_id);
+
+    const [patientvisitDetailsList] = await Promise.all([
+      patientVisitDetailsService.getPatientVisitDetailsByPackIdFromDexie(
+        packIds
+      ),
+    ]);
+
+    const patientVisitDetailsIds = patientvisitDetailsList.map(
+      (patientvisitDetail: any) => patientvisitDetail.id
+    );
+
+    const [clinics, dispenseModes, patientVisitDetails] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(clinicIds),
+      dispenseModeService.getAllByIDsFromDexie(dispenseModeIds),
+      patientVisitDetailsService.getAllByIDsFromDexie(patientVisitDetailsIds),
+    ]);
+
+    packs.map((pack: any) => {
+      pack.patientvisitDetails = patientVisitDetails.find(
+        (patientVisitDetail: any) => patientVisitDetail.pack_id === pack.id
+      );
+      pack.dispenseMode = dispenseModes.find(
+        (dispenseMode: any) => dispenseMode.id === pack.dispenseMode_id
+      );
+      pack.clinic = clinics.find((clinic: any) => clinic.id === pack.clinic_id);
+    });
+    return packs;
+  },
+  async getAllPatientsLastPackForTARVFromDexie() {
+    const packList: any[] = [];
+    const [patients] = await Promise.all([
+      patientService.getAllPatientstWithAllFromDexie(),
+    ]);
+
+    patients.map((patient: any) => {
+      const identifierList = patient.identifiers;
+      const lastPack = [];
+      let episodeList = [];
+      let lastPatinetVisitDetailsPacks: any[] = [];
+
+      if (identifierList.length > 0) {
+        for (const identifier of identifierList) {
+          if (identifier.service.code === 'TARV') {
+            episodeList = identifier.episodes;
+          }
+        }
+      }
+
+      if (episodeList.length > 0) {
+        for (const episode of episodeList) {
+          if (episode.patientVisitDetails.length > 0) {
+            lastPatinetVisitDetailsPacks = episode.patientVisitDetails;
+            return;
+          }
+        }
+      }
+
+      for (const patientVisitdetails of lastPatinetVisitDetailsPacks) {
+        if (lastPack.length > 0) {
+          if (lastPack[0].pickupDate < patientVisitdetails?.pack?.pickupDate) {
+            lastPack.pop();
+            lastPack.push(patientVisitdetails?.pack);
+          }
+        } else {
+          lastPack.push(patientVisitdetails?.pack);
+        }
+      }
+      packList.push(lastPack[0].id);
+    });
+
+    return await packDexie.where('id').anyOfIgnoreCase(packList).toArray();
   },
 };

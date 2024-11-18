@@ -20,7 +20,6 @@ export default {
         reportParams.endDate
       ),
     ]);
-    console.log('Active packs', activePacks);
     let lastDispensations = activePacks.reduce((acc: any, record: any) => {
       const existingRecord =
         acc[record.patientvisitDetails.patientVisit.patient.id];

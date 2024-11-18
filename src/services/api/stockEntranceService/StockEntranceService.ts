@@ -216,6 +216,10 @@ export default {
       });
   },
 
+  async getAllByIDsFromDexie(ids: []){
+    return await stockEntranceDexie.where('id').anyOfIgnoreCase(ids).toArray();
+  },
+
   async deleteMobile(paramsId: any) {
     try {
       await stockEntranceDexie.delete(paramsId);

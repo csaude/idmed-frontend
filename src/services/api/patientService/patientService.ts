@@ -605,4 +605,50 @@ export default {
   async getAllByIDsFromDexie(ids: []) {
     return await patientDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
+
+  async getAllPatientstWithAllFromDexie() {
+    const patients = await patientDexie.toArray();
+
+    const patientIds = patients.map((patient: any) => patient.id);
+
+    const [patientVisitList, identifiers] = await Promise.all([
+      patientVisitService.getAllByPatientIDsFromDexie(patientIds),
+      patientServiceIdentifierService.getAllByPatientsIDsFromDexie(patientIds),
+    ]);
+
+    patients.map((patient: any) => {
+      patient.patientVisits = patientVisitList.filter(
+        (patientVisit: any) => patientVisit.patient_id === patient.id
+      );
+      patient.identifiers = identifiers.filter(
+        (identifier: any) => identifier.patient_id === patient.id
+      );
+    });
+
+    return patients;
+  },
+  async getPatientWithAllFromDexie(id: string) {
+    const patients = await patientDexie
+      .where('id')
+      .equalsIgnoreCase(id)
+      .toArray();
+
+    const patientIds = patients.map((patient: any) => patient.id);
+
+    const [patientVisitList, identifiers] = await Promise.all([
+      patientVisitService.getAllByPatientIDsFromDexie(patientIds),
+      patientServiceIdentifierService.getAllByPatientsIDsFromDexie(patientIds),
+    ]);
+
+    patients.map((patient: any) => {
+      patient.patientVisits = patientVisitList.filter(
+        (patientVisit: any) => patientVisit.patient_id === patient.id
+      );
+      patient.identifiers = identifiers.filter(
+        (identifier: any) => identifier.patient_id === patient.id
+      );
+    });
+
+    return patients;
+  },
 };

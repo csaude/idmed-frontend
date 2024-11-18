@@ -9,7 +9,6 @@ import StockReferenceAdjustmentService from 'src/services/api/stockAdjustment/St
 import StockDestructionAdjustmentService from 'src/services/api/stockAdjustment/StockDestructionAdjustmentService';
 import InventoryService from 'src/services/api/inventoryService/InventoryService';
 import InventoryStockAdjustmentService from 'src/services/api/stockAdjustment/InventoryStockAdjustmentService';
-import clinicService from 'src/services/api/clinicService/clinicService';
 
 export default {
   data() {
@@ -22,8 +21,6 @@ export default {
     StockDestructionAdjustmentService.deleteAllFromStorage();
     InventoryStockAdjustmentService.deleteAllFromStorage();
     InventoryService.deleteAllFromStorage();
-    clinicService.deleteFromPinia();
-    // systemConfigsService.deleteAllFromStorage();
     SessionStorage.clear();
     sessionStorage.setItem('user', null);
     sessionStorage.setItem('id_token', null);

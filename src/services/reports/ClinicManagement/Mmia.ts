@@ -282,7 +282,6 @@ export default {
         2: { cellWidth: 15.1 },
         3: { cellWidth: 18 },
         4: { cellWidth: 21.2 },
-
       },
       headStyles: {
         font: 'NotoSans',
@@ -749,9 +748,21 @@ export default {
     const miaTipoDoenteData = this.createMmiaTipoDoentesArrayRow(mmiaData);
     const miaFaixaEtariaData = this.createMmiaFaixaEtariaArrayRow(mmiaData);
     const miaProfilaxiaData = this.createMmiaProfilaxiaArrayRow(mmiaData);
-    const miaRegimenTotalData = this.createRegimenTotalArrayRow( mmiaData, isOnline.value ? mmiaData.mmiaRegimenSubReportList : mmiaRegimenData, 'XLS');
-    const miaLinesSumaryData = this.createLinesSumaryArrayRow( mmiaData,isOnline.value ? mmiaData.mmiaRegimenSubReportList : mmiaRegimenData,'XLS');
-    const miaLinesSumaryTotalData = this.createLinesSumaryTotalArrayRow(mmiaData,isOnline.value ? mmiaData.mmiaRegimenSubReportList : mmiaRegimenData,'XLS');
+    const miaRegimenTotalData = this.createRegimenTotalArrayRow(
+      mmiaData,
+      isOnline.value ? mmiaData.mmiaRegimenSubReportList : mmiaRegimenData,
+      'XLS'
+    );
+    const miaLinesSumaryData = this.createLinesSumaryArrayRow(
+      mmiaData,
+      isOnline.value ? mmiaData.mmiaRegimenSubReportList : mmiaRegimenData,
+      'XLS'
+    );
+    const miaLinesSumaryTotalData = this.createLinesSumaryTotalArrayRow(
+      mmiaData,
+      isOnline.value ? mmiaData.mmiaRegimenSubReportList : mmiaRegimenData,
+      'XLS'
+    );
     const mmiadsTypeData = this.createMmiaDispenseTypeDSArrayRow(mmiaData);
     const mmiadtTypeData = this.createMmiaDispenseTypeDTArrayRow(mmiaData);
     const mmiadbTypeData = this.createMmiaDispenseTypeDBArrayRow(mmiaData);
@@ -961,16 +972,17 @@ export default {
           totalsRowFunction: 'none',
           filterButton: false,
         },
-          {
-              name: 'Doentes Referidos',
-              totalsRowFunction: 'none',
-              filterButton: false,
-          }
+        {
+          name: 'Doentes Referidos',
+          totalsRowFunction: 'none',
+          filterButton: false,
+        },
       ],
       rows: regimendata,
     });
 
-    worksheet.mergeCells( // Label "Total"
+    worksheet.mergeCells(
+      // Label "Total"
       'A' +
         (Number(worksheet.lastRow.number) + 1) +
         ':B' +
@@ -993,7 +1005,7 @@ export default {
         { name: 'Total', totalsRowLabel: 'Totals:', filterButton: false },
         { name: 'toatl1', totalsRowFunction: 'none', filterButton: false },
         { name: 'total2', totalsRowFunction: 'none', filterButton: false },
-        { name: 'total3', totalsRowFunction: 'none', filterButton: false }
+        { name: 'total3', totalsRowFunction: 'none', filterButton: false },
       ],
       rows: miaRegimenTotalData,
     });
@@ -1440,13 +1452,18 @@ export default {
       const createRow = [];
       createRow.push(rows[row].fnmCode);
       createRow.push(rows[row].drugName);
-      createRow.push(rows[row].unit + ' comp');
-      createRow.push(
-        rows[row].inventory -
-          rows[row].initialEntrance +
-          rows[row].outcomes -
-          rows[row].lossesAdjustments
-      );
+      createRow.push(rows[row].unit);
+      if (isOnline.value) {
+        createRow.push(
+          rows[row].inventory -
+            rows[row].initialEntrance +
+            rows[row].outcomes -
+            rows[row].lossesAdjustments
+        );
+      } else {
+        createRow.push(rows[row].balance);
+      }
+
       createRow.push(rows[row].initialEntrance);
       createRow.push(rows[row].outcomes);
       createRow.push(rows[row].lossesAdjustments);
@@ -1626,7 +1643,6 @@ export default {
       totallinha3Nr += rows[row].totalline3;
       totallinha3DC += rows[row].totaldcline3;
       totallinha3Ref += rows[row].totalrefline3;
-
     }
     const createRow1 = [];
     const createRow2 = [];
@@ -1652,24 +1668,24 @@ export default {
     } else {
       createRow2.push('2as Linhas');
     }
-    console.log(fileType)
+    console.log(fileType);
     if (fileType == 'PDF') {
       createRow2.push({
         content: totallinha2Nr,
-        styles: {cellWidth: 15.1},
+        styles: { cellWidth: 15.1 },
       });
       createRow2.push({
         content: totallinha2DC,
-        styles: {cellWidth: 18},
+        styles: { cellWidth: 18 },
       });
       createRow2.push({
         content: totallinha2Ref,
-        styles: {cellWidth: 21.2},
+        styles: { cellWidth: 21.2 },
       });
     } else {
-      createRow2.push(totallinha2Nr)
-      createRow2.push(totallinha2DC)
-      createRow2.push(totallinha2Ref)
+      createRow2.push(totallinha2Nr);
+      createRow2.push(totallinha2DC);
+      createRow2.push(totallinha2Ref);
     }
 
     if (fileType == 'PDF') {
@@ -1698,9 +1714,16 @@ export default {
     let totallinhaRefidos = 0;
 
     for (const row in rows) {
-      totallinhaNr += rows[row].totalline1 + rows[row].totalline2 + rows[row].totalline3;
-      totallinhaDC += rows[row].totaldcline1 + rows[row].totaldcline2 + rows[row].totaldcline3;
-      totallinhaRefidos += rows[row].totalrefline1 + rows[row].totalrefline2 + rows[row].totalrefline3;
+      totallinhaNr +=
+        rows[row].totalline1 + rows[row].totalline2 + rows[row].totalline3;
+      totallinhaDC +=
+        rows[row].totaldcline1 +
+        rows[row].totaldcline2 +
+        rows[row].totaldcline3;
+      totallinhaRefidos +=
+        rows[row].totalrefline1 +
+        rows[row].totalrefline2 +
+        rows[row].totalrefline3;
     }
     const createRow1 = [];
     if (fileType == 'PDF') {

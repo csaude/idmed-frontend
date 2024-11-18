@@ -105,6 +105,7 @@ import { useRouter } from 'vue-router';
 import StockAlertService from 'src/services/api/stockAlertService/StockAlertService';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
+import StockService from 'src/services/api/stockService/StockService';
 
 const { isMobile, isOnline } = useSystemUtils();
 const loadingDrugFile = ref(false);
@@ -171,6 +172,9 @@ const openDrugFile = (drugInfo) => {
   loadingDrugFile.value = true;
   drug.value = drugService.getDrugById(drugInfo.id);
   localStorage.setItem('selectedDrug', drug.value.id);
+  if (!isOnline) {
+    StockService.getMobile();
+  }
 
   router.push('/stock/drugFile');
   // loadingDrugFile.value = false

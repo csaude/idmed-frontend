@@ -256,7 +256,28 @@ export default {
         return rows;
       });
   },
+  async getAllByStockIDsFromDexie(ids: []) {
+    const inventoriesStocksAdjustiments = await inventoryStockAdjustmentDexie
+      .where('adjusted_stock_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
 
+    const inventoryIds = inventoriesStocksAdjustiments.map(
+      (inventoryStockAdjustiment: any) => inventoryStockAdjustiment.inventory_id
+    );
+    const [inventories] = await Promise.all([
+      InventoryService.getAllByIDsFromDexie(inventoryIds),
+    ]);
+
+    inventoriesStocksAdjustiments.map((inventoryStockAdjustiment: any) => {
+      inventoryStockAdjustiment.inventory = inventories.find(
+        (inventory: any) =>
+          inventory.id === inventoryStockAdjustiment.inventory_id
+      );
+    });
+
+    return inventoriesStocksAdjustiments;
+  },
   async getFromBackEnd(offset: number) {
     if (offset >= 0) {
       return await api()

@@ -6,6 +6,7 @@ import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
 import drugService from '../drugService/drugService';
+import packService from '../pack/packService';
 
 const packagedDrug = useRepo(PackagedDrug);
 const packagedDrugDexie = db[PackagedDrug.entity];
@@ -201,6 +202,27 @@ export default {
       );
     });
 
+    return packagedDrugs;
+  },
+  async getAllPackagedDrugByIDsFromDexie(ids: []) {
+    const packagedDrugs = await packagedDrugDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+
+    const packIds = packagedDrugs.map(
+      (packagedDrug: any) => packagedDrug.pack_id
+    );
+
+    const [packList] = await Promise.all([
+      packService.getPacksByIDsFromDexie(packIds),
+    ]);
+
+    packagedDrugs.map((packagedDrug: any) => {
+      packagedDrug.pack = packList.find(
+        (pack: any) => pack.id === packagedDrug.pack_id
+      );
+    });
     return packagedDrugs;
   },
 };

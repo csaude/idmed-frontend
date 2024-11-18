@@ -292,7 +292,8 @@ export default {
     const prescriptions = await prescriptionDexie
       .where('id')
       .anyOf(ids)
-      .toArray();
+      .reverse()
+      .sortBy('prescriptionDate');
     const prescriptionsIds = prescriptions.map(
       (prescription: any) => prescription.id
     );

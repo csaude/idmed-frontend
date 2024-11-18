@@ -232,9 +232,7 @@
                     </q-avatar>
                   </div>
                 </div>
-                <div class="row justify-center">
-                  Versão v{{ version }}
-                </div>
+                <div class="row justify-center">Versão v{{ version }}</div>
               </q-card-section>
             </q-card>
           </transition>
@@ -341,8 +339,6 @@ onMounted(async () => {
     StockDestructionAdjustmentService.deleteAllFromStorage();
     InventoryStockAdjustmentService.deleteAllFromStorage();
     InventoryService.deleteAllFromStorage();
-    clinicService.deleteFromPinia();
-    // systemConfigsService.deleteAllFromStorage();
     SessionStorage.clear();
     sessionStorage.setItem('user', null);
     sessionStorage.setItem('id_token', null);
