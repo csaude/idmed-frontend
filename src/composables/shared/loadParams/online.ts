@@ -1,6 +1,4 @@
-import { SecUser } from 'src/stores/models/userLogin/User';
 import healthInformationSystemService from 'src/services/api/HealthInformationSystem/healthInformationSystemService';
-import InteroperabilityAttributeService from 'src/services/api/InteroperabilityAttribute/InteroperabilityAttributeService';
 import InteroperabilityTypeService from 'src/services/api/InteroperabilityType/InteroperabilityTypeService';
 import clinicSectorService from 'src/services/api/clinicSectorService/clinicSectorService';
 import clinicSectorTypeService from 'src/services/api/clinicSectorTypeService/clinicSectorTypeService';
@@ -26,10 +24,6 @@ import stockCenterService from 'src/services/api/stockCenterService/StockCenterS
 import therapeuticLineService from 'src/services/api/therapeuticLineService/therapeuticLineService';
 import therapeuticalRegimenService from 'src/services/api/therapeuticalRegimenService/therapeuticalRegimenService';
 import clinicalServiceAttributeTypeService from 'src/services/api/clinicalServiceAttrTypeService/ClinicalServiceAttrTypeService';
-import clinicalServiceAttributeService from 'src/services/api/clinicalServiceAttributeService/clinicalServiceAttributeService';
-import stockService from 'src/services/api/stockService/StockService';
-import StockEntranceService from 'src/services/api/stockEntranceService/StockEntranceService';
-import StockCenterService from 'src/services/api/stockCenterService/StockCenterService';
 import patientService from 'src/services/api/patientService/patientService';
 import patientServiceIdentifierService from 'src/services/api/patientServiceIdentifier/patientServiceIdentifierService';
 import patientVisitService from 'src/services/api/patientVisit/patientVisitService';
@@ -39,12 +33,10 @@ import packService from 'src/services/api/pack/packService';
 import prescriptionService from 'src/services/api/prescription/prescriptionService';
 import packagedDrugService from 'src/services/api/packagedDrug/packagedDrugService';
 import prescribedDrugService from 'src/services/api/prescribedDrug/prescribedDrugService';
-import patientAttributeService from 'src/services/api/patientAttribute/patientAttributeService';
 import prescriptionDetailsService from 'src/services/api/prescriptionDetails/prescriptionDetailsService';
 import StockOperationTypeService from 'src/services/api/stockOperationTypeService/StockOperationTypeService';
 import roleService from 'src/services/api/role/roleService';
 import menuService from 'src/services/api/menu/menuService';
-import roleMenuService from 'src/services/api/roleMenu/roleMenuService';
 import userService from 'src/services/api/user/userService';
 import groupMemberPrescriptionService from 'src/services/api/GroupMemberPrescription/groupMemberPrescriptionService';
 import adherenceScreeningService from 'src/services/api/adherenceScreening/adherenceScreeningService';
@@ -116,8 +108,6 @@ export function useOnline() {
     provinceService.get(0);
 
     districtService.get(0);
-
-    clinicService.get(0);
 
     roleService.get(0);
 

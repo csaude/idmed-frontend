@@ -6,6 +6,10 @@ import { nSQL } from 'nano-sql';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import db from '../../../stores/dexie';
+import StockEntranceService from '../stockEntranceService/StockEntranceService';
+import packagedDrugStockService from '../packagedDrugStock/packagedDrugStockService';
+import InventoryStockAdjustmentService from '../stockAdjustment/InventoryStockAdjustmentService';
+import StockReferenceAdjustmentService from '../stockAdjustment/StockReferenceAdjustmentService';
 
 const { closeLoading, showloading } = useLoading();
 
@@ -438,6 +442,48 @@ export default {
       .catch((error: any) => {
         console.log(error);
       });
+  },
+
+  async getAllWithPackagedDrugStocksAndAdjustmentsFromDexie() {
+    const endDate = moment(new Date()).format('YYYY-MM-DD');
+    const stocks = await stockDexie
+      .where('expireDate')
+      .aboveOrEqual(endDate)
+      // .orderBy('expireDate')
+      .toArray();
+
+    const stocksIds = stocks.map((stock: any) => stock.id);
+    const entranceIds = stocks.map((stock: any) => stock.entrance_id);
+
+    const [
+      entrances,
+      packagedDrugStockList,
+      inventoryStockAdjustmentsList,
+      referedStockAdjustmentsList,
+    ] = await Promise.all([
+      StockEntranceService.getAllByIDsFromDexie(entranceIds),
+      packagedDrugStockService.getAllByStockIDsFromDexie(stocksIds),
+      InventoryStockAdjustmentService.getAllByStockIDsFromDexie(stocksIds),
+      StockReferenceAdjustmentService.getAllByStockIDsFromDexie(stocksIds),
+    ]);
+
+    stocks.map((stock: any) => {
+      stock.entrance = entrances.find(
+        (entrance: any) => entrance.id === stock.entrance_id
+      );
+      stock.packagedDrugStocks = packagedDrugStockList.filter(
+        (packagedDrugStock: any) => packagedDrugStock.stock_id === stock.id
+      );
+      stock.adjustments = inventoryStockAdjustmentsList.filter(
+        (stockAdjustment: any) => stockAdjustment.adjusted_stock_id === stock.id
+      );
+      stock.referedAdjustments = referedStockAdjustmentsList.filter(
+        (referedStockAdjustment: any) =>
+          referedStockAdjustment.adjusted_stock_id === stock.id
+      );
+    });
+
+    return stocks;
   },
 
   async getValidStockByDrugAndPickUpDateOnline(

@@ -5,6 +5,7 @@ import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import db from '../../../stores/dexie';
+import clinicService from '../clinicService/clinicService';
 
 const clinicSector = useRepo(ClinicSector);
 
@@ -157,6 +158,7 @@ export default {
 
   /*Pinia Methods*/
   getAllClinicSectors() {
+    // return clinicService.getAllClinicSectors()
     return clinicSector.withAll().get();
   },
 

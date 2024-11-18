@@ -4,17 +4,22 @@ import AbsentPatientReport from 'src/stores/models/report/pharmacyManagement/Abs
 import db from 'src/stores/dexie';
 import packService from '../../pack/packService';
 import { v4 as uuidv4 } from 'uuid';
+import patientService from '../../patientService/patientService';
 const absentPatientReport = db[AbsentPatientReport.entity];
-// const activeInDrugStore = useRepo(ActiveInDrugStore);
 
 export default {
   async getDataLocalDb(params: any) {
     const reportParams = ReportDatesParams.determineStartEndDate(params);
 
+    const [ListPatientLastPack] = await Promise.all([
+      packService.getAllPatientsLastPackForTARVFromDexie(),
+    ]);
+
     const [activePacks] = await Promise.all([
-      packService.getAllPacksByStartDateAndEndDateFromDexie(
+      packService.getAllAbsentPacksByStartDateAndEndDateFromDexie(
         reportParams.startDate,
-        reportParams.endDate
+        reportParams.endDate,
+        ListPatientLastPack
       ),
     ]);
 
@@ -37,38 +42,30 @@ export default {
       const identifier =
         pack.patientvisitDetails.episode.patientServiceIdentifier;
 
-      if (
-        pack !== undefined &&
-        moment(pack.nextPickUpDate).format('YYYY/MM/DD') >=
-          moment(reportParams.startDate).format('YYYY/MM/DD') &&
-        moment(pack.nextPickUpDate).add(3, 'd').format('YYYY/MM/DD') <=
-          moment(reportParams.endDate).format('YYYY/MM/DD')
-      ) {
-        if (identifier.service.id === reportParams.clinicalService) {
-          const absentPatientReport = new AbsentPatientReport();
+      if (identifier.service.id === reportParams.clinicalService) {
+        const absentPatientReport = new AbsentPatientReport();
 
-          if (patient) {
-            const dateIdentifiedAbandonment = moment(pack.nextPickUpDate)
-              .add(60, 'd')
-              .format('YYYY/MM/DD');
-            absentPatientReport.nid = identifier.value;
-            absentPatientReport.name =
-              patient.firstNames + ' ' + patient.lastNames;
-            absentPatientReport.cellphone = patient.cellphone;
-            absentPatientReport.dateBackUs = null;
-            absentPatientReport.dateMissedPickUp = pack.nextPickUpDate;
-            absentPatientReport.dateIdentifiedAbandonment =
-              dateIdentifiedAbandonment >
-              moment(reportParams.endDate).format('YYYY/MM/DD')
-                ? dateIdentifiedAbandonment
-                : '';
-            absentPatientReport.returnedPickUp = null;
-            absentPatientReport.reportId = reportParams.id;
-            absentPatientReport.year = reportParams.year;
-            absentPatientReport.endDate = reportParams.endDate;
-            absentPatientReport.id = uuidv4();
-            this.localDbAddOrUpdate(absentPatientReport);
-          }
+        if (patient) {
+          const dateIdentifiedAbandonment = moment(pack.nextPickUpDate)
+            .add(60, 'd')
+            .format('YYYY/MM/DD');
+          absentPatientReport.nid = identifier.value;
+          absentPatientReport.name =
+            patient.firstNames + ' ' + patient.lastNames;
+          absentPatientReport.cellphone = patient.cellphone;
+          absentPatientReport.dateBackUs = null;
+          absentPatientReport.dateMissedPickUp = pack.nextPickUpDate;
+          absentPatientReport.dateIdentifiedAbandonment =
+            dateIdentifiedAbandonment >
+            moment(reportParams.endDate).format('YYYY/MM/DD')
+              ? dateIdentifiedAbandonment
+              : '';
+          absentPatientReport.returnedPickUp = null;
+          absentPatientReport.reportId = reportParams.id;
+          absentPatientReport.year = reportParams.year;
+          absentPatientReport.endDate = reportParams.endDate;
+          absentPatientReport.id = uuidv4();
+          this.localDbAddOrUpdate(absentPatientReport);
         }
       }
     }

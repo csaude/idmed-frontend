@@ -18,6 +18,7 @@ export default class MmiaRegimenSubReport extends Model {
       lineCode: this.attr(''),
       totalPatients: this.attr(0),
       cumunitaryClinic: this.attr(0),
+      totalReferidos: this.attr(0),
       totalline1: this.attr(0),
       totaldcline1: this.attr(0),
       totalline2: this.attr(0),
@@ -26,6 +27,10 @@ export default class MmiaRegimenSubReport extends Model {
       totaldcline3: this.attr(0),
       totalline4: this.attr(0),
       totaldcline4: this.attr(0),
+      totalrefline1: this.attr(0),
+      totalrefline2: this.attr(0),
+      totalrefline3: this.attr(0),
+      totalrefline4: this.attr(0),
     };
   }
 }

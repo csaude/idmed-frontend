@@ -8,8 +8,10 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
 import db from '../../../stores/dexie';
 import systemConfigsService from '../systemConfigs/systemConfigsService';
+import { ClinicSector } from 'src/stores/models/clinic/ClinicSector';
 
 const clinic = useRepo(Clinic);
+const clinicSector = useRepo(ClinicSector);
 const clinicDexie = db[Clinic.entity];
 
 const { closeLoading, showloading } = useLoading();
@@ -61,7 +63,11 @@ export default {
       return api()
         .get('clinic?offset=' + offset + '&max=100')
         .then((resp) => {
-          clinic.save(resp.data);
+          const clinics = resp?.data?.filter(
+            (item: any) => !String(item?.entity).includes('clinicSector')
+          );
+
+          clinic.save(clinics);
           offset = offset + 100;
           if (resp.data.length > 0) {
             this.getWeb(offset);
@@ -90,6 +96,9 @@ export default {
     } catch (error: any) {
       // alertError('Aconteceu um erro inesperado nesta operação.');
     }
+  },
+  async apiWebGetAll() {
+    return await this.getWeb(0);
   },
   // Mobile
   addMobile(params: string) {
@@ -222,6 +231,7 @@ export default {
   savePinia(clin: any) {
     clinic.save(clin);
   },
+
   getAllClinics() {
     return clinic
       .query()
@@ -235,18 +245,7 @@ export default {
   },
 
   getAllClinicSectors() {
-    return clinic
-      .query()
-      .with('nationalClinic')
-      .with('province')
-      .with('facilityType')
-      .with('district')
-      .with('parentClinic')
-      .with('sectors')
-      .where((clinic) => {
-        return clinic.parentClinic_id !== '';
-      })
-      .get();
+    return clinic.query().withAll().where('type', 'CLINIC_SECTOR').get();
   },
 
   getAllClinicsAndClinicSectors() {

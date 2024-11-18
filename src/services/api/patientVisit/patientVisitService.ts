@@ -112,6 +112,10 @@ export default {
               const stock = StockService.getStockById(pcs.stock.id);
               stock.stockMoviment -= pcd.quantitySupplied;
               StockService.patch(stock.id, stock);
+              pcs.stock_id = pcs.stock.id;
+              pcs.drug_id = pcs.drug.id;
+              // pcs.packagedDrug = pcd;
+              pcs.packagedDrug_id = pcd.id;
               packagedDrugStockService.addMobile(pcs);
             });
             pvd.pack.dispenseMode_id = pvd.pack.dispenseMode.id;
@@ -605,14 +609,20 @@ export default {
 
   async localDbGetPacks() {
     const packList = [];
-    return patientVisitDexie.toArray().then((result: any) => {
-      for (const pvd of result) {
-        for (const pvdObj of pvd.patientVisitDetails) {
-          packList.push(pvdObj.pack);
-        }
-      }
-      return packList;
-    });
+    const patientVisitDetails = await patientVisitDexie.toArray();
+
+    const patientVisitDetailIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.id
+    );
+
+    const [patientVisitDetailsList] = await Promise.all([
+      patientVisitDetailsService.getAllByIDFullFromDexie(patientVisitDetailIds),
+    ]);
+
+    for (const pvdObj of patientVisitDetailsList) {
+      packList.push(pvdObj.pack);
+    }
+    return packList;
   },
 
   async localDbGetAllPatientVisit() {
@@ -927,5 +937,80 @@ export default {
     });
 
     return patientVisits;
+  },
+  async getAllByPatientIDsFromDexie(ids: []) {
+    const patientVisits = await patientVisitDexie
+      .where('patient_id')
+      .anyOfIgnoreCase(ids)
+      .reverse()
+      .sortBy('visitDate');
+
+    const patientVisitIds = patientVisits.map(
+      (patientVisit: any) => patientVisit.id
+    );
+
+    const clinicIds = patientVisits.map(
+      (patientVisit: any) => patientVisit.clinic_id
+    );
+
+    const [
+      clinics,
+      vitalSignsScreenings,
+      pregnancyScreenings,
+      ramScreenings,
+      tbScreenings,
+      adherenceScreenings,
+      patientVisitDetailList,
+    ] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(clinicIds),
+      vitalSignsScreeningService.getAllByPatientVisitIDsFromDexie(
+        patientVisitIds
+      ),
+      pregnancyScreeningService.getAllByPatientVisitIDsFromDexie(
+        patientVisitIds
+      ),
+      rAMScreeningService.getAllByPatientVisitIDsFromDexie(patientVisitIds),
+      tBScreeningService.getAllByPatientVisitIDsFromDexie(patientVisitIds),
+      adherenceScreeningService.getAllByPatientVisitIDsFromDexie(
+        patientVisitIds
+      ),
+      patientVisitDetailsService.getAllByPatientVisitIdsFromDexie(
+        patientVisitIds
+      ),
+    ]);
+
+    patientVisits.map((patientVisit: any) => {
+      patientVisit.clinic = clinics.find(
+        (clinic: any) => clinic.id === patientVisit.clinic_id
+      );
+      patientVisit.vitalSignsScreenings = vitalSignsScreenings.filter(
+        (vitalSignsScreening: any) =>
+          vitalSignsScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.pregnancyScreenings = pregnancyScreenings.filter(
+        (pregnancyScreening: any) =>
+          pregnancyScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.ramScreenings = ramScreenings.filter(
+        (ramScreening: any) => ramScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.tbScreenings = tbScreenings.filter(
+        (tbScreening: any) => tbScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.adherenceScreenings = adherenceScreenings.filter(
+        (adherenceScreening: any) =>
+          adherenceScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.patientVisitDetails = patientVisitDetailList.filter(
+        (patientVisitDetail: any) =>
+          patientVisitDetail.patient_visit_id === patientVisit.id
+      );
+    });
+
+    return patientVisits;
+  },
+
+  async getAllByIDsNoRelationsFromDexie(ids: []) {
+    return await patientVisitDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

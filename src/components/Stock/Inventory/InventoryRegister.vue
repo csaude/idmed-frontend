@@ -316,10 +316,8 @@ const blockStartDate = (date) => {
       return date === moment(endDate).format('YYYY/MM/DD');
     }
   } else {
-    return (
-      date > moment(endDate).format('YYYY/MM/DD') &&
-      date <= moment(currentDate).format('YYYY/MM/DD')
-    );
+    currInventory.value.startDate = moment(endDate).format('DD-MM-YYYY');
+    return date === moment(endDate).format('YYYY/MM/DD');
   }
 };
 

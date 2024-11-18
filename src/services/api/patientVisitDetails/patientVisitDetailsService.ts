@@ -657,4 +657,52 @@ export default {
 
     return patientVisitDetails;
   },
+  async getAllByEpisodeIDsFromDexie(ids: []) {
+    const patientVisitDetails = await patientVisitDetailsDexie
+      .where('episode_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+
+    const patientVisitIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.patient_visit_id
+    );
+
+    const packIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.pack_id
+    );
+
+    const clinicIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.clinic_id
+    );
+
+    const prescriptionIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.prescription_id
+    );
+
+    const [clinics, packs, patientVisits, prescriptions] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(clinicIds),
+      packService.getAllByIDsFromDexie(packIds),
+      patientVisitService.getAllByIDsNoRelationsFromDexie(patientVisitIds),
+      prescriptionService.getAllByIDsFromDexie(prescriptionIds),
+    ]);
+
+    patientVisitDetails.map((patientVisitDetail: any) => {
+      patientVisitDetail.clinic = clinics.find(
+        (clinic: any) => clinic.id === patientVisitDetail.clinic_id
+      );
+      patientVisitDetail.pack = packs.find(
+        (pack: any) => pack.id === patientVisitDetail.pack_id
+      );
+      patientVisitDetail.patientVisit = patientVisits.find(
+        (patientVisit: any) =>
+          patientVisit.id === patientVisitDetail.patient_visit_id
+      );
+      patientVisitDetail.prescription = prescriptions.find(
+        (prescription: any) =>
+          prescription.id === patientVisitDetail.prescription_id
+      );
+    });
+
+    return patientVisitDetails;
+  },
 };
