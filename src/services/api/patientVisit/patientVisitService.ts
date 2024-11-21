@@ -24,7 +24,7 @@ import adherenceScreeningService from '../adherenceScreening/adherenceScreeningS
 import prescribedDrugService from '../prescribedDrug/prescribedDrugService';
 import prescriptionService from '../prescription/prescriptionService';
 import prescriptionDetailsService from '../prescriptionDetails/prescriptionDetailsService';
-
+import { Notify } from 'quasar';
 const patientVisit = useRepo(PatientVisit);
 const patientVisitDexie = db[PatientVisit.entity];
 
@@ -521,7 +521,15 @@ export default {
     return patientVisit.getModel().$newInstance();
   },
   getAllFromStorage() {
-    return patientVisit.all();
+    return patientVisit
+      .makeHidden([
+        'vitalSignsScreenings',
+        'pregnancyScreenings',
+        'adherenceScreenings',
+        'ramScreenings',
+        'tbScreenings',
+      ])
+      .all();
   },
   deleteAllFromStorage() {
     patientVisit.flush();
@@ -745,25 +753,78 @@ export default {
 
     // this.addBulkMobile(allVisits);
   },
+  async getAllLast3VisitsWithScreeningByPatientIds() {
+    try {
+      notifyInfo('Carregamento de Atencao Farmaceutica Iniciado');
+      showloading();
+      const patients = await patientService.getMobile();
+      const ids = patients.map((pat: any) => pat.id);
+      const limit = 100; // Define your limit
+      const offset = 0;
+      let percentage = 0;
 
-  async getAllLast3VisitsWithScreeningByPatientIds(patientIds: any) {
-    const limit = 100; // Define your limit
-    const offset = 0;
+      const notif = Notify.create({
+        group: false, // required to be updatable
+        timeout: 0, // we want to be in control when it gets dismissed
+        spinner: true,
+        message: 'Carregando Atenção Farmaceutica ...',
+        caption: '2%',
+        color: 'white',
+        textColor: 'primary',
+      });
+      const chunks = ChunkArray.chunkArrayWithOffset(ids, limit, offset);
 
-    const chunks = ChunkArray.chunkArrayWithOffset(patientIds, limit, offset);
+      const allVisits = [];
 
-    const allVisits = [];
+      for (const chunk of chunks) {
+        percentage = Math.min(100, percentage + Math.floor(Math.random() * 20));
 
-    for (const chunk of chunks) {
-      const visitWithScreening = await api().post(
-        '/patientVisit/getAllLast3VisitsWithScreeningByPatientIds/',
-        chunk
-      );
+        await api()
+          .post(
+            '/patientVisit/getAllLast3VisitsWithScreeningByPatientIds/',
+            chunk
+          )
+          .then((resp) => {
+            patientVisit.save(resp.data);
+            notif({
+              caption: `${percentage}%`,
+            });
+          })
+          .catch((error) => {
+            notif({
+              type: 'negative',
+              spinner: false,
+              message:
+                'Ocorreu um erro durante o carregamento de Atenção Farmaceutica!',
+              timeout: 2500, // we will timeout it in 2.5s
+              caption: `${percentage}%`,
+              color: 'red',
+              textColor: 'white',
+            });
+          });
 
-      allVisits.push(...visitWithScreening.data);
+        // allVisits.push(...visitWithScreening.data);
+      }
+      // if we are done...
+      percentage = 100;
+      notif({
+        icon: 'done', // we add an icon
+        spinner: false, // we reset the spinner setting so the icon can be displayed
+        message: 'Terminado!',
+        caption: `${percentage}%`,
+        timeout: 2500, // we will timeout it in 2.5s
+      });
+      closeLoading();
+      notifySuccess('Carregamento de Dispensas Terminado');
+      return true;
+      //this.addBulkMobile();
+    } catch (error) {
+      // Handle any error that occurs during the async operations
+      console.error('An error occurred:', error);
+      closeLoading();
+      notifyError('Ocorreu um erro durante a Atenção Farmaceutica');
+      return false;
     }
-
-    this.addBulkMobile();
   },
 
   setPackagedDrugStockNullToSend(patientVis: any) {
