@@ -24,42 +24,47 @@ export default {
     ]);
 
     for (const patientVisit of patientVisitList) {
-      const patientsWithPregnancyScreening = new PatientsWithScreeningReport();
+      if (patientVisit.pregnancyScreenings.length > 0) {
+        const patientsWithPregnancyScreening =
+          new PatientsWithScreeningReport();
 
-      const endDate = moment(params.endDate).format('YYYY-MM-DD');
-      const startDate = moment(params.startDate).format('YYYY-MM-DD');
-      const patient = patientVisit.patient;
-      const identifier = patientServiceIdentifierService.localDbGetByPatientId(
-        patient.id
-      )[0];
+        const endDate = moment(params.endDate).format('YYYY-MM-DD');
+        const startDate = moment(params.startDate).format('YYYY-MM-DD');
 
-      patientsWithPregnancyScreening.reportId = reportParams.id;
-      patientsWithPregnancyScreening.startDate = startDate;
-      patientsWithPregnancyScreening.endDate = endDate;
-      patientsWithPregnancyScreening.year = reportParams.year;
-      patientsWithPregnancyScreening.id = uuidv4();
-
-      if (identifier) {
-        patientsWithPregnancyScreening.nid = identifier.value;
-        patientsWithPregnancyScreening.firstNames = patient.firstNames;
-        patientsWithPregnancyScreening.middleNames = patient.middleNames;
-        patientsWithPregnancyScreening.lastNames = patient.lastNames;
-        patientsWithPregnancyScreening.cellphone = patient.cellphone;
-        patientsWithPregnancyScreening.gender = patient.gender;
-        patientsWithPregnancyScreening.age = idadeCalculator(
-          patient.dateOfBirth
+        const patient = await patientService.getPatientByIdMobile(
+          patientVisit.patient.id
         );
-        patientsWithPregnancyScreening.visitDate = patientVisit.visitDate;
-        patientsWithPregnancyScreening.clinic = patientVisit.clinic;
 
-        if (patientVisit.pregnancyScreenings[0].pregnant === true) {
-          patientsWithPregnancyScreening.isPregnant = 'Sim';
-        } else {
-          patientsWithPregnancyScreening.isPregnant = 'Não';
+        let identifier = patient.identifiers[0];
+
+        patientsWithPregnancyScreening.reportId = reportParams.id;
+        patientsWithPregnancyScreening.startDate = startDate;
+        patientsWithPregnancyScreening.endDate = endDate;
+        patientsWithPregnancyScreening.year = reportParams.year;
+        patientsWithPregnancyScreening.id = uuidv4();
+
+        if (identifier) {
+          patientsWithPregnancyScreening.nid = identifier.value;
+          patientsWithPregnancyScreening.firstNames = patient.firstNames;
+          patientsWithPregnancyScreening.middleNames = patient.middleNames;
+          patientsWithPregnancyScreening.lastNames = patient.lastNames;
+          patientsWithPregnancyScreening.cellphone = patient.cellphone;
+          patientsWithPregnancyScreening.gender = patient.gender;
+          patientsWithPregnancyScreening.age = idadeCalculator(
+            patient.dateOfBirth
+          );
+          patientsWithPregnancyScreening.visitDate = patientVisit.visitDate;
+          patientsWithPregnancyScreening.clinic = patientVisit.clinic;
+
+          if (patientVisit.pregnancyScreenings[0].pregnant === true) {
+            patientsWithPregnancyScreening.isPregnant = 'Sim';
+          } else {
+            patientsWithPregnancyScreening.isPregnant = 'Não';
+          }
+
+          this.localDbAddOrUpdate(patientsWithPregnancyScreening);
+          console.log(patientsWithPregnancyScreening);
         }
-
-        this.localDbAddOrUpdate(patientsWithPregnancyScreening);
-        console.log(patientsWithPregnancyScreening);
       }
     }
   },
@@ -75,34 +80,40 @@ export default {
     ]);
 
     for (const patientVisit of patientVisitList) {
-      const patientsWithAdherenceScreenings = new PatientsWithScreeningReport();
-      const endDate = moment(params.endDate).format('YYYY-MM-DD');
-      const startDate = moment(params.startDate).format('YYYY-MM-DD');
-      patientsWithAdherenceScreenings.reportId = reportParams.id;
-      patientsWithAdherenceScreenings.startDate = startDate;
-      patientsWithAdherenceScreenings.endDate = endDate;
-      patientsWithAdherenceScreenings.year = reportParams.year;
-      patientsWithAdherenceScreenings.id = uuidv4();
-      const patient = patientVisit.patient;
-      const identifier = patientServiceIdentifierService.localDbGetByPatientId(
-        patient.id
-      )[0];
+      if (patientVisit.adherenceScreenings.length > 0) {
+        const patientsWithAdherenceScreenings =
+          new PatientsWithScreeningReport();
+        const endDate = moment(params.endDate).format('YYYY-MM-DD');
+        const startDate = moment(params.startDate).format('YYYY-MM-DD');
+        patientsWithAdherenceScreenings.reportId = reportParams.id;
+        patientsWithAdherenceScreenings.startDate = startDate;
+        patientsWithAdherenceScreenings.endDate = endDate;
+        patientsWithAdherenceScreenings.year = reportParams.year;
+        patientsWithAdherenceScreenings.id = uuidv4();
+        //  const patient = patientVisit.patient;
 
-      if (identifier) {
-        patientsWithAdherenceScreenings.nid = identifier.value;
-        patientsWithAdherenceScreenings.firstNames = patient.firstNames;
-        patientsWithAdherenceScreenings.middleNames = patient.middleNames;
-        patientsWithAdherenceScreenings.lastNames = patient.lastNames;
-        patientsWithAdherenceScreenings.cellphone = patient.cellphone;
-        patientsWithAdherenceScreenings.gender = patient.gender;
-        patientsWithAdherenceScreenings.age = idadeCalculator(
-          patient.dateOfBirth
+        const patient = await patientService.getPatientByIdMobile(
+          patientVisit.patient.id
         );
-        patientsWithAdherenceScreenings.visitDate = patientVisit.visitDate;
-        patientsWithAdherenceScreenings.clinic = patientVisit.clinic;
 
-        this.localDbAddOrUpdate(patientsWithAdherenceScreenings);
-        console.log(patientsWithAdherenceScreenings);
+        let identifier = patient.identifiers[0];
+
+        if (identifier) {
+          patientsWithAdherenceScreenings.nid = identifier.value;
+          patientsWithAdherenceScreenings.firstNames = patient.firstNames;
+          patientsWithAdherenceScreenings.middleNames = patient.middleNames;
+          patientsWithAdherenceScreenings.lastNames = patient.lastNames;
+          patientsWithAdherenceScreenings.cellphone = patient.cellphone;
+          patientsWithAdherenceScreenings.gender = patient.gender;
+          patientsWithAdherenceScreenings.age = idadeCalculator(
+            patient.dateOfBirth
+          );
+          patientsWithAdherenceScreenings.visitDate = patientVisit.visitDate;
+          patientsWithAdherenceScreenings.clinic = patientVisit.clinic;
+
+          this.localDbAddOrUpdate(patientsWithAdherenceScreenings);
+          console.log(patientsWithAdherenceScreenings);
+        }
       }
     }
   },
@@ -123,51 +134,53 @@ export default {
           : [];
       const tbScreeningReport = new PatientsWithScreeningReport();
 
-      const patient = await patientService.getPatientByIdMobile(
-        patientVisit.patient.id
-      );
+      if (patientVisit.tbScreenings.length > 0) {
+        const patient = await patientService.getPatientByIdMobile(
+          patientVisit.patient.id
+        );
 
-      let identifier = patient.identifiers[0];
+        let identifier = patient.identifiers[0];
 
-      if (!identifier) {
-        const idents =
-          await patientServiceIdentifierService.getAllMobileByPatientId(
-            patientVisit.patient.id
-          );
-        identifier = idents[0];
+        if (!identifier) {
+          const idents =
+            await patientServiceIdentifierService.getAllMobileByPatientId(
+              patientVisit.patient.id
+            );
+          identifier = idents[0];
+        }
+        tbScreeningReport.id = uuidv4();
+        tbScreeningReport.nid = identifier.value;
+        tbScreeningReport.name =
+          patient.firstNames +
+          ' ' +
+          patient.middleNames +
+          ' ' +
+          patient.lastNames;
+        tbScreeningReport.age = idadeCalculator(patient.dateOfBirth);
+        tbScreeningReport.gender = patient.gender;
+        tbScreeningReport.dateRegister = patientVisit.visitDate;
+        tbScreeningReport.clinic = clinicService.getById(
+          patientVisit.clinic.id
+        ).clinicName;
+        tbScreeningReport.reportId = reportParams.id;
+        tbScreeningReport.year = reportParams.year;
+        tbScreeningReport.endDate = reportParams.endDate;
+        tbScreeningReport.startDate = reportParams.startDate;
+
+        if (
+          tbScreening.cough === true ||
+          tbScreening.fever === true ||
+          tbScreening.losingWeight === true ||
+          tbScreening.sweating === true ||
+          tbScreening.fatigueOrTirednessLastTwoWeeks === true
+        ) {
+          tbScreeningReport.wasTBScreened = 'Sim';
+        } else {
+          tbScreeningReport.wasTBScreened = 'Não';
+        }
+
+        this.localDbAddOrUpdate(tbScreeningReport);
       }
-      tbScreeningReport.id = uuidv4();
-      tbScreeningReport.nid = identifier.value;
-      tbScreeningReport.name =
-        patient.firstNames +
-        ' ' +
-        patient.middleNames +
-        ' ' +
-        patient.lastNames;
-      tbScreeningReport.age = idadeCalculator(patient.dateOfBirth);
-      tbScreeningReport.gender = patient.gender;
-      tbScreeningReport.dateRegister = patientVisit.visitDate;
-      tbScreeningReport.clinic = clinicService.getById(
-        patientVisit.clinic.id
-      ).clinicName;
-      tbScreeningReport.reportId = reportParams.id;
-      tbScreeningReport.year = reportParams.year;
-      tbScreeningReport.endDate = reportParams.endDate;
-      tbScreeningReport.startDate = reportParams.startDate;
-
-      if (
-        tbScreening.cough === true ||
-        tbScreening.fever === true ||
-        tbScreening.losingWeight === true ||
-        tbScreening.sweating === true ||
-        tbScreening.fatigueOrTirednessLastTwoWeeks === true
-      ) {
-        tbScreeningReport.wasTBScreened = 'Sim';
-      } else {
-        tbScreeningReport.wasTBScreened = 'Não';
-      }
-
-      this.localDbAddOrUpdate(tbScreeningReport);
     }
   },
 
@@ -189,48 +202,50 @@ export default {
           : [];
       const ramScreeningReport = new PatientsWithScreeningReport();
 
-      const patient = await patientService.getPatientByIdMobile(
-        patientVisit.patient.id
-      );
+      if (patientVisit.ramScreenings.length > 0) {
+        const patient = await patientService.getPatientByIdMobile(
+          patientVisit.patient.id
+        );
 
-      let identifier = patient.identifiers[0];
+        let identifier = patient.identifiers[0];
 
-      if (!identifier) {
-        const idents =
-          await patientServiceIdentifierService.getAllMobileByPatientId(
-            patientVisit.patient.id
-          );
-        identifier = idents[0];
+        if (!identifier) {
+          const idents =
+            await patientServiceIdentifierService.getAllMobileByPatientId(
+              patientVisit.patient.id
+            );
+          identifier = idents[0];
+        }
+        ramScreeningReport.id = uuidv4();
+        ramScreeningReport.nid = identifier.value;
+        ramScreeningReport.name =
+          patient.firstNames +
+          ' ' +
+          patient.middleNames +
+          ' ' +
+          patient.lastNames;
+        ramScreeningReport.age = idadeCalculator(patient.dateOfBirth);
+        ramScreeningReport.gender = patient.gender;
+        ramScreeningReport.dateRegister = patientVisit.visitDate;
+        ramScreeningReport.clinic = clinicService.getById(
+          patientVisit.clinic.id
+        ).clinicName;
+        ramScreeningReport.reportId = reportParams.id;
+        ramScreeningReport.year = reportParams.year;
+        ramScreeningReport.endDate = reportParams.endDate;
+        ramScreeningReport.startDate = reportParams.startDate;
+
+        if (
+          ramScreening.adverseReactionMedicine === true ||
+          ramScreening.adverseReactionMedicine === 'true'
+        ) {
+          ramScreeningReport.wasRAMScreened = 'Sim';
+        } else {
+          ramScreeningReport.wasRAMScreened = 'Não';
+        }
+
+        this.localDbAddOrUpdate(ramScreeningReport);
       }
-      ramScreeningReport.id = uuidv4();
-      ramScreeningReport.nid = identifier.value;
-      ramScreeningReport.name =
-        patient.firstNames +
-        ' ' +
-        patient.middleNames +
-        ' ' +
-        patient.lastNames;
-      ramScreeningReport.age = idadeCalculator(patient.dateOfBirth);
-      ramScreeningReport.gender = patient.gender;
-      ramScreeningReport.dateRegister = patientVisit.visitDate;
-      ramScreeningReport.clinic = clinicService.getById(
-        patientVisit.clinic.id
-      ).clinicName;
-      ramScreeningReport.reportId = reportParams.id;
-      ramScreeningReport.year = reportParams.year;
-      ramScreeningReport.endDate = reportParams.endDate;
-      ramScreeningReport.startDate = reportParams.startDate;
-
-      if (
-        ramScreening.adverseReactionMedicine === true ||
-        ramScreening.adverseReactionMedicine === 'true'
-      ) {
-        ramScreeningReport.wasRAMScreened = 'Sim';
-      } else {
-        ramScreeningReport.wasRAMScreened = 'Não';
-      }
-
-      this.localDbAddOrUpdate(ramScreeningReport);
     }
   },
 
