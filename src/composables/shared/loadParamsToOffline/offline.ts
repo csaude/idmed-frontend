@@ -171,8 +171,17 @@ export function useOffline() {
         patientServiceIdentifierService.addBulkMobile();
       }
     });
+
     await patientVisitDetailsService
       .doPatientVisitServiceBySectorGet()
+      .then((resp) => {
+        if (resp) {
+          //  addBulkToMobile();
+        }
+      });
+
+    await patientVisitService
+      .getAllLast3VisitsWithScreeningByPatientIds()
       .then((resp) => {
         if (resp) {
           addBulkToMobile();
