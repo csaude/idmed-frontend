@@ -8,7 +8,7 @@
       @closeSection="closeSection(params)"
       bgColor="bg-orange-5"
       >Serviço {{ serviceAux !== null ? serviceAux.code : '' }}: Rastreio de
-      pacientes de RAM
+      pacietes de TB
     </ListHeader>
     <ListHeader
       v-else
