@@ -400,7 +400,6 @@ const loadUserRelations = () => {
         (cli) => cli.type === 'CLINIC_SECTOR'
       );
       // selectedClinicSectors.value = user.value.clinicSectors;
-      console.log(selectedClinicSectors.value);
     }
   }
 };
