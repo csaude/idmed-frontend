@@ -166,13 +166,11 @@ export default {
         query.with('district', (query1) => {
           query1.with('province');
         });
-      })
-      .with('clinicSectors', (query) => {
-        query.with('parentClinic', (query1) => {
-          query1.with('province');
-          query1.with('facilityType');
-          query1.with('district', (query2) => {
-            query2.with('province');
+        query.with('parentClinic', (query2) => {
+          query2.with('province');
+          query2.with('facilityType');
+          query2.with('district', (query3) => {
+            query3.with('province');
           });
         });
       })
