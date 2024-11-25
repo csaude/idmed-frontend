@@ -21,11 +21,11 @@ export default {
       return this.postWeb(params);
     }
   },
-  get(offset: number) {
+  async get(offset: number) {
     if (isMobile.value && !isOnline.value) {
-      this.getMobile();
+      return await this.getMobile();
     } else {
-      this.getWeb(offset);
+      return await this.getWeb(offset);
     }
   },
   async patch(uuid: string, params: string) {
@@ -53,9 +53,9 @@ export default {
       console.log(error);
     }
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('therapeuticRegimen?offset=' + offset + '&max=100')
         .then((resp) => {
           therapeuticRegimen.save(resp.data);

@@ -16,12 +16,12 @@ export default {
     const resp = await api().post('dispenseType', params);
     dispenseType.save(resp.data);
   },
-  get(offset: number) {
+  async get(offset: number) {
     if (isMobile.value && !isOnline.value) {
       this.getMobile();
     } else {
       if (offset >= 0) {
-        return api()
+        return await api()
           .get('dispenseType?offset=' + offset + '&max=100')
           .then((resp) => {
             dispenseType.save(resp.data);

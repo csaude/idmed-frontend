@@ -14,6 +14,7 @@
       :title="title"
     />
     <div>
+      {{ patientHasEpisodes }}
       <EmptyList v-if="!patientHasEpisodes" />
       <div v-else>
         <PrescriptionInfoContainer
@@ -35,7 +36,7 @@ import AddEditPrescription from 'components/Patient/PatientPanel/AddEditPrescrip
 import ListHeader from 'components/Shared/ListHeader.vue';
 import EmptyList from 'components/Shared/ListEmpty.vue';
 import PrescriptionInfoContainer from 'components/Patient/Prescription/PrescriptionInfoContainer.vue';
-import { computed, provide, inject, onMounted, ref } from 'vue';
+import { computed, provide, inject, onMounted, ref, reactive } from 'vue';
 import { usePatient } from 'src/composables/patient/patientMethods';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';

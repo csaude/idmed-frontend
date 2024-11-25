@@ -50,9 +50,9 @@ export default {
         doctor.save(resp.data);
       });
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('doctor?offset=' + offset + '&max=100')
         .then((resp) => {
           doctor.save(resp.data);

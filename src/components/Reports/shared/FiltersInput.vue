@@ -268,7 +268,7 @@
 <script setup>
 import Province from '../../../stores/models/province/Province';
 import Clinic from '../../../stores/models/clinic/Clinic';
-import {onMounted, ref, computed, inject, provide, watch} from 'vue';
+import { onMounted, ref, computed, inject, provide, watch } from 'vue';
 import { LocalStorage, SessionStorage } from 'quasar';
 import moment from 'moment';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
@@ -311,7 +311,7 @@ const annualPeriod = ref('');
 const submitForm = ref('');
 const downloadingXls = inject('downloadingXls');
 const downloadingPdf = inject('downloadingPdf');
-const buffer = ref(0.01)
+const buffer = ref(0.01);
 
 const reportParams = ref({
   id: null,
@@ -410,7 +410,7 @@ const startBufferProgress = () => {
       buffer.value += 0.01; // Aumenta o buffer em 1 unidade (1%)
     }
   }, 300);
-}
+};
 
 const processingTerminated = computed(() => {
   if (retrievingFromLocalStore.value) {
@@ -575,6 +575,9 @@ const saveParams = () => {
   const jsonPar = JSON.parse(JSON.stringify(reportParams.value));
   LocalStorage.set(reportParams.value.id, jsonPar);
   reportParams.value.clinic = currClinic.value;
+  reportParams.value.endDateParam = props.endDate;
+  reportParams.value.startDateParam = props.startDate;
+  console.log('PAR Inicial', props.endDate);
 };
 
 const generateReport = (fileType) => {
@@ -603,14 +606,14 @@ const getWidthDateByPlatform = () => {
 };
 
 watch(
-    () => processingInitiated.value,
-    (newValue) => {
-      if (newValue) {
-        startBufferProgress(); // Inicia o buffer quando processingInitiated for true
-      } else {
-        // stopBufferProgress(); // Para o buffer quando processingInitiated for false
-      }
+  () => processingInitiated.value,
+  (newValue) => {
+    if (newValue) {
+      startBufferProgress(); // Inicia o buffer quando processingInitiated for true
+    } else {
+      // stopBufferProgress(); // Para o buffer quando processingInitiated for false
     }
+  }
 );
 
 provide('initProcessing', initProcessing);

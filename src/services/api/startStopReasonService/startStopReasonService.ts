@@ -50,9 +50,9 @@ export default {
         startStopReason.save(resp.data);
       });
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('startStopReason?offset=' + offset + '&max=100')
         .then((resp) => {
           startStopReason.save(resp.data);

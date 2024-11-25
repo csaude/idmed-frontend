@@ -4,7 +4,8 @@ import AbsentPatientReport from 'src/stores/models/report/pharmacyManagement/Abs
 import db from 'src/stores/dexie';
 import packService from '../../pack/packService';
 import { v4 as uuidv4 } from 'uuid';
-import patientService from '../../patientService/patientService';
+
+
 const absentPatientReport = db[AbsentPatientReport.entity];
 
 export default {
@@ -14,7 +15,6 @@ export default {
     const [ListPatientLastPack] = await Promise.all([
       packService.getAllPatientsLastPackForTARVFromDexie(),
     ]);
-
     const [activePacks] = await Promise.all([
       packService.getAllAbsentPacksByStartDateAndEndDateFromDexie(
         reportParams.startDate,
@@ -36,7 +36,6 @@ export default {
     }, []);
 
     lastDispensations = Object.values(lastDispensations);
-
     for (const pack of lastDispensations) {
       const patient = pack.patientvisitDetails.patientVisit.patient;
       const identifier =

@@ -15,7 +15,7 @@ const stockOperationDexie = db[stockOperationType.entity];
 export default {
   // Axios API call static async
 
-  get(offset: number) {
+  async get(offset: number) {
     if (!isOnline.value) {
       return stockOperationDexie.toArray().then((result: any) => {
         stockOperationRepo.save(result);
@@ -24,7 +24,7 @@ export default {
     } else {
       if (offset >= 0) {
         showloading();
-        return api()
+        return await api()
           .get('/stockOperationType?offset=' + offset + '&limit=100')
           .then((resp) => {
             stockOperationRepo.save(resp.data);

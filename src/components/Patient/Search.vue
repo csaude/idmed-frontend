@@ -587,8 +587,6 @@ const goToPatientPanel = async (patient) => {
     await patientVisitDetailsService.apiGetPatientVisitDetailsByPatientId(
       currPatient.value.id
     );
-    //  await prescriptionService.apiGetByPatientId(currPatient.value.id);
-    //  await packService.apiGetByPatientId(currPatient.value.id);
   }
 
   localStorage.setItem('patientuuid', currPatient.value.id);

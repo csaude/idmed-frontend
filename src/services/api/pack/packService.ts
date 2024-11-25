@@ -577,7 +577,6 @@ export default {
     const [patients] = await Promise.all([
       patientService.getAllPatientstWithAllFromDexie(),
     ]);
-
     patients.map((patient: any) => {
       const identifierList = patient.identifiers;
       const lastPack = [];
@@ -596,7 +595,7 @@ export default {
         for (const episode of episodeList) {
           if (episode.patientVisitDetails.length > 0) {
             lastPatinetVisitDetailsPacks = episode.patientVisitDetails;
-            return;
+            break;
           }
         }
       }

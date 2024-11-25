@@ -22,6 +22,7 @@ import PatientServiceIdentifier from './models/patientServiceIdentifier/PatientS
 import ClinicalService from './models/ClinicalService/ClinicalService';
 import StartStopReason from './models/startStopReason/StartStopReason';
 import TherapeuticRegimen from './models/therapeuticRegimen/TherapeuticRegimen';
+import ClinicalServiceTherapeuticRegimens from './models/ClinicalServiceTherapeuticRegimens/ClinicalServiceTherapeuticRegimens';
 import Stock from './models/stock/Stock';
 import {
   StockAdjustment,
@@ -226,6 +227,7 @@ export default {
     entitiesList.push(PatientsWithScreeningReport);
     entitiesList.push(PatientPickedUpMedAtUsReport);
     entitiesList.push(PatientExpectedReport);
+    entitiesList.push(ClinicalServiceTherapeuticRegimens);
     return entitiesList;
   },
 };

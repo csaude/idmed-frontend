@@ -25,13 +25,13 @@ export default {
     drug.save(resp.data);
     alertSucess('O Registo foi efectuado com sucesso');
   },
-  get(offset: number) {
+  async get(offset: number) {
     if (isMobile.value && !isOnline.value) {
       this.getMobile();
     } else {
       if (offset >= 0) {
         // showloading();
-        return (
+        return await (
           api()
             .get('drug?offset=' + offset + '&max=100', {
               onDownloadProgress(progressEvent) {
