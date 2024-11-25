@@ -170,7 +170,6 @@ const showPatientDetails = () => {
 };
 
 // Computed
-
 const patient = computed(() => {
   return patientService.getPatientByID(localStorage.getItem('patientuuid'));
 });

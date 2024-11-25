@@ -25,7 +25,7 @@ export default {
       return this.postWeb(params);
     }
   },
-  get(offset: number) {
+   get(offset: number) {
     if (isMobile.value && !isOnline.value) {
       this.getMobile();
     } else {
@@ -56,9 +56,9 @@ export default {
         clinicalService.save(resp.data);
       });
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('clinicalService?offset=' + offset + '&max=100')
         .then((resp) => {
           clinicalService.save(resp.data);

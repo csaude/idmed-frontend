@@ -465,4 +465,55 @@ export default {
 
     return patientServiceIdentifiers;
   },
+  async getAll3LastDataByPatientsIDsFromDexie(ids: []) {
+    const patientServiceIdentifiers = await patientServiceIdentifierDexie
+      .where('patient_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+
+    const identifierIds = patientServiceIdentifiers.map(
+      (identifier: any) => identifier.id
+    );
+
+    const identifierTypeIds = patientServiceIdentifiers.map(
+      (patientServiceIdentifier: any) =>
+        patientServiceIdentifier.identifier_type_id
+    );
+
+    const serviceIds = patientServiceIdentifiers.map(
+      (patientServiceIdentifier: any) => patientServiceIdentifier.service_id
+    );
+
+    const clinicIds = patientServiceIdentifiers.map(
+      (patientServiceIdentifier: any) => patientServiceIdentifier.clinic_id
+    );
+
+    const [identifierTypes, services, clinics, episodeList] = await Promise.all(
+      [
+        identifierTypeService.getAllByIDsFromDexie(identifierTypeIds),
+        clinicalServiceService.getAllByIDsFromDexie(serviceIds),
+        clinicService.getAllByIDsFromDexie(clinicIds),
+        episodeService.getAll3LastDataByIdentifierIDsFromDexie(identifierIds),
+      ]
+    );
+
+    patientServiceIdentifiers.map((patientServiceIdentifier: any) => {
+      patientServiceIdentifier.clinic = clinics.find(
+        (clinic: any) => clinic.id === patientServiceIdentifier.clinic_id
+      );
+      patientServiceIdentifier.identifierType = identifierTypes.find(
+        (identifierType: any) =>
+          identifierType.id === patientServiceIdentifier.identifier_type_id
+      );
+      patientServiceIdentifier.service = services.find(
+        (service: any) => service.id === patientServiceIdentifier.service_id
+      );
+      patientServiceIdentifier.episodes = episodeList.filter(
+        (episode: any) =>
+          episode.patientServiceIdentifier_id === patientServiceIdentifier.id
+      );
+    });
+
+    return patientServiceIdentifiers;
+  },
 };

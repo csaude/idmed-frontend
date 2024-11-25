@@ -1071,6 +1071,79 @@ export default {
     return patientVisits;
   },
 
+  async getAll3LastDataByPatientIDsFromDexie(ids: []) {
+    const patientVisits = await patientVisitDexie
+      .where('patient_id')
+      .anyOfIgnoreCase(ids)
+      .reverse()
+      .limit(3)
+      .sortBy('visitDate');
+
+    const patientVisitIds = patientVisits.map(
+      (patientVisit: any) => patientVisit.id
+    );
+
+    const clinicIds = patientVisits.map(
+      (patientVisit: any) => patientVisit.clinic_id
+    );
+
+    const [
+      clinics,
+      vitalSignsScreenings,
+      pregnancyScreenings,
+      ramScreenings,
+      tbScreenings,
+      adherenceScreenings,
+      patientVisitDetailList,
+    ] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(clinicIds),
+      vitalSignsScreeningService.getAllByPatientVisitIDsFromDexie(
+        patientVisitIds
+      ),
+      pregnancyScreeningService.getAllByPatientVisitIDsFromDexie(
+        patientVisitIds
+      ),
+      rAMScreeningService.getAllByPatientVisitIDsFromDexie(patientVisitIds),
+      tBScreeningService.getAllByPatientVisitIDsFromDexie(patientVisitIds),
+      adherenceScreeningService.getAllByPatientVisitIDsFromDexie(
+        patientVisitIds
+      ),
+      patientVisitDetailsService.getAllByPatientVisitIdsFromDexie(
+        patientVisitIds
+      ),
+    ]);
+
+    patientVisits.map((patientVisit: any) => {
+      patientVisit.clinic = clinics.find(
+        (clinic: any) => clinic.id === patientVisit.clinic_id
+      );
+      patientVisit.vitalSignsScreenings = vitalSignsScreenings.filter(
+        (vitalSignsScreening: any) =>
+          vitalSignsScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.pregnancyScreenings = pregnancyScreenings.filter(
+        (pregnancyScreening: any) =>
+          pregnancyScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.ramScreenings = ramScreenings.filter(
+        (ramScreening: any) => ramScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.tbScreenings = tbScreenings.filter(
+        (tbScreening: any) => tbScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.adherenceScreenings = adherenceScreenings.filter(
+        (adherenceScreening: any) =>
+          adherenceScreening.patient_visit_id === patientVisit.id
+      );
+      patientVisit.patientVisitDetails = patientVisitDetailList.filter(
+        (patientVisitDetail: any) =>
+          patientVisitDetail.patient_visit_id === patientVisit.id
+      );
+    });
+
+    return patientVisits;
+  },
+
   async getAllByIDsNoRelationsFromDexie(ids: []) {
     return await patientVisitDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },

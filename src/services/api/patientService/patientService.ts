@@ -648,7 +648,35 @@ export default {
         (identifier: any) => identifier.patient_id === patient.id
       );
     });
+    return patients;
+  },
 
+  async getPatient3LastDataWithAllFromDexie(id: string) {
+    const patients = await patientDexie
+      .where('id')
+      .equalsIgnoreCase(id)
+      .toArray();
+
+    const patientIds = patients.map((patient: any) => patient.id);
+
+    const [patientVisitList, identifiers] = await Promise.all([
+      patientVisitService.getAll3LastDataByPatientIDsFromDexie(patientIds),
+      patientServiceIdentifierService.getAll3LastDataByPatientsIDsFromDexie(
+        patientIds
+      ),
+    ]);
+
+    patients.map((patient: any) => {
+      patient.patientVisits = patientVisitList.filter(
+        (patientVisit: any) => patientVisit.patient_id === patient.id
+      );
+      patient.identifiers = identifiers.filter(
+        (identifier: any) => identifier.patient_id === patient.id
+      );
+    });
+    console.log('Load parient data from dexie');
+    patient.save(patients);
+    console.log('Load parient data from Pinia');
     return patients;
   },
 };

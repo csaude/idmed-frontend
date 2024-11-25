@@ -8,6 +8,7 @@ export default {
 
     function saveBlob2File(fileName, blob) {
       const folder = cordova.file.externalRootDirectory + 'Download';
+      console.log('Dir', folder);
       window.resolveLocalFileSystemURL(
         folder,
         function (dirEntry) {
@@ -36,7 +37,7 @@ export default {
         };
 
         fileWriter.onerror = function (error) {
-          loading.value = false
+          loading.value = false;
           console.log('Failed file write: ' + error);
         };
         fileWriter.write(dataObj);
@@ -44,12 +45,12 @@ export default {
     }
 
     function onErrorLoadFs(error) {
-      loading.value = false
+      loading.value = false;
       console.log(error);
     }
 
     function onErrorCreateFile(error) {
-      loading.value = false
+      loading.value = false;
       console.log('errorr: ' + error.toString());
     }
 
@@ -60,11 +61,11 @@ export default {
       const documentURL = decodeURIComponent(folder);
       cordova.plugins.fileOpener2.open(documentURL, 'application/pdf', {
         error: function (e) {
-          loading.value = false
+          loading.value = false;
           console.log('Report not processed: ' + e + documentURL);
         },
         success: function () {
-          loading.value = false
+          loading.value = false;
           console.log('Report processed');
         },
       });

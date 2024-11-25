@@ -297,11 +297,11 @@ const setTimer = () => {
   logoutTimer.value = setTimeout(warningMessage, 1200 * 10000); // 20 min
 };
 
-onMounted(() => {
+onMounted(async () => {
   if (website.value || isOnline.value) {
     mobile.value = false;
-    systemConfigsService.apiGetAll();
-    clinicService.apiWebGetAll();
+    await systemConfigsService.apiGetAll();
+    await clinicService.apiWebGetAll();
   } else {
     mobile.value = true;
   }

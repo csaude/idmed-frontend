@@ -47,10 +47,10 @@ export default {
 
   //web
 
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     showloading();
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('stockCenter?offset=' + offset)
         .then((resp) => {
           stockCenter.save(resp.data);

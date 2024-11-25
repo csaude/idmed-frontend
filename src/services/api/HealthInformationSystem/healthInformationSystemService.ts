@@ -50,9 +50,9 @@ export default {
         healthInformationSystem.save(resp.data);
       });
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('healthInformationSystem?offset=' + offset + '&max=100')
         .then((resp) => {
           healthInformationSystem.save(resp.data);

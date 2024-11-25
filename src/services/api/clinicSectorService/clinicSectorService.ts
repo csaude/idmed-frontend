@@ -54,9 +54,9 @@ export default {
         closeLoading();
       });
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('clinicSector?offset=' + offset + '&max=100')
         .then((resp) => {
           clinicSector.save(resp.data);

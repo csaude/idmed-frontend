@@ -148,7 +148,7 @@ export default {
     return await api().get(`/systemConfigs/${id}`);
   },
   async apiGetAll() {
-    return this.get(0);
+    return await this.get(0);
   },
   async apiSave(systemConfigs: any) {
     return await this.post(systemConfigs);

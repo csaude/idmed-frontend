@@ -23,6 +23,7 @@ const fileName = reportName.concat(
 // const fontPath = '/src/assets/NotoSans-Regular.ttf';
 export default {
   async downloadPDF(id, fileType, params, loading) {
+    console.log('PARAMMMS', params);
     const clinic = clinicService.currClinic();
     const fontBase64 = await fetchFontAsBase64(fontPath);
     const doc = new JsPDF({
@@ -417,10 +418,6 @@ export default {
     if (isOnline.value && !isMobile.value) {
       saveAs(blob, fileName + fileExtension);
     } else {
-      //   var blob = new Blob(materialEducativo.blop)
-      //  const bytes = new Uint8Array(materialEducativo.blop)
-      // var UTF8_STR = new Uint8Array(pdfOutput)
-      //   var BINARY_ARR = UTF8_STR.buffer
       const titleFile = 'PacientesFaltosos.xlsx';
       DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob, loading);
     }

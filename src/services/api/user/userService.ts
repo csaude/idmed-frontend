@@ -50,9 +50,9 @@ export default {
         secUserRepo.save(resp.data);
       });
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('secUser?offset=' + offset + '&max=100')
         .then((resp) => {
           secUserRepo.save(resp.data);

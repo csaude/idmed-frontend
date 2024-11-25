@@ -644,4 +644,64 @@ export default {
 
     return episodes;
   },
+  async getAll3LastDataByIdentifierIDsFromDexie(ids: []) {
+    const episodes = await episodeDexie
+      .where('patientServiceIdentifier_id')
+      .anyOfIgnoreCase(ids)
+      .reverse()
+      .limit(3)
+      .sortBy('episodeDate');
+    const referralClinicIds = episodes.map(
+      (episode: any) => episode.referralClinic_id
+    );
+
+    const startStopReasonIds = episodes.map(
+      (episode: any) => episode.startStopReason_id
+    );
+
+    const episodeTypeIds = episodes.map(
+      (episode: any) => episode.episodeType_id
+    );
+
+    const clinicSectorIds = episodes.map(
+      (episode: any) => episode.clinicSector_id
+    );
+
+    const episodeIds = episodes.map((episode: any) => episode.id);
+
+    const [
+      referralClinics,
+      startStopReasons,
+      episodeTypes,
+      clinicSectors,
+      patientVisitDetailList,
+    ] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(referralClinicIds),
+      startStopReasonService.getAllByIDsFromDexie(startStopReasonIds),
+      episodeTypeService.getAllByIDsFromDexie(episodeTypeIds),
+      clinicSectorService.getAllByIDsFromDexie(clinicSectorIds),
+      patientVisitDetailsService.getAllByEpisodeIDsFromDexie(episodeIds),
+    ]);
+    episodes.map((episode: any) => {
+      episode.referralClinic = referralClinics.find(
+        (referralClinic: any) => referralClinic.id === episode.referralClinic_id
+      );
+      episode.startStopReason = startStopReasons.find(
+        (startStopReason: any) =>
+          startStopReason.id === episode.startStopReason_id
+      );
+      episode.episodeType = episodeTypes.find(
+        (episodeType: any) => episodeType.id === episode.episodeType_id
+      );
+      episode.clinicSector = clinicSectors.find(
+        (clinicSector: any) => clinicSector.id === episode.clinicSector_id
+      );
+      episode.patientVisitDetails = patientVisitDetailList.filter(
+        (patientVisitDetail: any) =>
+          patientVisitDetail.episode_id === episode.id
+      );
+    });
+
+    return episodes;
+  },
 };

@@ -53,9 +53,9 @@ export default {
       console.log(error);
     }
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('therapeuticLine?offset=' + offset + '&max=100')
         .then((resp) => {
           therapeuticLine.save(resp.data);
