@@ -138,7 +138,7 @@ export default {
           { content: 'IDADE', rowSpan: 2 },
           { content: 'CONTACTO', rowSpan: 2 },
           { content: 'ENDERECO', rowSpan: 2 },
-          { content: 'Serviço que Serve', colSpan: 3 },
+          { content: 'Serviço que Serve', colSpan: 5 },
           { content: 'Tipo de Chamada', colSpan: 2 },
           { content: 'Relatório da Chamada', colSpan: 6 },
           { content: 'Retornos e Referências', colSpan: 3 },
@@ -159,7 +159,7 @@ export default {
           { content: 'Óbito' },
           { content: 'PPE' },
           { content: 'PREP' },
-          { content: 'Cr. Exp.' },
+          { content: 'Cr.Exp.' },
         ],
       ];
 
@@ -217,7 +217,7 @@ export default {
           const pageHeight = pageSize.height
             ? pageSize.height
             : pageSize.getHeight();
-          doc.text(str, data.settings.margin.right, pageHeight - 10);
+          doc.text(str, data.settings.margin.right, pageHeight - 8);
         },
 
         theme: 'grid',
@@ -299,14 +299,14 @@ export default {
       const cellProvinceValue = worksheet.getCell('D12');
 
       const cellServicoServe = worksheet.getCell('F13');
-      const cellTipoChamada = worksheet.getCell('I13');
-      const cellRelatorioChamada = worksheet.getCell('K13');
-      const cellRetornoReferencia = worksheet.getCell('Q13');
+      const cellTipoChamada = worksheet.getCell('K13');
+      const cellRelatorioChamada = worksheet.getCell('M13');
+      const cellRetornoReferencia = worksheet.getCell('S13');
 
-      const cellStartDate = worksheet.getCell('R11');
-      const cellEndDate = worksheet.getCell('R12');
-      const cellStartDateParamValue = worksheet.getCell('S11');
-      const cellEndDateParamValue = worksheet.getCell('S12');
+      const cellStartDate = worksheet.getCell('T11');
+      const cellEndDate = worksheet.getCell('T12');
+      const cellStartDateParamValue = worksheet.getCell('U11');
+      const cellEndDateParamValue = worksheet.getCell('U12');
 
       // // Get Rows
       const row14 = worksheet.getRow(14);
@@ -332,6 +332,8 @@ export default {
       const colQ = worksheet.getColumn('Q');
       const colR = worksheet.getColumn('R');
       const colS = worksheet.getColumn('S');
+      const colT = worksheet.getColumn('T');
+      const colU = worksheet.getColumn('U');
 
       worksheet.getCell('A13').fill =
         worksheet.getCell('B13').fill =
@@ -352,6 +354,8 @@ export default {
         worksheet.getCell('Q13').fill =
         worksheet.getCell('R13').fill =
         worksheet.getCell('S13').fill =
+        worksheet.getCell('T13').fill =
+        worksheet.getCell('U13').fill =
           {
             type: 'pattern',
             pattern: 'solid',
@@ -446,13 +450,13 @@ export default {
 
       // merge a range of cells
       worksheet.mergeCells('A1:A7');
-      worksheet.mergeCells('A9:S10');
-      worksheet.mergeCells('B11:Q11');
-      worksheet.mergeCells('D12:Q12');
-      worksheet.mergeCells('F13:H13');
-      worksheet.mergeCells('I13:J13');
-      worksheet.mergeCells('K13:P13');
-      worksheet.mergeCells('Q13:S13');
+      worksheet.mergeCells('A9:U10');
+      worksheet.mergeCells('B11:S11');
+      worksheet.mergeCells('D12:S12');
+      worksheet.mergeCells('F13:J13');
+      worksheet.mergeCells('K13:L13');
+      worksheet.mergeCells('M13:R13');
+      worksheet.mergeCells('S13:U13');
       headerRow.height = 30;
 
       // add height size to Columns
@@ -476,6 +480,8 @@ export default {
       colQ.width = 25;
       colR.width = 20;
       colS.width = 25;
+      colT.width = 25;
+      colU.width = 25;
 
       // Add Style
       cellTitle.font =
