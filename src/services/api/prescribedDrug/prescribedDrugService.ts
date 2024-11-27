@@ -182,4 +182,7 @@ export default {
     });
     return prescribedDrugs;
   },
+  deleteAllFromDexie() {
+    prescribedDrugDexie.clear();
+  },
 };

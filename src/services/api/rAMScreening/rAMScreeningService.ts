@@ -166,4 +166,7 @@ export default {
       .anyOfIgnoreCase(ids)
       .toArray();
   },
+  deleteAllFromDexie() {
+    rAMScreeningDexie.clear();
+  },
 };

@@ -256,7 +256,7 @@ const { closeLoading, showloading } = useLoading();
 const { idadeCalculator, getDDMMYYYFromJSDate } = useDateUtils();
 const { website, isOnline, isDeskTop, isMobile } = useSystemUtils();
 const { preferedIdentifierValue, fullName } = usePatient();
-const { deleteStorageWithoutPatientInfo } = useOnline();
+const { deleteStorageWithoutPatientInfo, deleteDexieInfo } = useOnline();
 const {
   isProvincialInstalation,
   isProvincialInstalationPharmacysMode,
@@ -577,6 +577,7 @@ const goToPatientPanel = async (patient) => {
   if (isMobile.value && !isOnline.value) {
     await patientService.getPatientMobileWithAllByPatientId(currPatient.value);
   } else {
+    deleteDexieInfo();
     localStorage.setItem('patientuuid', currPatient.value.id);
     await patientService.getPatientByID(currPatient.value.id);
     // Rest Calls

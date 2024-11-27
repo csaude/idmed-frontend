@@ -1,8 +1,10 @@
 import { useRepo } from 'pinia-orm';
 import { StockDestructionAdjustment } from 'src/stores/models/stockadjustment/StockDestructionAdjustment';
 import api from '../apiService/apiService';
+import db from 'src/stores/dexie';
 
  const stockDestructionAdjustment = useRepo(StockDestructionAdjustment);
+ const stockDestructionAdjustmentDexie = db[StockDestructionAdjustment.entity];
 
 export default {
 
@@ -44,5 +46,9 @@ export default {
     // Local Storage Pinia
     deleteAllFromStorage() {
       stockDestructionAdjustment.flush();
+    },
+
+    deleteAllFromDexie() {
+      stockDestructionAdjustmentDexie.clear();
     },
 }

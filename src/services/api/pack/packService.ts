@@ -615,4 +615,7 @@ export default {
 
     return await packDexie.where('id').anyOfIgnoreCase(packList).toArray();
   },
+  deleteAllFromDexie() {
+    packDexie.clear();
+  },
 };

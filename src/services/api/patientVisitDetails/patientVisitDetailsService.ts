@@ -705,4 +705,7 @@ export default {
 
     return patientVisitDetails;
   },
+  deleteAllFromDexie() {
+    patientVisitDetailsDexie.clear();
+  },
 };

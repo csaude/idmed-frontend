@@ -20,7 +20,6 @@
           v-for="identifier in patient.identifiers"
           :key="identifier.id"
           :identifierId="identifier.id"
-          :serviceId="identifier.service.id"
         />
       </span>
     </div>

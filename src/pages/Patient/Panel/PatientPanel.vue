@@ -141,11 +141,11 @@ onMounted(() => {
 // Methods
 const init = async () => {
   showloading();
-  if (patient.value === null) {
-    patient.value = patientService.getPatientByID(
-      localStorage.getItem('patientuuid')
-    );
-  }
+  // if (patient.value === null) {
+  //   patient.value = patientService.getPatientByID(
+  //     localStorage.getItem('patientuuid')
+  //   );
+  // }
 
   // else {
   //   if (isMobile.value && !isOnline.value) {

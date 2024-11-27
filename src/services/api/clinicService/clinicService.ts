@@ -206,10 +206,10 @@ export default {
   currClinic() {
     const instalationType = systemConfigsService.getInstallationType();
     const clinicUser = localStorage.getItem('clinicUsers');
-    if (
-      (clinicUser === 'undefined' && !isProvincialInstalation()) ||
+    if (instalationType !== null &&
+      ((clinicUser === 'undefined' && !isProvincialInstalation()) ||
       (clinicUser === '' && !isProvincialInstalation()) ||
-      clinicUser.includes('NORMAL')
+      String(clinicUser).includes('NORMAL'))
     ) {
       return clinic
         .withAllRecursive(2)

@@ -331,4 +331,7 @@ export default {
   async getAllByIDsFromDexie(ids: []) {
     return await inventoryDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
+  deleteAllFromDexie() {
+    inventoryDexie.clear();
+  },
 };

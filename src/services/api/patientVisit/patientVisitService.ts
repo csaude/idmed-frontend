@@ -1147,4 +1147,7 @@ export default {
   async getAllByIDsNoRelationsFromDexie(ids: []) {
     return await patientVisitDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
+  deleteAllFromDexie() {
+    patientVisitDexie.clear();
+  },
 };

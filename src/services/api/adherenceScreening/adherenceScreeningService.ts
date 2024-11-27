@@ -177,4 +177,7 @@ export default {
       .anyOfIgnoreCase(ids)
       .toArray();
   },
+  deleteAllFromDexie() {
+    adherenceScreeningDexie.clear();
+  },
 };

@@ -7,9 +7,11 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { nSQL } from 'nano-sql';
 import Group from 'src/stores/models/group/Group';
 import groupService from '../group/groupService';
+import db from 'src/stores/dexie';
 
 const { isOnline, isMobile } = useSystemUtils();
 const groupMember = useRepo(GroupMember);
+const groupMemberDexie = db[GroupMember.entity]
 const groupMemberInfo = useRepo(GroupMemberInfo);
 
 export default {
@@ -121,5 +123,8 @@ export default {
 
   getMemberById(id: string) {
     return groupMember.withAllRecursive(2).where('id', id).first();
+  },
+  deleteAllFromDexie() {
+    groupMemberDexie.clear();
   },
 };

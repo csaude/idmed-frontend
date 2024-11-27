@@ -8,7 +8,7 @@ import groupMemberService from '../groupMember/groupMemberService';
 import { useLoading } from 'src/composables/shared/loading/loading';
 
 const group = useRepo(Group);
-const groupDexie = Group.entity;
+const groupDexie = db[Group.entity];
 
 const { isMobile, isOnline } = useSystemUtils();
 const { alertSucess, alertError, alertInfo } = useSwal();
@@ -30,7 +30,7 @@ export default {
             }
           });
       } else {
-        return db[groupDexie].then((result) => {
+        return groupDexie.then((result) => {
           group.save(result);
           closeLoading();
         });
@@ -222,5 +222,8 @@ export default {
       })
       .orderBy('startDate', 'desc')
       .first();
+  },
+  deleteAllFromDexie() {
+    groupDexie.clear();
   },
 };

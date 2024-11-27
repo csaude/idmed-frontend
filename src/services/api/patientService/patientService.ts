@@ -679,4 +679,7 @@ export default {
     console.log('Load parient data from Pinia');
     return patients;
   },
+  deleteAllFromDexie() {
+    patientDexie.clear();
+  },
 };

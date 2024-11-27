@@ -341,4 +341,7 @@ export default {
 
     return prescriptions;
   },
+  deleteAllFromDexie() {
+    prescriptionDexie.clear();
+  },
 };

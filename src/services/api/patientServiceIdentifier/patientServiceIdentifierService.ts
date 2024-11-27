@@ -243,12 +243,8 @@ export default {
   deleteAllFromStorage() {
     patientServiceIdentifier.flush();
   },
-  identifierCurr(id: string, serviceId: string) {
-    return patientServiceIdentifier
-      .withAllRecursive(2)
-      .where('id', id)
-      .where('service_id', serviceId)
-      .first();
+  identifierCurr(id: any, serviceId: string) {
+    return patientServiceIdentifier.withAllRecursive(2).where('id', id).first();
   },
   getAllEpisodesByIdentifierId(id: string) {
     return patientServiceIdentifier
@@ -515,5 +511,8 @@ export default {
     });
 
     return patientServiceIdentifiers;
+  },
+  deleteAllFromDexie() {
+    patientServiceIdentifierDexie.clear();
   },
 };

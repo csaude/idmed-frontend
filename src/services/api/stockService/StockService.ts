@@ -507,4 +507,7 @@ export default {
   deleteAllFromStorage() {
     stock.flush();
   },
+  deleteAllFromDexie() {
+    stockDexie.clear();
+  },
 };

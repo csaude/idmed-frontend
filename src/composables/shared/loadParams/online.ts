@@ -48,6 +48,11 @@ import rAMScreeningService from 'src/services/api/rAMScreening/rAMScreeningServi
 import tBScreeningService from 'src/services/api/tBScreening/tBScreeningService';
 import vitalSignsScreeningService from 'src/services/api/vitalSignsScreening/vitalSignsScreeningService';
 import systemConfigsService from 'src/services/api/systemConfigs/systemConfigsService';
+import StockService from 'src/services/api/stockService/StockService';
+import StockReferenceAdjustmentService from 'src/services/api/stockAdjustment/StockReferenceAdjustmentService';
+import StockDestructionAdjustmentService from 'src/services/api/stockAdjustment/StockDestructionAdjustmentService';
+import InventoryStockAdjustmentService from 'src/services/api/stockAdjustment/InventoryStockAdjustmentService';
+import InventoryService from 'src/services/api/inventoryService/InventoryService';
 
 export function useOnline() {
   async function loadConfigsSettings() {
@@ -145,7 +150,39 @@ export function useOnline() {
     groupService.deleteAllFromStorage();
     patientServiceIdentifierService.deleteAllFromStorage();
     patientService.deleteAllFromStorage();
+    StockService.deleteAllFromStorage();
+    StockReferenceAdjustmentService.deleteAllFromStorage();
+    StockDestructionAdjustmentService.deleteAllFromStorage();
+    InventoryStockAdjustmentService.deleteAllFromStorage();
+    InventoryService.deleteAllFromStorage();
     // reportsService.deleteAllFromStorage();
+  }
+
+  function deleteDexieInfo() {
+    patientVisitDetailsService.deleteAllFromDexie();
+    prescriptionDetailsService.deleteAllFromDexie();
+    prescribedDrugService.deleteAllFromDexie();
+    // groupMemberPrescriptionService.deleteAllFromDexie();
+    prescriptionService.deleteAllFromDexie();
+    patientVisitService.deleteAllFromDexie();
+    rAMScreeningService.deleteAllFromDexie();
+    adherenceScreeningService.deleteAllFromDexie();
+    pregnancyScreeningService.deleteAllFromDexie();
+    tBScreeningService.deleteAllFromDexie();
+    vitalSignsScreeningService.deleteAllFromDexie();
+    episodeService.deleteAllFromDexie();
+    packagedDrugService.deleteAllFromDexie();
+    packService.deleteAllFromDexie();
+    appointmentService.deleteAllFromDexie();
+    groupMemberService.deleteAllFromDexie();
+    groupService.deleteAllFromDexie();
+    patientServiceIdentifierService.deleteAllFromDexie();
+    patientService.deleteAllFromDexie();
+    StockService.deleteAllFromDexie();
+    StockReferenceAdjustmentService.deleteAllFromDexie();
+    // StockDestructionAdjustmentService.deleteAllFromDexie();
+    InventoryStockAdjustmentService.deleteAllFromDexie();
+    InventoryService.deleteAllFromDexie();
   }
 
   function deleteStorageWithoutPatientInfo() {
@@ -174,6 +211,7 @@ export function useOnline() {
     loadSettingParams,
     loadPatientData,
     deleteStorageInfo,
+    deleteDexieInfo,
     deleteStorageWithoutPatientInfo,
     loadConfigsSettings,
   };
