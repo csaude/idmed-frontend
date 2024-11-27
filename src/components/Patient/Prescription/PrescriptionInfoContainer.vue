@@ -305,7 +305,7 @@ const loadingFilaPDF = reactive(ref(false));
 const showPrescriptionDetails = ref(false);
 
 //props
-const props = defineProps(['identifierId', 'serviceId']);
+const props = defineProps(['identifierId']);
 
 // Inject
 const editPrescriptionOption = inject('editPrescriptionOption');
@@ -432,10 +432,7 @@ const printFilaReport = async (patientServiceIdentifier) => {
 
 // Computed
 const curIdentifier = computed(() => {
-  return patientServiceIdentifierService.identifierCurr(
-    props.identifierId,
-    props.serviceId
-  );
+  return patientServiceIdentifierService.identifierCurr(props.identifierId, '');
 });
 
 const validadeColor = computed(() => {
@@ -569,7 +566,7 @@ const isClosed = computed(() => {
 const isPatientActiveGroupMember = computed(() => {
   return groupService.getGroupByPatientAndService(
     patient.value.id,
-    props.serviceId
+    curIdentifier.value.service.id
   );
 });
 

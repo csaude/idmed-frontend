@@ -312,4 +312,7 @@ export default {
   deleteAllFromStorage() {
     inventoryStockAdjustment.flush();
   },
+  deleteAllFromDexie() {
+    inventoryStockAdjustmentDexie.clear();
+  },
 };

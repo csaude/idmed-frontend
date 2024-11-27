@@ -146,4 +146,7 @@ export default {
   getAllFromStorage() {
     return appointment.all();
   },
+  deleteAllFromDexie() {
+    appointmenDexie.clear();
+  },
 };

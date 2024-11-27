@@ -3,8 +3,6 @@ import { createPinia, setActivePinia } from 'pinia';
 import { Router } from 'vue-router';
 import nanosSqlDatabase from 'src/stores/nanosSqlDatabase';
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate';
-import { PiniaPluginContext } from 'pinia';
-// import persistedStateDexiePlugin from '../plugins/pinia-dexie-plugin';
 
 /* When adding new properties to stores, you should also
  * extend the `PiniaCustomProperties` interface.
@@ -33,15 +31,6 @@ export default store((/* { ssrContext } */) => {
   pinia.use(piniaPluginPersistedstate);
 
   // pinia.use(persistedStateDexiePlugin());
-
-  (context: PiniaPluginContext) => {
-    const { store } = context;
-    console.log(`Failed to parse persisted state for store: ${store.$id}`);
-    // Watch for state changes and persist them
-    store.$subscribe(async (_, state) => {
-      console.log('vsfkvfs', _);
-    });
-  };
 
   setActivePinia(pinia);
 

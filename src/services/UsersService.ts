@@ -13,12 +13,15 @@ import axios, { Axios } from 'axios';
 const userLogin = useRepo(UserLogin);
 const userRoles = useRepo(UserRole);
 const { isMobile, isOnline } = useSystemUtils();
-const { deleteStorageInfo } = useOnline();
+const { deleteStorageInfo, deleteDexieInfo } = useOnline();
 const userLoginDexie = db[UserLogin.entity];
 
 export default {
   logout() {
     deleteStorageInfo();
+    if (!isMobile.value) {
+      deleteDexieInfo();
+    }
   },
   fetchUsers() {
     return api()

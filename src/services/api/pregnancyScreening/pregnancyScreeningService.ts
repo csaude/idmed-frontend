@@ -180,4 +180,7 @@ export default {
       .anyOfIgnoreCase(ids)
       .toArray();
   },
+  deleteAllFromDexie() {
+    pregnancyScreeningDexie.clear();
+  },
 };

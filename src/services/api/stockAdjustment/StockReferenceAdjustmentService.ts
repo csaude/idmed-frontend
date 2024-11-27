@@ -89,4 +89,7 @@ export default {
 
     return stockReferenceAdjustments;
   },
+  deleteAllFromDexie() {
+    stockReferenceAdjustmentDexie.clear();
+  },
 };

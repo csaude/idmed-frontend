@@ -704,4 +704,7 @@ export default {
 
     return episodes;
   },
+  deleteAllFromDexie() {
+    episodeDexie.clear();
+  },
 };

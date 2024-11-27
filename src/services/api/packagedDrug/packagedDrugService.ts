@@ -225,4 +225,7 @@ export default {
     });
     return packagedDrugs;
   },
+  deleteAllFromDexie() {
+    packagedDrugDexie.clear();
+  },
 };
