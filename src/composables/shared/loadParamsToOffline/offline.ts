@@ -49,6 +49,9 @@ import StockService from 'src/services/api/stockService/StockService';
 import StockEntranceService from 'src/services/api/stockEntranceService/StockEntranceService';
 import NanoclinicService from 'src/services/Synchronization/clinicService/NanoclinicService';
 import NanomenuService from 'src/services/Synchronization/menu/NanomenuService';
+import StockDistributorService from 'src/services/api/stockDistributorService/StockDistributorService';
+import StockDistributorBatchService from 'src/services/api/stockDistributorBatchService/StockDistributorBatchService';
+import DrugDistributorService from 'src/services/api/drugDistributorService/DrugDistributorService';
 // import { useLoading } from '../loading/loading';
 
 // const { closeLoading, showloading } = useLoading();
@@ -213,6 +216,13 @@ export function useOffline() {
     // drugService.getMobile()
   }
 
+  async function loadStockDistribuitionData() {
+    StockDistributorBatchService.get(0);
+    DrugDistributorService.get(0);
+    StockDistributorService.get(0);
+    StockService.getStockDistributorWeb(clinicService.currClinic().id, 0);
+  }
+
   function deleteStorageInfo() {
     patientVisitDetailsService.deleteAllFromStorage();
     prescriptionDetailsService.deleteAllFromStorage();
@@ -267,5 +277,6 @@ export function useOffline() {
     deleteStorageInfo,
     deleteStorageWithoutPatientInfo,
     loadSettingParamsInOfflineMode,
+    loadStockDistribuitionData,
   };
 }

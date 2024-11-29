@@ -183,6 +183,8 @@ export default {
   },
 
   updateDrugDistributorStatus(record: any, status: any) {
+    const currClinic = clinicService.currClinic();
+    console.log(currClinic);
     return api()
       .patch(
         `drugDistributor/updateDrugDistributorStatus/${record.id}/${status}`
@@ -191,8 +193,8 @@ export default {
         console.log(record);
         drugDistributor.save(record);
         if (record.status === 'C') {
-          StockService.getFromBackEnd(0, record.clinic.id);
-          StockEntranceService.getFromBackEnd(0, record.clinic.id);
+          StockService.getFromBackEnd(0, currClinic.id);
+          StockEntranceService.getFromBackEnd(0, currClinic.id);
         }
         return resp.data;
       });

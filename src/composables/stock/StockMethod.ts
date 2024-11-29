@@ -286,7 +286,9 @@ export function useStock() {
     const recordFileList = [];
     // Query stocks table to get all records matching the drug_id
     const stocks = await StockService.getStocksByDrugIdMobile(drug.id);
-    const entranceIds = stocks.map((stock) => stock.entrance_id);
+    const entranceIds = stocks.map(
+      (stock) => stock.entrance_id || stock.entranceId
+    );
     const stockEntrances = await StockEntranceService.getStockEntrancesByIds(
       entranceIds
     );
@@ -631,7 +633,9 @@ export function useStock() {
     const recordFileList = [];
     // Query stocks table to get all records matching the stockId pattern
     const stocks = await StockService.getBystockMobile(stockId);
-    const entranceIds = stocks.map((stock) => stock.entrance_id);
+    const entranceIds = stocks.map(
+      (stock) => stock.entrance_id || stock.entranceId
+    );
     // Query stockEntrances table to get all records matching the entrance_ids
     const stockEntrances = await StockEntranceService.getStockEntrancesByIds(
       entranceIds

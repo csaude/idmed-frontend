@@ -73,6 +73,7 @@ export default {
             100
         )
         .then((resp) => {
+          stockEntrance.save(resp.data);
           this.addBulkMobile(resp.data);
           console.log('Data synced from backend: stockEntrance');
           offset = offset + 100;
@@ -92,10 +93,11 @@ export default {
   },
 
   addBulkMobile(params: string) {
+    const stocksEntranceFromPinia = this.getAllFromStorage();
     return stockEntranceDexie
-      .bulkPut(params)
+      .bulkPut(stocksEntranceFromPinia)
       .then(() => {
-        stockEntrance.save(params);
+        //  stockEntrance.save(params);
       })
       .catch((error: any) => {
         console.log(error);
@@ -216,8 +218,12 @@ export default {
       });
   },
 
-  async getAllByIDsFromDexie(ids: []){
+  async getAllByIDsFromDexie(ids: []) {
     return await stockEntranceDexie.where('id').anyOfIgnoreCase(ids).toArray();
+  },
+
+  async getCountStockEntranceFromDexie() {
+    return await stockEntranceDexie.count();
   },
 
   async deleteMobile(paramsId: any) {
@@ -276,6 +282,10 @@ export default {
       .with('stocks')
       .orderBy('dateReceived', 'desc')
       .get();
+  },
+
+  getAllFromStorage() {
+    return stockEntrance.all();
   },
 
   deleteAllFromStorage() {

@@ -6,7 +6,11 @@ import patientVisitService from '../api/patientVisit/patientVisitService';
 import useNotify from 'src/composables/shared/notify/UseNotify';
 import { useOffline } from 'src/composables/shared/loadParamsToOffline/offline';
 import UsersService from '../UsersService';
-const { loadPatientDataToOffline, loadSettingParamsToOffline } = useOffline();
+const {
+  loadPatientDataToOffline,
+  loadSettingParamsToOffline,
+  loadStockDistribuitionData,
+} = useOffline();
 const { notifySuccess, notifyInfo } = useNotify();
 export function sendData() {
   // function sendDataToBackEnd() {
@@ -136,7 +140,8 @@ export function sendData() {
   async function apiSendPatientVisit(patientVisitToSync: any, i: number) {
     const patientVisit = patientVisitToSync[i];
     if (patientVisit !== undefined) {
-      const patientVisitModified = patientVisitService.setPackagedDrugStockNullToSend(patientVisit);
+      const patientVisitModified =
+        patientVisitService.setPackagedDrugStockNullToSend(patientVisit);
       console.log(patientVisitModified);
       await patientVisitService
         .postWeb(patientVisitModified)
@@ -158,6 +163,7 @@ export function sendData() {
       notifySuccess('Envio de Dados do Paciente Terminado');
       // loadSettingParamsToOffline();
       loadPatientDataToOffline();
+      loadStockDistribuitionData();
     }
   }
 
