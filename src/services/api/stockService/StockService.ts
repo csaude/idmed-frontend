@@ -10,6 +10,7 @@ import StockEntranceService from '../stockEntranceService/StockEntranceService';
 import packagedDrugStockService from '../packagedDrugStock/packagedDrugStockService';
 import InventoryStockAdjustmentService from '../stockAdjustment/InventoryStockAdjustmentService';
 import StockReferenceAdjustmentService from '../stockAdjustment/StockReferenceAdjustmentService';
+import clinicService from '../clinicService/clinicService';
 
 const { closeLoading, showloading } = useLoading();
 
@@ -55,6 +56,7 @@ export default {
       return await api()
         .get('/stock/clinic/' + clinicId + '?offset=' + offset + '&max=100')
         .then((resp) => {
+          stock.save(resp.data);
           this.addBulkMobile(resp.data);
           console.log('Data synced from backend: stock');
           offset = offset + 100;
@@ -153,6 +155,7 @@ export default {
   getValidStockByDrugAndPickUpDate(drugId: string, pickupDate: string) {
     return stock
       .where('drug_id', drugId)
+      .where('clinic_id', clinicService.currClinic().id)
       .where((stock) => {
         return stock.expireDate > pickupDate && stock.stockMoviment > 0;
       })
@@ -240,7 +243,14 @@ export default {
         )
         .then((resp) => {
           const stocksResp = resp.data;
+
           stocksResp.forEach((stockItem) => {
+            stockItem.entrance = null;
+            /*
+            if (stockItem.clinic.id === clinicService.currClinic().id) {
+              stock.save(stockItem);
+            }
+            */
             stock.save(stockItem);
           });
 
@@ -434,14 +444,19 @@ export default {
     }
   },
   addBulkMobile(params: string) {
+    const stocksFromPinia = this.getAllFromStorage();
     return stockDexie
-      .bulkPut(params)
+      .bulkPut(stocksFromPinia)
       .then(() => {
-        stock.save(params);
+        // stock.save(params);
       })
       .catch((error: any) => {
         console.log(error);
       });
+  },
+
+  getAllFromStorage() {
+    return stock.all();
   },
 
   async getAllWithPackagedDrugStocksAndAdjustmentsFromDexie() {

@@ -23,25 +23,37 @@ import StockDistributorService from 'src/services/api/stockDistributorService/St
 import StockDistributorBatchService from 'src/services/api/stockDistributorBatchService/StockDistributorBatchService';
 import DrugDistributorService from 'src/services/api/drugDistributorService/DrugDistributorService';
 import stockLevelService from 'src/services/api/stockLevelService/stockLevelService';
-
+import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 const isExecutedStockAlert = ref(false);
 const isExecutedInventory = ref(false);
 const isExecutedEntrance = ref(false);
 const isExecutedDistributor = ref(false);
-
+const { website, isMobile, isOnline } = useSystemUtils();
 onMounted(() => {
   const clinic = clinicService.currClinic();
   StockAlertService.apiGetStockAlertAll(clinic.id).then(() => {
     isExecutedStockAlert.value = true;
   });
+  if (website.value || (isMobile.value && isOnline.value)) {
+    StockDistributorBatchService.get(0);
+    DrugDistributorService.get(0);
+    StockDistributorService.get(0).then(() => {
+      isExecutedDistributor.value = true;
+    });
+    StockService.getStockDistributorWeb(clinic.id, 0);
+  } else if (isMobile.value) {
+    StockEntranceService.getCountStockEntranceFromDexie().then((resp) => {
+      if (resp <= 0) {
+        StockDistributorBatchService.get(0);
+        DrugDistributorService.get(0);
+        StockDistributorService.get(0).then(() => {
+          isExecutedDistributor.value = true;
+        });
+        StockService.getStockDistributorWeb(clinic.id, 0);
+      }
+    });
+  }
 
-  StockDistributorBatchService.get(0);
-  DrugDistributorService.get(0);
-  StockDistributorService.get(0).then(() => {
-    isExecutedDistributor.value = true;
-  });
-  StockService.getStockDistributorWeb(clinic.id, 0);
-  
   StockService.get(0, clinic.id);
   stockLevelService.get(0);
 
