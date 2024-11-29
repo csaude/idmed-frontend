@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 import moment from 'moment';
 import saveAs from 'file-saver';
 import * as ExcelJS from 'exceljs';
-import { MOHIMAGELOG } from 'src/assets/imageBytes.ts';
+import { MOHIMAGELOG } from 'src/assets/imageBytes.js';
 import Report from 'src/services/api/report/ReportService';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import AbsentPatientMobileService from 'src/services/api/report/mobile/AbsentPatientMobileService';
@@ -23,7 +23,6 @@ const fileName = reportName.concat(
 // const fontPath = '/src/assets/NotoSans-Regular.ttf';
 export default {
   async downloadPDF(id, fileType, params, loading) {
-    console.log('PARAMMMS', params);
     const clinic = clinicService.currClinic();
     const fontBase64 = await fetchFontAsBase64(fontPath);
     const doc = new JsPDF({
@@ -189,6 +188,7 @@ export default {
     if (isOnline.value && !isMobile.value) {
       // return doc.save('PacientesFaltosos.pdf');
       window.open(doc.output('bloburl'));
+      loading.value = false;
     } else {
       const pdfOutput = doc.output();
       DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput, loading);
@@ -417,6 +417,7 @@ export default {
 
     if (isOnline.value && !isMobile.value) {
       saveAs(blob, fileName + fileExtension);
+      loading.value = false;
     } else {
       const titleFile = 'PacientesFaltosos.xlsx';
       DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob, loading);

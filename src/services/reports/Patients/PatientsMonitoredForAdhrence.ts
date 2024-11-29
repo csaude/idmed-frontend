@@ -2,7 +2,7 @@ import JsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import moment from 'moment';
 import saveAs from 'file-saver';
-import { MOHIMAGELOG } from '../../../assets/imageBytes.ts';
+import { MOHIMAGELOG } from '../../../assets/imageBytes.js';
 import * as ExcelJS from 'exceljs';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import DownloadFileMobile from 'src/utils/DownloadFileMobile';
@@ -147,7 +147,7 @@ export default {
     });
     // return doc.save('HistoricoDeLevantamento.pdf')
     // window.open(doc.output('bloburl'));
-    console.log(doc);
+    // console.log(doc);
     const pdfOutput = doc.output();
     DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput, loading);
   },
@@ -387,9 +387,10 @@ export default {
 
     if (isOnline.value && !isMobile.value) {
       saveAs(blob, fileName + fileExtension);
+      loading.value = false;
     } else {
       const titleFile = 'RelatorioRastreioDeGravidez';
-      console.log('result' + titleFile);
+      // console.log('result' + titleFile);
       DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob, loading);
     }
   },
