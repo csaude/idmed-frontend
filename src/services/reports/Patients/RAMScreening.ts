@@ -2,7 +2,7 @@ import JsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import moment from 'moment';
 import saveAs from 'file-saver';
-import { MOHIMAGELOG } from 'src/assets/imageBytes.ts';
+import { MOHIMAGELOG } from 'src/assets/imageBytes.js';
 import * as ExcelJS from 'exceljs';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import clinicService from 'src/services/api/clinicService/clinicService';
@@ -190,6 +190,7 @@ export default {
     if (isOnline.value && !isMobile.value) {
       // return doc.save('PacientesActivos.pdf')
       window.open(doc.output('bloburl'));
+      loading.value = false;
     } else {
       const pdfOutput = doc.output();
       DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput, loading);
@@ -441,6 +442,7 @@ export default {
 
     if (isOnline.value && !isMobile.value) {
       saveAs(blob, fileName + fileExtension);
+      loading.value = false;
     } else {
       const titleFile = 'RAMScreening.xlsx';
       DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob, loading);

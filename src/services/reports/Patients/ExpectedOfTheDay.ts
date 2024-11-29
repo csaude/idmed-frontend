@@ -2,7 +2,7 @@ import JsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import moment from 'moment';
 import saveAs from 'file-saver';
-import { MOHIMAGELOG } from 'src/assets/imageBytes.ts';
+import { MOHIMAGELOG } from 'src/assets/imageBytes.js';
 import * as ExcelJS from 'exceljs';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import clinicService from 'src/services/api/clinicService/clinicService';
@@ -198,12 +198,13 @@ export default {
     if (isOnline.value && !isMobile.value) {
       // return doc.save('PacientesActivos.pdf')
       window.open(doc.output('bloburl'));
+      loading.value = false;
     } else {
       const pdfOutput = doc.output();
       DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput, loading);
     }
   },
-  async downloadExcel(province, startDate, endDate, result, params, loading) {
+  async downloadExcel(province, startDate, endDate, result, loading) {
     const clinic = clinicService.currClinic();
     const rows = result;
     const data = this.createArrayOfArrayRow(rows);
@@ -436,9 +437,10 @@ export default {
 
     if (isOnline.value && !isMobile.value) {
       saveAs(blob, fileName + fileExtension);
+      loading.value = false;
     } else {
       const titleFile = 'PacientesEsperadosNoDia.xlsx';
-      console.log('result' + titleFile);
+      // console.log('result' + titleFile);
       DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob, loading);
     }
   },

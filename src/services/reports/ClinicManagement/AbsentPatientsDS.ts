@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 import moment from 'moment';
 import saveAs from 'file-saver';
 import * as ExcelJS from 'exceljs';
-import { MOHIMAGELOG } from 'src/assets/imageBytes.ts';
+import { MOHIMAGELOG } from 'src/assets/imageBytes.js';
 import Report from 'src/services/api/report/ReportService';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import AbsentPatientMobileService from 'src/services/api/report/mobile/AbsentPatientMobileService';

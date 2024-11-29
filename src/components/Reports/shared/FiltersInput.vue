@@ -575,9 +575,9 @@ const saveParams = () => {
   const jsonPar = JSON.parse(JSON.stringify(reportParams.value));
   LocalStorage.set(reportParams.value.id, jsonPar);
   reportParams.value.clinic = currClinic.value;
-  reportParams.value.endDateParam = props.endDate;
-  reportParams.value.startDateParam = props.startDate;
-  console.log('PAR Inicial', props.endDate);
+  // reportParams.value.endDateParam = props.endDate;
+  // reportParams.value.startDateParam = props.startDate;
+  // console.log('PAR Inicial', reportParams.value);
 };
 
 const generateReport = (fileType) => {

@@ -1,7 +1,7 @@
 import JsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import moment from 'moment';
-import { MOHIMAGELOG } from '../../../assets/imageBytes.ts';
+import { MOHIMAGELOG } from '../../../assets/imageBytes.js';
 import * as ExcelJS from 'exceljs';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import DownloadFileMobile from 'src/utils/DownloadFileMobile';
