@@ -798,6 +798,18 @@ const lastPrescription = computed(() => {
     return null;
   }
 });
+const patientServiceIdentifierFromEpisode = computed(() => {
+  if (
+    lastPatientVisitDetails.value !== null &&
+    lastPatientVisitDetails.value !== undefined
+  ) {
+    return episodeService.getEpisodeById(
+      lastPatientVisitDetails.value.episode.id
+    );
+  } else {
+    return null;
+  }
+});
 const lastPack = computed(() => {
   if (lastPrescription.value !== null && lastPrescription.value !== undefined) {
     return packService.getLastPackFromPatientVisitAndPrescription(
@@ -874,11 +886,10 @@ const validateDate = (identifier) => {
         validatePrescriptionDate,
         'DD-MM-YYYY'
       );
-      if (
-        momentNextPickUpDate.isAfter(momentPrescriptionDate) &&
+      if (momentNextPickUpDate.isAfter(momentPrescriptionDate) &&
         patientServiceIdentifierFromEpisode.value.patientServiceIdentifier
-          .service.code === props.identifier.service.code
-      ) {
+          .service.code === props.identifier.service.code) {
+
         alertWarningAction(
           'O paciente ainda possui medicamentos ' +
             identifier.service.code +
@@ -1321,7 +1332,7 @@ const addPatientVisitDetail = async () => {
   } else if (lastPack.value !== null && lastPack.value !== undefined) {
     if (
       getYYYYMMDDFromJSDate(lastPack.value.nextPickUpDate) >
-        getYYYYMMDDFromJSDate(pickupDate4daysAdd) &&
+      getYYYYMMDDFromJSDate(pickupDate4daysAdd) &&
       patientServiceIdentifierFromEpisode.value.patientServiceIdentifier.service
         .code === props.identifier.service.code
     ) {
