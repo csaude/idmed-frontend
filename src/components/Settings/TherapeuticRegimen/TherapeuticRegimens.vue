@@ -43,6 +43,7 @@
               icon-right="refresh"
               label="Actualizar Lista"
               no-caps
+              v-if="isProvincialInstalation()"
               @click="getRegimensFromProvincialServer"
             />
           </div>
