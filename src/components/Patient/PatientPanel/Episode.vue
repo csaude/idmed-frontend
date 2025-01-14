@@ -60,7 +60,7 @@
               >
                 {{
                   currEpisode.clinicSector !== null
-                    ? currEpisode.clinicSector.description
+                    ? currEpisode.clinicSector.clinicName
                     : ''
                 }}
               </div>
@@ -81,8 +81,8 @@
                 class="col text-grey-8"
               >
                 {{
-                  currEpisode.referralClinic !== null
-                    ? currEpisode.referralClinic.clinicName
+                  currEpisode.clinicSector !== null
+                    ? currEpisode.clinicSector.clinicName
                     : ''
                 }}
               </div>
@@ -119,7 +119,11 @@
             v-if="props.isLast && isLastEpisode && !isCloseEpisode(currEpisode)"
           >
             <q-btn
-              v-if="canEdit"
+              v-if="
+                canEdit &&
+                !isPharmacyDDDOrAPEOrDCP() &&
+                !isProvincialInstalation()
+              "
               @click="removeEpisode"
               dense
               unelevated
@@ -128,7 +132,11 @@
               class="float-right q-ml-md"
             />
             <q-btn
-              v-if="!canEdit"
+              v-if="
+                !canEdit &&
+                !isPharmacyDDDOrAPEOrDCP() &&
+                !isProvincialInstalation()
+              "
               @click="closeEpisode"
               dense
               unelevated
@@ -137,7 +145,11 @@
               class="float-right q-ml-md"
             />
             <q-btn
-              v-if="canEdit"
+              v-if="
+                canEdit &&
+                !isPharmacyDDDOrAPEOrDCP() &&
+                !isProvincialInstalation()
+              "
               @click="editEpisode"
               dense
               unelevated
@@ -163,8 +175,9 @@ import { useSwal } from 'src/composables/shared/dialog/dialog';
 import episodeService from 'src/services/api/episode/episodeService';
 import AddEditEpisode from 'components/Patient/PatientPanel/AddEditEpisode.vue';
 import { computed, provide, inject, ref } from 'vue';
-// import patientVisitDetailsService from 'src/services/api/patientVisitDetails/patientVisitDetailsService';
 import packService from 'src/services/api/pack/packService';
+import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
+import { useLoading } from 'src/composables/shared/loading/loading';
 
 const {
   isReferenceEpisode,
@@ -173,8 +186,11 @@ const {
   hasVisits,
   isCloseEpisode,
   isStartEpisode,
+  checkIsReferedToRemove,
 } = useEpisode();
 const { alertSucess, alertError, alertInfo, alertWarningAction } = useSwal();
+const { closeLoading, showloading } = useLoading();
+const { isPharmacyDDDOrAPEOrDCP, isProvincialInstalation } = useSystemConfig();
 //Props
 const props = defineProps(['episodeId', 'isLast']);
 //Inject
@@ -186,7 +202,13 @@ const currEpisode = computed(() => {
   return episodeService.getEpisodeById(props.episodeId);
 });
 const lastPack = computed(() => {
-  return packService.getLastPackFromEpisode(props.episodeId);
+  let lastPack = packService.getLastPackFromEpisode(props.episodeId);
+  if (lastPack === null) {
+    lastPack = packService.getLastPackFromPatientId(
+      currEpisode.value.patientServiceIdentifier_id
+    );
+  }
+  return lastPack;
 });
 const currIdentifier = computed(() => {
   return currEpisode.value.patientServiceIdentifier;
@@ -208,7 +230,7 @@ const canBeEdited = () => {
   return !hasVisits(currEpisode.value);
 };
 const editEpisode = () => {
- // isClosingEpisode.value = true;
+  // isClosingEpisode.value = true;
   const eps = currEpisode.value;
   if (hasVisits(eps)) {
     alertError(
@@ -247,14 +269,23 @@ const removeEpisode = () => {
 };
 
 const doOnConfirm = () => {
+  showloading();
   episodeService
     .delete(currEpisode.value.id)
-    .then((result) => {
+    .then(() => {
+      const episodes = episodeService.getlast3EpisodesByIdentifier(
+        currIdentifier.value.id
+      );
+      if (episodes.length > 0 && checkIsReferedToRemove(episodes)) {
+        episodeService.deletePinia(episodes[0].id);
+      }
+      closeLoading();
       alertSucess('Sucesso', 'Operação efectuada com sucesso.');
     })
     .catch((error) => {
       console.error(error);
       alertError('Erro ao remover o episodio');
+      closeLoading();
     });
 };
 

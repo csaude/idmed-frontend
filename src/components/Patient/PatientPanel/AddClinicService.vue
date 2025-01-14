@@ -425,7 +425,7 @@ import clinicSectorService from 'src/services/api/clinicSectorService/clinicSect
 import { usePatientVisitDetail } from 'src/composables/patient/patientVisitDetailsMethods';
 import prescriptionService from 'src/services/api/prescription/prescriptionService';
 import { v4 as uuidv4 } from 'uuid';
-
+import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 // Declaration
 const { hasPreferedId } = usePatient();
 const { hasVisits } = useEpisode();
@@ -442,6 +442,7 @@ const { alertSucess, alertError, alertInfo, alertWarningAction } = useSwal();
 const { fullName, age } = usePatient();
 const { lastPack } = usePatientVisitDetail();
 const { lastVisitPrescription } = usePatientServiceIdentifier();
+const { isMobile, isOnline } = useSystemUtils();
 const submitting = ref(false);
 const identifierstartDate = ref('');
 const identifier = ref(new PatientServiceIdentifier({ id: uuidv4() }));
@@ -507,7 +508,12 @@ const init = () => {
 };
 
 const reloadIdentifierTypeMask = () => {
-  if (identifier.value.service !== null) {
+  if (
+    identifier.value.service !== null &&
+    (identifier.value.value === null ||
+      identifier.value.value === undefined ||
+      String(identifier.value.value).trim().length === 0)
+  ) {
     identifierTypeMask.value = identifier.value.service.identifierType.pattern;
   }
 };
@@ -753,6 +759,7 @@ const lastStartEpisodeWithPrescription = () => {
 
 const doSave = async () => {
   identifier.value.episodes = [];
+  closureEpisode.value.origin = currClinic.value.id;
   if (isCloseStep.value) {
     closureEpisode.value.episodeType =
       episodeTypeService.getEpisodeTypeByCode('FIM');
@@ -764,10 +771,6 @@ const doSave = async () => {
     identifier.value.endDate = getYYYYMMDDFromJSDate(
       getDateFromHyphenDDMMYYYY(endDate.value)
     );
-    // if (!isReferenceEpisode.value || !isDCReferenceEpisode.value)
-    //   identifier.value.endDate = getYYYYMMDDFromJSDate(
-    //     getDateFromHyphenDDMMYYYY(endDate.value)
-    //   );
   }
   if (isReOpenStep.value) {
     closureEpisode.value.episodeType =
@@ -799,12 +802,7 @@ const doSave = async () => {
     }
     closureEpisode.value.clinicSector.clinic = {};
     closureEpisode.value.clinicSector.clinic.id = currClinic.value.id;
-    closureEpisode.value.clinicSector.clinicSectorType =
-      clinicSectorTypeService.getClinicSectorTypesById(
-        closureEpisode.value.clinicSector.clinic_sector_type_id
-      );
-    closureEpisode.value.clinicSector.clinic_sector_type_id =
-      closureEpisode.value.clinicSector.clinicSectorType.id;
+
     identifier.value.episodes.push(closureEpisode.value);
   }
   if (isCreateStep.value) {
@@ -815,6 +813,7 @@ const doSave = async () => {
       getDateFromHyphenDDMMYYYY(identifierstartDate.value)
     );
     identifier.value.identifierType = identifier.value.service.identifierType;
+    identifier.value.origin = currClinic.value.id;
   }
   if (isEditStep.value) {
     identifier.value.startDate = getYYYYMMDDFromJSDate(
@@ -826,6 +825,7 @@ const doSave = async () => {
   identifier.value.patient.id = patient.value.id;
   identifier.value.service = {};
   identifier.value.service.id = clinical_service_id;
+  identifier.value.origin = currClinic.value.id;
   if (usePreferedId.value) {
     identifier.value.value =
       patientServiceIdentifierService.getLatestIdentifierSlimByPatientId(
@@ -833,6 +833,19 @@ const doSave = async () => {
       ).value;
   }
 
+  if (isMobile.value && !isOnline.value) {
+    if (
+      identifier.value.syncStatus === '' ||
+      identifier.value.syncStatus === 'R'
+    ) {
+      identifier.value.syncStatus = 'R';
+    } else if (identifier.value.syncStatus === 'S') {
+      identifier.value.syncStatus = 'U';
+    }
+    identifier.value.patient_id = patient.value.id;
+    identifier.value.service_id = identifier.value.service.id;
+    identifier.value.identifier_type_id = identifier.value.identifierType.id;
+  }
   await patientServiceIdentifierService
     .apiSave(identifier.value, isCreateStep.value)
     .then((resp) => {
@@ -1010,7 +1023,8 @@ const stopReasons = computed(() => {
       reason.code !== 'REFERIDO_DC' &&
       reason.code !== 'REFERIDO_PARA' &&
       reason.code !== 'ABANDONO' &&
-      reason.code !== 'VOLTOU_A_SER_REFERIDO_PARA'
+      reason.code !== 'VOLTOU_A_SER_REFERIDO_PARA' &&
+      reason.code !== 'REFERIDO_SECTOR_CLINICO'
     );
   });
   return resonList;

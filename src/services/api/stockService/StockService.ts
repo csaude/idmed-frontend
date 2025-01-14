@@ -5,27 +5,34 @@ import moment from 'moment';
 import { nSQL } from 'nano-sql';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { useLoading } from 'src/composables/shared/loading/loading';
+import db from '../../../stores/dexie';
+import StockEntranceService from '../stockEntranceService/StockEntranceService';
+import packagedDrugStockService from '../packagedDrugStock/packagedDrugStockService';
+import InventoryStockAdjustmentService from '../stockAdjustment/InventoryStockAdjustmentService';
+import StockReferenceAdjustmentService from '../stockAdjustment/StockReferenceAdjustmentService';
+import clinicService from '../clinicService/clinicService';
 
 const { closeLoading, showloading } = useLoading();
 
 const { isMobile, isOnline } = useSystemUtils();
 
 const stock = useRepo(Stock);
+const stockDexie = db[Stock.entity];
 
 export default {
   // Axios API call
   post(params: any) {
     if (!isOnline.value) {
-      return this.putMobile(params);
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
   },
-  get(offset: number) {
+  get(offset: number, clincId: any) {
     if (!isOnline.value) {
       return this.getMobile();
     } else {
-      return this.getWeb(offset);
+      return this.getWeb(offset, clincId);
     }
   },
   patch(id: string, params: any) {
@@ -43,6 +50,27 @@ export default {
       return this.deleteWeb(id);
     }
   },
+
+  async getFromBackEnd(offset: number, clinicId: any) {
+    if (offset >= 0) {
+      return await api()
+        .get('/stock/clinic/' + clinicId + '?offset=' + offset + '&max=100')
+        .then((resp) => {
+          stock.save(resp.data);
+          this.addBulkMobile(resp.data);
+          console.log('Data synced from backend: stock');
+          offset = offset + 100;
+          if (resp.data.length > 0) {
+            this.getFromBackEnd(offset, clinicId);
+          }
+        })
+        .catch((error) => {
+          console.error('Error syncing data from backend:', error);
+          console.log(error);
+        });
+    }
+  },
+
   // Local Storage Pinia
   newInstanceEntity() {
     return stock.getModel().$newInstance();
@@ -63,10 +91,27 @@ export default {
     return api().get('/stock?offset=' + offset + '&max=' + max);
   },
 
+  async apiGetAllByClinicIdWeb(clinicId: string, offset: number) {
+    if (offset >= 0) {
+      return api()
+        .get('/stock/clinic/' + clinicId + '?offset=' + offset + '&max=100')
+        .then((resp) => {
+          if (resp.data.length > 0) {
+            stock.save(resp.data);
+            offset = offset + 100;
+            this.apiGetAllByClinicIdWeb(clinicId, offset);
+          } else {
+            closeLoading();
+          }
+        });
+    }
+  },
+
   // PINIA
-  getStockByDrug(drugId: string) {
+  getStockByDrug(drugId: string, clinicId: any) {
     return stock
       .where('drug_id', drugId)
+      .where('clinic_id', clinicId)
       .orderBy('expireDate', 'desc')
       .orderBy('stockMoviment', 'desc')
       .get();
@@ -84,16 +129,14 @@ export default {
       .get();
   },
 
-  getValidStockByDrug(drug: any) {
-    return stock
+  getValidStockByDrug(drug: any, clinicId: any) {
+    const stocks = stock
       .where('drug_id', drug.id)
-      .where((stock) => {
-        return moment(stock.expireDate, 'YYYY-MM-DD').isAfter(
-          moment().format('YYYY-MM-DD')
-        );
-      })
+      .where('clinic_id', clinicId)
+
       .orderBy('expireDate', 'desc')
       .get();
+    return stocks;
   },
 
   getValidStock() {
@@ -112,6 +155,7 @@ export default {
   getValidStockByDrugAndPickUpDate(drugId: string, pickupDate: string) {
     return stock
       .where('drug_id', drugId)
+      .where('clinic_id', clinicService.currClinic().id)
       .where((stock) => {
         return stock.expireDate > pickupDate && stock.stockMoviment > 0;
       })
@@ -162,23 +206,71 @@ export default {
       });
   },
 
-  getWeb(offset: number) {
+  getWeb(offset: number, clinicId: any) {
     if (offset >= 0) {
       return api()
         .get('stock?offset=' + offset + '&max=100')
         .then((resp) => {
-          stock.save(resp.data);
+          const stocksResp = resp.data;
+          stocksResp.forEach((stockItem) => {
+            if (stockItem.clinic.id !== clinicId) {
+              stockItem.entrance = null;
+              stock.save(stockItem);
+            } else {
+              stock.save(stockItem);
+            }
+          });
+
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.get(offset, clinicId);
           } else {
             closeLoading();
           }
         });
     }
   },
-  async checkStockStatus(idPrescribedDrug: any, date: any, qtyPrescribed: any) {
-    if (isOnline) {
+
+  getStockDistributorWeb(clinicId: string, offset: number) {
+    if (offset >= 0) {
+      return api()
+        .get(
+          'stock/getStocksByStockDistributor/' +
+            clinicId +
+            '/' +
+            offset +
+            '/100'
+        )
+        .then((resp) => {
+          const stocksResp = resp.data;
+
+          stocksResp.forEach((stockItem) => {
+            stockItem.entrance = null;
+            /*
+            if (stockItem.clinic.id === clinicService.currClinic().id) {
+              stock.save(stockItem);
+            }
+            */
+            stock.save(stockItem);
+          });
+
+          offset = offset + 100;
+          if (resp.data.length > 0) {
+            this.getStockDistributorWeb(clinicId, offset);
+          } else {
+            closeLoading();
+          }
+        });
+    }
+  },
+  async checkStockStatus(
+    idPrescribedDrug: any,
+    date: any,
+    qtyPrescribed: any,
+    clinicId: any,
+    weeks: any
+  ) {
+    if (isOnline.value) {
       if (date !== '') {
         return api()
           .get(
@@ -187,7 +279,11 @@ export default {
               '/' +
               date +
               '/' +
-              qtyPrescribed
+              qtyPrescribed +
+              '/' +
+              clinicId +
+              '/' +
+              weeks
           )
           .then((resp) => {
             closeLoading();
@@ -198,7 +294,7 @@ export default {
       }
     } else {
       let qtyInStock = 0;
-      const stocks = this.getStockByDrug(idPrescribedDrug);
+      const stocks = this.getStockByDrug(idPrescribedDrug, clinicId);
       const validStock = stocks.filter((item) => {
         return moment(item.expireDate) >= moment(date);
       });
@@ -233,113 +329,200 @@ export default {
   },
 
   //Mobile
+
+  addMobile(params: string) {
+    return stockDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
+      stock.save(JSON.parse(JSON.stringify(params)));
+    });
+  },
+
   async putMobile(params: any) {
-    const resp = await nSQL('stocks')
-      .query('upsert', JSON.parse(JSON.stringify(params)))
-      .exec();
-    stock.save(params);
-    return resp;
-  },
-
-  getMobile() {
-    return nSQL().onConnected(() => {
-      nSQL('stocks')
-        .query('select')
-        .exec()
-        .then((result) => {
-          console.log(result);
-          stock.save(result);
-          return result;
-        });
+    return stockDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
+      stock.save(JSON.parse(JSON.stringify(params)));
     });
   },
 
-  getBystockMobile(stock: any) {
-    return nSQL().onConnected(() => {
-      nSQL('stocks')
-        .query('select')
-        .where(['stocks[id]', '=', stock.id])
-        .exec()
-        .then((result) => {
-          console.log(result);
-          stock.save(result);
-        });
-    });
+  async getMobile() {
+    try {
+      const rows = await stockDexie.toArray();
+      stock.save(rows);
+    } catch (error) {
+      // alertError('Aconteceu um erro inesperado nesta operação.');
+      console.log(error);
+    }
+  },
+
+  async getStocksByIds(stockIds: any) {
+    return stockDexie.where('id').anyOf(stockIds).toArray();
+  },
+
+  async getBystockMobile(stockId: any) {
+    const stocks = await stockDexie
+      .where('id')
+      .equalsIgnoreCase(stockId)
+      .toArray();
+    return stocks;
+  },
+
+  async getStocksByDrugIdMobile(drugId: any) {
+    const rows = await stockDexie.toArray();
+    const data = rows.filter((row) => row.drug && row.drug.id === drugId);
+    return data;
   },
 
   async deleteMobile(id: any) {
-    const resp = await nSQL('stocks')
-      .query('delete')
-      .where(['id', '=', id])
-      .exec();
-    stock.destroy(id);
-    return resp;
+    try {
+      await stockDexie.delete(id);
+      stock.destroy(id);
+      // alertSucess('O Registo foi removido com sucesso');
+    } catch (error) {
+      // alertError('Aconteceu um erro inesperado nesta operação.');
+      console.log(error);
+    }
   },
 
-  localDbGetAll() {
-    return nSQL('stocks')
-      .query('select')
-      .exec()
-      .then((result) => {
-        return result;
-      });
+  async localDbGetAll() {
+    try {
+      const rows = await stockDexie.toArray();
+      stock.save(rows);
+      return rows;
+    } catch (error) {
+      // alertError('Aconteceu um erro inesperado nesta operação.');
+      console.log(error);
+    }
   },
 
-  localDbGetUsedStock(reportParams: any) {
-    return nSQL('stocks')
-      .query('select')
-      .where(['drug.clinicalService.id', '=', reportParams.clinicalService])
-      .exec()
-      .then((result) => {
-        console.log(result);
-        return result;
+  async localDbGetUsedStock(reportParams: any) {
+    return stockDexie
+      .where('drug.clinical_Service_id')
+      .equalsIgnoreCase(reportParams.clinicalService)
+      .toArray()
+      .then((rows: any) => {
+        stock.save(rows);
+        return rows;
       });
   },
 
   localDbGetById(stock: any) {
-    return nSQL('stocks')
-      .query('select')
-      .where(['id', '=', stock.id])
-      .exec()
-      .then((result) => {
-        console.log(result);
-        // Stock.insert({ data: result })
-        return result[0];
+    return stockDexie
+      .where('id')
+      .equalsIgnoreCase(stock.id)
+      .then((rows: any) => {
+        stock.save(rows);
+        return rows;
       });
   },
 
   localDbGetByStockEntranceId(stockEntrance: any) {
-    return nSQL('stocks')
-      .query('select')
-      .where(['stocks[entrance_id]', '=', stockEntrance.id])
-      .exec()
-      .then((result) => {
-        return result;
+    return stockDexie
+      .where('entrance_id')
+      .equalsIgnoreCase(stockEntrance.id)
+      .then((rows: any) => {
+        stock.save(rows);
+        return rows;
       });
   },
 
   localDbGetByDrug(drug: any) {
-    return nSQL('stocks')
-      .query('select')
-      .where(['drug_id', '=', drug.id])
-      .exec()
-      .then((result) => {
-        return result;
+    return stockDexie
+      .where('drug_id')
+      .equalsIgnoreCase(drug.id)
+      .then((rows: any) => {
+        stock.save(rows);
+        return rows;
       });
   },
 
-  getValidStockByDrugAndPickUpDateOnline(drugId: string, pickupDate: any) {
-    return api()
-      .get('stock/getValidStocks/' + drugId + '/' + pickupDate)
-      .then((resp) => {
-        closeLoading();
-        stock.save(resp.data);
-        return resp.data;
+  async hasStockMobile(drugg: any) {
+    try {
+      const rows = await stockDexie.toArray();
+      const stocks = rows.filter((row) => row.drug && row.drug.id === drugg.id);
+      return stocks.length > 0;
+    } catch (error) {
+      // alertError('Aconteceu um erro inesperado nesta operação.');
+      console.log(error);
+    }
+  },
+  addBulkMobile(params: string) {
+    const stocksFromPinia = this.getAllFromStorage();
+    return stockDexie
+      .bulkPut(stocksFromPinia)
+      .then(() => {
+        // stock.save(params);
+      })
+      .catch((error: any) => {
+        console.log(error);
       });
+  },
+
+  getAllFromStorage() {
+    return stock.all();
+  },
+
+  async getAllWithPackagedDrugStocksAndAdjustmentsFromDexie() {
+    const endDate = moment(new Date()).format('YYYY-MM-DD');
+    const stocks = await stockDexie
+      .where('expireDate')
+      .aboveOrEqual(endDate)
+      // .orderBy('expireDate')
+      .toArray();
+
+    const stocksIds = stocks.map((stock: any) => stock.id);
+    const entranceIds = stocks.map((stock: any) => stock.entrance_id);
+
+    const [
+      entrances,
+      packagedDrugStockList,
+      inventoryStockAdjustmentsList,
+      referedStockAdjustmentsList,
+    ] = await Promise.all([
+      StockEntranceService.getAllByIDsFromDexie(entranceIds),
+      packagedDrugStockService.getAllByStockIDsFromDexie(stocksIds),
+      InventoryStockAdjustmentService.getAllByStockIDsFromDexie(stocksIds),
+      StockReferenceAdjustmentService.getAllByStockIDsFromDexie(stocksIds),
+    ]);
+
+    stocks.map((stock: any) => {
+      stock.entrance = entrances.find(
+        (entrance: any) => entrance.id === stock.entrance_id
+      );
+      stock.packagedDrugStocks = packagedDrugStockList.filter(
+        (packagedDrugStock: any) => packagedDrugStock.stock_id === stock.id
+      );
+      stock.adjustments = inventoryStockAdjustmentsList.filter(
+        (stockAdjustment: any) => stockAdjustment.adjusted_stock_id === stock.id
+      );
+      stock.referedAdjustments = referedStockAdjustmentsList.filter(
+        (referedStockAdjustment: any) =>
+          referedStockAdjustment.adjusted_stock_id === stock.id
+      );
+    });
+
+    return stocks;
+  },
+
+  async getValidStockByDrugAndPickUpDateOnline(
+    drugId: string,
+    pickupDate: any
+  ) {
+    if (isMobile.value && !isOnline.value) {
+      return this.getValidStockByDrugAndPickUpDate(drugId, pickupDate);
+    } else {
+      return api()
+        .get('stock/getValidStocks/' + drugId + '/' + pickupDate)
+        .then((resp) => {
+          closeLoading();
+          stock.save(resp.data);
+          return resp.data;
+        });
+    }
   },
 
   // Local Storage Pinia
   deleteAllFromStorage() {
     stock.flush();
+  },
+  deleteAllFromDexie() {
+    stockDexie.clear();
   },
 };

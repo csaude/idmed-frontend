@@ -1,16 +1,13 @@
 import SecUser from 'src/stores/models/userLogin/User';
-import ClinicSectorUsers from 'src/stores/models/userLogin/ClinicSectorUsers';
-import SecUserRole from 'src/stores/models/userLogin/SecUserRole';
 import { useRepo } from 'pinia-orm';
 import api from '../apiService/apiService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const secUserRepo = useRepo(SecUser);
-const clinicSectorUsersRepo = useRepo(ClinicSectorUsers);
-const secUserRoleRepo = useRepo(SecUserRole);
+const secUserDexie = db[SecUser.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -18,29 +15,29 @@ const { isMobile, isOnline } = useSystemUtils();
 
 export default {
   post(params: string) {
-    if (isMobile && !isOnline) {
-      this.putMobile(params);
+    if (isMobile.value && !isOnline.value) {
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
   },
   get(offset: number) {
-    if (isMobile && !isOnline) {
+    if (isMobile.value && !isOnline.value) {
       this.getMobile();
     } else {
       this.getWeb(offset);
     }
   },
   patch(uuid: string, params: string) {
-    if (isMobile && !isOnline) {
+    if (isMobile.value && !isOnline.value) {
       this.putMobile(params);
     } else {
       return this.patchWeb(uuid, params);
     }
   },
   delete(uuid: string) {
-    if (isMobile && !isOnline) {
-      this.deleteMobile(uuid);
+    if (isMobile.value && !isOnline.value) {
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -53,15 +50,15 @@ export default {
         secUserRepo.save(resp.data);
       });
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('secUser?offset=' + offset + '&max=100')
         .then((resp) => {
           secUserRepo.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           } else {
             closeLoading();
           }
@@ -91,10 +88,19 @@ export default {
       });
   },
   // Mobile
+  addMobile(params: string) {
+    return secUserDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        secUserRepo.save(JSON.parse(params));
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
   putMobile(params: string) {
-    return nSQL(secUserRepo.use?.entity)
-      .query('upsert', params)
-      .exec()
+    return secUserDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         secUserRepo.save(JSON.parse(params));
         // alertSucess('O Registo foi efectuado com sucesso');
@@ -105,9 +111,8 @@ export default {
       });
   },
   getMobile() {
-    return nSQL(secUserRepo.use?.entity)
-      .query('select')
-      .exec()
+    return secUserDexie
+      .toArray()
       .then((rows: any) => {
         secUserRepo.save(rows);
       })
@@ -117,16 +122,24 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(secUserRepo.use?.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return secUserDexie
+      .delete(paramsId)
       .then(() => {
         secUserRepo.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  addBulkMobile(params: any) {
+    return secUserDexie
+      .bulkAdd(params)
+      .then(() => {
+        secUserRepo.save(params);
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },
@@ -153,16 +166,13 @@ export default {
         query.with('district', (query1) => {
           query1.with('province');
         });
-      })
-      .with('clinicSectors', (query) => {
-        query.with('clinic', (query1) => {
-          query1.with('province');
-          query1.with('facilityType');
-          query1.with('district', (query2) => {
-            query2.with('province');
+        query.with('parentClinic', (query2) => {
+          query2.with('province');
+          query2.with('facilityType');
+          query2.with('district', (query3) => {
+            query3.with('province');
           });
         });
-        query.with('clinicSectorType');
       })
       .get();
   },

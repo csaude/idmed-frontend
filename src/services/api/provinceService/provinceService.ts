@@ -3,10 +3,11 @@ import Province from 'src/stores/models/province/Province';
 import api from '../apiService/apiService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const province = useRepo(Province);
+const provinceDexie = db[Province.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -14,31 +15,31 @@ const { isMobile, isOnline } = useSystemUtils();
 
 export default {
   async post(params: string) {
-    if (isMobile && !isOnline) {
-      this.putMobile(params);
+    if (isMobile.value && !isOnline.value) {
+      this.addMobile(params);
     } else {
       this.postWeb(params);
     }
   },
   get(offset: number) {
-    if (isMobile && !isOnline) {
-      this.getMobile();
+    if (isMobile.value && !isOnline.value) {
+      return this.getMobile();
     } else {
-      this.getWeb(offset);
+      return this.getWeb(offset);
     }
   },
   async patch(uuid: string, params: string) {
-    if (isMobile && !isOnline) {
+    if (isMobile.value && !isOnline.value) {
       this.putMobile(params);
     } else {
       this.patchWeb(uuid, params);
     }
   },
   async delete(uuid: string) {
-    if (isMobile && !isOnline) {
-      this.deleteMobile(uuid);
+    if (isMobile.value && !isOnline.value) {
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -52,21 +53,18 @@ export default {
       console.log(error);
     }
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('province?offset=' + offset + '&max=100')
         .then((resp) => {
           province.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -92,23 +90,23 @@ export default {
     }
   },
   // Mobile
-  putMobile(params: string) {
-    return nSQL(province.use?.entity)
-      .query('upsert', params)
-      .exec()
+  addMobile(params: string) {
+    return provinceDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
-        province.save(JSON.parse(params));
-        // alertSucess('O Registo foi efectuado com sucesso');
-      })
-      .catch((error: any) => {
-        // alertError('Aconteceu um erro inesperado nesta operação.');
-        console.log(error);
+        province.save(JSON.parse(JSON.stringify(params)));
+      });
+  },
+  putMobile(params: string) {
+    return provinceDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        province.save(JSON.parse(JSON.stringify(params)));
       });
   },
   getMobile() {
-    return nSQL(province.use?.entity)
-      .query('select')
-      .exec()
+    return provinceDexie
+      .toArray()
       .then((rows: any) => {
         province.save(rows);
       })
@@ -118,16 +116,24 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(province.use?.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return provinceDexie
+      .delete(paramsId)
       .then(() => {
         province.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  addBulkMobile(params: any) {
+    return provinceDexie
+      .bulkPut(params)
+      .then(() => {
+        province.save(params);
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },

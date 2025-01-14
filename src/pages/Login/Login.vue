@@ -232,7 +232,7 @@
                     </q-avatar>
                   </div>
                 </div>
-                <div class="row justify-center">Versão v.1.3.0</div>
+                <div class="row justify-center">Versão v{{ version }}</div>
               </q-card-section>
             </q-card>
           </transition>
@@ -275,27 +275,18 @@
               </q-card-actions>
             </q-card>
           </q-dialog>
-          <q-dialog
-            persistent
-            transition-show="slide-up"
-            transition-hide="slide-down"
-            v-model="popUpUrlMobile"
-          >
-            <UrlChanger />
-          </q-dialog>
         </q-page>
-        <!-- </q-responsive> -->
       </q-page-container>
     </q-layout>
   </q-responsive>
 </template>
 
 <script setup>
-import { QSpinnerBall, SessionStorage, useQuasar } from 'quasar';
+import { version } from '../../../package.json';
+import { SessionStorage, useQuasar } from 'quasar';
 import UsersService from 'src/services/UsersService';
 import clinicService from 'src/services/api/clinicService/clinicService';
 import districtService from 'src/services/api/districtService/districtService';
-import menuService from 'src/services/api/menu/menuService';
 import provinceService from 'src/services/api/provinceService/provinceService';
 import systemConfigsService from 'src/services/api/systemConfigs/systemConfigsService';
 import SystemConfigs from 'src/stores/models/systemConfigs/SystemConfigs';
@@ -306,7 +297,6 @@ import bcrypt from 'bcryptjs';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { LocalStorage } from 'quasar';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
-import UrlChanger from 'src/components/Shared/UrlChanger.vue';
 import useNotify from 'src/composables/shared/notify/UseNotify';
 import StockService from 'src/services/api/stockService/StockService';
 import StockReferenceAdjustmentService from 'src/services/api/stockAdjustment/StockReferenceAdjustmentService';
@@ -314,7 +304,7 @@ import StockDestructionAdjustmentService from 'src/services/api/stockAdjustment/
 import InventoryStockAdjustmentService from 'src/services/api/stockAdjustment/InventoryStockAdjustmentService';
 import InventoryService from 'src/services/api/inventoryService/InventoryService';
 import eventBus from '../../utils/eventbus';
-const { notifyError } = useNotify();
+const { notifyError, notifySuccess } = useNotify();
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
 const { closeLoading, showloading } = useLoading();
@@ -332,32 +322,16 @@ const passwordRef = ref(null);
 const isPwd = ref(true);
 const submitting = ref(false);
 const notice = ref(true);
-const popUpUrlMobile = ref(false);
 const isOpen = ref(false);
 /*
 Hook
 */
-onMounted(() => {
+onMounted(async () => {
   const tokenExpiration = sessionStorage.getItem('tokenExpiration');
   if (tokenExpiration && tokenExpiration === '0') {
     notifyError('Sessão Expirada');
     sessionStorage.setItem('tokenExpiration', 1);
   }
-  if (isMobile.value && localStorage.getItem('backend_url') === null) {
-    popUpUrlMobile.value = true;
-  }
-  $q.loading.show({
-    message: 'Carregando ...',
-    spinnerColor: 'grey-4',
-    spinner: QSpinnerBall,
-  });
-  loadSystemConfigs();
-  loadProvinceAndDistrict();
-  loadMenusFromLocalToVuex();
-  setTimeout(() => {
-    $q.loading.hide();
-  }, 600);
-
   if (!isMobile.value) {
     UsersService.logout();
     StockService.deleteAllFromStorage();
@@ -365,8 +339,6 @@ onMounted(() => {
     StockDestructionAdjustmentService.deleteAllFromStorage();
     InventoryStockAdjustmentService.deleteAllFromStorage();
     InventoryService.deleteAllFromStorage();
-    clinicService.deleteFromPinia();
-    systemConfigsService.deleteAllFromStorage();
     SessionStorage.clear();
     sessionStorage.setItem('user', null);
     sessionStorage.setItem('id_token', null);
@@ -375,16 +347,25 @@ onMounted(() => {
     sessionStorage.setItem('Btoa', '');
     localStorage.setItem('currInventory', '');
     localStorage.setItem('Btoa', '');
+  } else {
+    systemConfigsService.getMobile();
+    clinicService.getMobile();
   }
+
   eventBus.on('notification', (notificationIsOpen) => {
-    isOpen.value = notificationIsOpen;
+    if (isMobile.value) {
+      isOpen.value = false;
+    } else {
+      isOpen.value = notificationIsOpen;
+    }
   });
-  console.log(isOpen.value);
+  // console.log(isOpen.value);
 });
 
 onBeforeUnmount(() => {
   eventBus.off('notification');
 });
+
 /*
 Computed
 */
@@ -419,16 +400,6 @@ const doSave = () => {
       ? clinic.value.uuid
       : province.value.code;
   systemConfigsService.apiSave(systemConfigs.value);
-};
-const loadSystemConfigs = async () => {
-  systemConfigsService.get(0);
-};
-const loadProvinceAndDistrict = async () => {
-  provinceService.get(0);
-  districtService.get(0);
-};
-const loadMenusFromLocalToVuex = async () => {
-  menuService.get(0);
 };
 
 const authUser = async () => {
@@ -470,10 +441,13 @@ const loginOnline = (encodedStringBtoA) => {
         sessionStorage.setItem('Btoa', encodedStringBtoA);
         localStorage.setItem('Btoa', encodedStringBtoA);
         sessionStorage.setItem('role_menus', localuser.menus);
-        sessionStorage.setItem(
-          'clinic_sector_users',
-          localuser.clinicSectorUsers
+        localStorage.setItem('clinicUsers', response.data.clinicUsers);
+        localStorage.setItem(
+          'userFacilityTypeCode',
+          response.data.userFacilityTypeCode
         );
+        // sessionStorage.setItem('clinicUsers', response.data.clinicUsers);
+
         router.push({ path: '/' });
       }
     })
@@ -497,25 +471,19 @@ const loginOnline = (encodedStringBtoA) => {
 const loginOffline = (encodedStringBtoA) => {
   const userLoged = UsersService.getUserByUserName(username.value);
   if (
+    userLoged !== null &&
     userLoged.username === username.value &&
     bcrypt.compareSync(password.value, userLoged.password.substring(8))
   ) {
     sessionStorage.setItem('username', userLoged.username);
     sessionStorage.setItem('user', userLoged.username);
     sessionStorage.setItem('Btoa', encodedStringBtoA);
+    sessionStorage.setItem('role_menus', userLoged.menus);
+    sessionStorage.setItem('id_token', userLoged.access_token);
+    sessionStorage.setItem('refresh_token', userLoged.refresh_token);
     router.push({ path: '/' });
   } else {
-    Notify.create({
-      icon: 'announcement',
-      message: 'Utilizador bloqueado ou a senha inválida',
-      type: 'negative',
-      progress: true,
-      timeout: 3000,
-      position: 'top',
-      color: 'negative',
-      textColor: 'white',
-      classes: 'glossy',
-    });
+    notifyError('Utilizador bloqueado ou a senha inválida');
     submitting.value = false;
   }
 };

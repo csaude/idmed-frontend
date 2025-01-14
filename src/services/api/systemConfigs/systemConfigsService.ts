@@ -3,10 +3,11 @@ import api from '../apiService/apiService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import SystemConfigs from 'src/stores/models/systemConfigs/SystemConfigs';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const systemConfigs = useRepo(SystemConfigs);
+const systemConfigsDexie = db[SystemConfigs.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -15,20 +16,16 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.putMobile(params);
+      return this.putMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
-    if (
-      isMobile.value &&
-      !isOnline.value &&
-      this.getAllFromStorage().length < 0
-    ) {
-      this.getMobile();
+    if (isMobile.value && !isOnline.value) {
+      return this.getMobile();
     } else {
-      this.getWeb(offset);
+      return this.getWeb(offset);
     }
   },
   async patch(uuid: string, params: string) {
@@ -40,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -65,13 +62,10 @@ export default {
           systemConfigs.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -97,23 +91,29 @@ export default {
     }
   },
   // Mobile
-  putMobile(params: string) {
-    return nSQL(SystemConfigs.entity)
-      .query('upsert', params)
-      .exec()
+  addMobile(params: string) {
+    return systemConfigsDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         systemConfigs.save(JSON.parse(params));
-        // alertSucess('O Registo foi efectuado com sucesso');
       })
       .catch((error: any) => {
-        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  putMobile(params: string) {
+    return systemConfigsDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        systemConfigs.save(JSON.parse(params));
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },
   getMobile() {
-    return nSQL(SystemConfigs.entity)
-      .query('select')
-      .exec()
+    return systemConfigsDexie
+      .toArray()
       .then((rows: any) => {
         systemConfigs.save(rows);
       })
@@ -123,10 +123,8 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(SystemConfigs.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return systemConfigsDexie
+      .delete(paramsId)
       .then(() => {
         systemConfigs.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
@@ -136,11 +134,21 @@ export default {
         console.log(error);
       });
   },
+  addBulkMobile(params: any) {
+    return systemConfigsDexie
+      .bulkPut(params)
+      .then(() => {
+        systemConfigs.save(params);
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
   async apiFetchById(id: any) {
     return await api().get(`/systemConfigs/${id}`);
   },
   async apiGetAll() {
-    return this.get(0);
+    return await this.get(0);
   },
   async apiSave(systemConfigs: any) {
     return await this.post(systemConfigs);

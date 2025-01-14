@@ -3,10 +3,11 @@ import api from '../apiService/apiService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import TherapeuticLine from 'src/stores/models/therapeuticLine/TherapeuticLine';
 import { useLoading } from 'src/composables/shared/loading/loading';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const therapeuticLine = useRepo(TherapeuticLine);
+const therapeuticLineDexie = db[TherapeuticLine.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -15,9 +16,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.putMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -36,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -52,21 +53,18 @@ export default {
       console.log(error);
     }
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('therapeuticLine?offset=' + offset + '&max=100')
         .then((resp) => {
           therapeuticLine.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -92,23 +90,29 @@ export default {
     }
   },
   // Mobile
-  putMobile(params: string) {
-    return nSQL(TherapeuticLine.entity)
-      .query('upsert', params)
-      .exec()
+  addMobile(params: string) {
+    return therapeuticLineDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         therapeuticLine.save(JSON.parse(params));
-        // alertSucess('O Registo foi efectuado com sucesso');
       })
       .catch((error: any) => {
-        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  putMobile(params: string) {
+    return therapeuticLineDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        therapeuticLine.save(JSON.parse(params));
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },
   getMobile() {
-    return nSQL(TherapeuticLine.entity)
-      .query('select')
-      .exec()
+    return therapeuticLineDexie
+      .toArray()
       .then((rows: any) => {
         therapeuticLine.save(rows);
       })
@@ -118,16 +122,24 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(TherapeuticLine.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return therapeuticLineDexie
+      .delete(paramsId)
       .then(() => {
         therapeuticLine.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  addBulkMobile(params: any) {
+    return therapeuticLineDexie
+      .bulkPut(params)
+      .then(() => {
+        therapeuticLine.save(params);
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },
@@ -143,5 +155,13 @@ export default {
   //PINIA
   getAllFromStorage() {
     return therapeuticLine.all();
+  },
+
+  //Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await therapeuticLineDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
   },
 };

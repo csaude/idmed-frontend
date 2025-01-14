@@ -1,8 +1,5 @@
 <template>
   <div>
-    <!-- <q-responsive :ratio="1" class="col">
-  </q-responsive> -->
-
     <InfoTitleBar v-if="!website" />
     <TitleBar v-else />
     <div class="row q-mt-md" v-if="patient !== null">
@@ -143,11 +140,29 @@ onMounted(() => {
 
 // Methods
 const init = async () => {
-  if (patient.value === null) {
-    patient.value = patientService.getPatientByID(
-      localStorage.getItem('patientuuid')
-    );
-  }
+  showloading();
+  // if (patient.value === null) {
+  //   patient.value = patientService.getPatientByID(
+  //     localStorage.getItem('patientuuid')
+  //   );
+  // }
+
+  // else {
+  //   if (isMobile.value && !isOnline.value) {
+  //     await patientService.getPatientMobileWithAllByPatientId(patient.value);
+  //   } else {
+  //     // Rest Calls
+  //     await patientServiceIdentifierService.apiGetAllByPatientId(
+  //       patient.value.id
+  //     );
+  //     await patientVisitService.apiGetAllByPatientId(patient.value.id);
+  //     await patientVisitDetailsService.apiGetPatientVisitDetailsByPatientId(
+  //       currPatient.value.id
+  //     );
+  //     await prescriptionService.apiGetByPatientId(patient.value.id);
+  //     await packService.apiGetByPatientId(patient.value.id);
+  //   }
+  // }
   closeLoading();
 };
 const showPatientDetails = () => {
@@ -155,7 +170,6 @@ const showPatientDetails = () => {
 };
 
 // Computed
-
 const patient = computed(() => {
   return patientService.getPatientByID(localStorage.getItem('patientuuid'));
 });

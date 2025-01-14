@@ -1,10 +1,10 @@
 <template>
   <div>
     <q-table
-    :loading="loading"
+      :loading="loading"
       :class="headerClass"
       dense
-      :rows="rows"
+      :rows="rowsAux"
       :columns="columns"
       :filter="filter"
       row-key="id"
@@ -56,7 +56,7 @@
         <q-tr :props="props">
           <q-td key="order" :props="props" v-if="false"> </q-td>
           <q-td key="drug" :props="props">
-            {{!isOnline ?  props.row.drug.name  : props.row.drug   }}
+            {{ !isOnline ? props.row.drug.name : props.row.drug }}
           </q-td>
           <q-td key="avgConsuption" :props="props">
             {{ props.row.avgConsuption }}
@@ -94,27 +94,26 @@
         <q-inner-loading showing color="primary" />
       </template>
     </q-table>
-
-
   </div>
 </template>
 
-<script setup >
-import { ref, computed, inject, provide, reactive, onMounted, onBeforeMount } from 'vue';
+<script setup>
+import { ref, computed, inject, provide, reactive, watchEffect } from 'vue';
 
 import drugService from 'src/services/api/drugService/drugService';
 import { useRouter } from 'vue-router';
 import StockAlertService from 'src/services/api/stockAlertService/StockAlertService';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
+import StockService from 'src/services/api/stockService/StockService';
 
 const { isMobile, isOnline } = useSystemUtils();
-const loadingDrugFile = ref(false)
-
+const loadingDrugFile = ref(false);
+const isExecutedStockAlert = inject('isExecutedStockAlert');
 
 const router = useRouter();
 const { showloading, closeLoading } = useLoading();
-const loading= ref(true)
+const loading = ref(true);
 const columns = [
   {
     name: 'order',
@@ -167,15 +166,18 @@ const headerClass = ref('');
 const title = ref('');
 const drug = reactive(ref(null));
 provide('drug', drug);
-const clinic = inject('currClinic');
+const rows = ref([]);
 
 const openDrugFile = (drugInfo) => {
-  loadingDrugFile.value = true
+  loadingDrugFile.value = true;
   drug.value = drugService.getDrugById(drugInfo.id);
   localStorage.setItem('selectedDrug', drug.value.id);
+  if (!isOnline) {
+    StockService.getMobile();
+  }
 
   router.push('/stock/drugFile');
- // loadingDrugFile.value = false
+  // loadingDrugFile.value = false
 };
 
 const getStyleIfCharts = () => {
@@ -185,7 +187,6 @@ const getStyleIfCharts = () => {
     return '';
   }
 };
-
 
 const getConsuptionRelatedColor = (state) => {
   if (state === 'Sem Consumo') {
@@ -199,15 +200,24 @@ const getConsuptionRelatedColor = (state) => {
   }
 };
 
+const rowsAux = computed(() => {
+  const list = StockAlertService.getStockAlertsByClinic();
+  if (
+    list.length > 0 ||
+    (list.length === 0 && isExecutedStockAlert.value === true)
+  ) {
+    loading.value = false;
+  }
+  return list;
+});
 
-const rows = computed(() => {
- const list = StockAlertService.getStockAlertsByClinic();
- if (list.length>0) {
-  loading.value = false
- }
- return list
- });
-
+watchEffect((isExecutedStockAlert) => {
+  if (isExecutedStockAlert.value === 'true') {
+    loading.value = false;
+  } else {
+    loading.value = true;
+  }
+});
 </script>
 <style lang="sass" scoped>
 .my-sticky-header-table

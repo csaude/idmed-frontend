@@ -4,9 +4,10 @@ import api from '../apiService/apiService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 
 const postoAdministrativo = useRepo(PostoAdministrativo);
+const postoAdministrativoDexie = db[PostoAdministrativo.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -15,9 +16,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile && !isOnline) {
-      this.putMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -36,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile && !isOnline) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -60,7 +61,7 @@ export default {
           postoAdministrativo.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           } else {
             closeLoading();
           }
@@ -92,10 +93,21 @@ export default {
     }
   },
   // Mobile
+  addMobile(params: string) {
+    return postoAdministrativoDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        postoAdministrativo.save(JSON.parse(params));
+        // alertSucess('O Registo foi efectuado com sucesso');
+      })
+      .catch((error: any) => {
+        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
   putMobile(params: string) {
-    return nSQL(postoAdministrativo.use?.entity)
-      .query('upsert', params)
-      .exec()
+    return postoAdministrativoDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         postoAdministrativo.save(JSON.parse(params));
         // alertSucess('O Registo foi efectuado com sucesso');
@@ -106,9 +118,8 @@ export default {
       });
   },
   getMobile() {
-    return nSQL(postoAdministrativo.use?.entity)
-      .query('select')
-      .exec()
+    return postoAdministrativoDexie
+      .toArray()
       .then((rows: any) => {
         postoAdministrativo.save(rows);
       })
@@ -118,16 +129,24 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(postoAdministrativo.use?.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return postoAdministrativoDexie
+      .delete(paramsId)
       .then(() => {
         postoAdministrativo.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  addBulkMobile(params: any) {
+    return postoAdministrativoDexie
+      .bulkPut(params)
+      .then(() => {
+        postoAdministrativo.save(params);
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },

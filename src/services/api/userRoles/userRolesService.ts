@@ -1,11 +1,12 @@
 import { useRepo } from 'pinia-orm';
 import api from '../apiService/apiService';
 import UserRoles from 'src/stores/models/userLogin/UserRole';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const userRole = useRepo(UserRoles);
+const userRoleDexie = db[UserRoles.entity];
 
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -13,9 +14,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile && !isOnline) {
-      this.putMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -34,9 +35,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile && !isOnline) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -58,7 +59,7 @@ export default {
           userRole.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -88,10 +89,21 @@ export default {
     }
   },
   // Mobile
+  addMobile(params: string) {
+    return userRoleDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        userRole.save(JSON.parse(JSON.stringify(params)));
+        // alertSucess('O Registo foi efectuado com sucesso');
+      })
+      .catch((error: any) => {
+        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
   putMobile(params: string) {
-    return nSQL(userRole.use?.entity)
-      .query('upsert', params)
-      .exec()
+    return userRoleDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         userRole.save(JSON.parse(params));
         // alertSucess('O Registo foi efectuado com sucesso');
@@ -102,9 +114,8 @@ export default {
       });
   },
   getMobile() {
-    return nSQL(userRole.use?.entity)
-      .query('select')
-      .exec()
+    return userRoleDexie
+      .toArray()
       .then((rows: any) => {
         userRole.save(rows);
       })
@@ -114,16 +125,24 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(userRole.use?.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return userRoleDexie
+      .delete(paramsId)
       .then(() => {
         userRole.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  addBulkMobile(params: any) {
+    return userRoleDexie
+      .bulkAdd(params)
+      .then(() => {
+        userRole.save(params);
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },

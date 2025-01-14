@@ -2,11 +2,13 @@ import JsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import moment from 'moment';
 import saveAs from 'file-saver';
-import { MOHIMAGELOG } from 'src/assets/imageBytes.ts';
+import { MOHIMAGELOG } from 'src/assets/imageBytes.js';
 import * as ExcelJS from 'exceljs';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import clinicService from 'src/services/api/clinicService/clinicService';
-
+import DownloadFileMobile from 'src/utils/DownloadFileMobile';
+import { fetchFontAsBase64 } from 'src/utils/ReportUtils';
+import fontPath from 'src/assets/NotoSans-Regular.ttf';
 const { isMobile, isOnline } = useSystemUtils();
 const reportName = 'PacientesEsperadosNumDia';
 const logoTitle =
@@ -15,9 +17,11 @@ const title = 'Relatório de Pacientes Esperados Num Dia';
 const fileName = reportName.concat(
   '_' + moment(new Date()).format('DD-MM-YYYY')
 );
+// const fontPath = '/src/assets/NotoSans-Regular.ttf';
 
 export default {
-  async downloadPDF(province, startDate, endDate, result) {
+  async downloadPDF(province, startDate, endDate, result, loading) {
+    const fontBase64 = await fetchFontAsBase64(fontPath);
     const clinic = clinicService.currClinic();
     const doc = new JsPDF({
       orientation: 'l',
@@ -26,6 +30,9 @@ export default {
       putOnlyUsedFonts: true,
       floatPrecision: 'smart', // or "smart", default is 16
     });
+    doc.addFileToVFS('NotoSans-Regular.ttf', fontBase64.split(',')[1]);
+    doc.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
+    doc.setFont('NotoSans');
     const firstObject = result[0];
     // const totalPagesExp = '{total_pages_count_string}'
 
@@ -93,11 +100,13 @@ export default {
 
     autoTable(doc, {
       bodyStyles: {
+        font: 'NotoSans',
         halign: 'left',
         valign: 'middle',
         fontSize: 8,
       },
       headStyles: {
+        font: 'NotoSans',
         halign: 'left',
         valign: 'middle',
       },
@@ -150,10 +159,12 @@ export default {
     ord = 0;
     autoTable(doc, {
       bodyStyles: {
+        font: 'NotoSans',
         halign: 'center',
         fontSize: 8,
       },
       headStyles: {
+        font: 'NotoSans',
         halign: 'center',
         valign: 'middle',
         fontSize: 8,
@@ -187,16 +198,13 @@ export default {
     if (isOnline.value && !isMobile.value) {
       // return doc.save('PacientesActivos.pdf')
       window.open(doc.output('bloburl'));
+      loading.value = false;
     } else {
       const pdfOutput = doc.output();
-      this.downloadFile(fileName, 'pdf', pdfOutput);
+      DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput, loading);
     }
-    // params.value.loading.loading.hide()
-    // return doc.save('HistoricoDeLevantamento.pdf')
-
-    // params.value.loading.loading.hide()
   },
-  async downloadExcel(province, startDate, endDate, result, params) {
+  async downloadExcel(province, startDate, endDate, result, loading) {
     const clinic = clinicService.currClinic();
     const rows = result;
     const data = this.createArrayOfArrayRow(rows);
@@ -429,72 +437,11 @@ export default {
 
     if (isOnline.value && !isMobile.value) {
       saveAs(blob, fileName + fileExtension);
+      loading.value = false;
     } else {
-      const titleFile = 'PacientesActivos.xlsx';
-      saveBlob2File(titleFile, blob);
-      function saveBlob2File(fileName, blob) {
-        const folder = cordova.file.externalRootDirectory + 'Download';
-        //  var folder = 'Download'
-        window.resolveLocalFileSystemURL(
-          folder,
-          function (dirEntry) {
-            createFile(dirEntry, fileName, blob);
-            // $q.loading.hide()
-          },
-          onErrorLoadFs
-        );
-      }
-      function createFile(dirEntry, fileName, blob) {
-        // Creates a new file
-        dirEntry.getFile(
-          fileName,
-          { create: true, exclusive: false },
-          function (fileEntry) {
-            writeFile(fileEntry, blob);
-          },
-          onErrorCreateFile
-        );
-      }
-
-      function writeFile(fileEntry, dataObj) {
-        // Create a FileWriter object for our FileEntry
-        fileEntry.createWriter(function (fileWriter) {
-          fileWriter.onwriteend = function () {
-            console.log('Successful file write...');
-            openFile();
-          };
-
-          fileWriter.onerror = function (error) {
-            console.log('Failed file write: ' + error);
-          };
-          fileWriter.write(dataObj);
-        });
-      }
-      function onErrorLoadFs(error) {
-        console.log(error);
-      }
-
-      function onErrorCreateFile(error) {
-        console.log('errorr: ' + error.toString());
-      }
-      function openFile() {
-        const strTitle = titleFile;
-        console.log('file system 44444: ' + strTitle);
-        const folder =
-          cordova.file.externalRootDirectory + 'Download/' + strTitle;
-        console.log('file system 2222: ' + folder);
-        const documentURL = decodeURIComponent(folder);
-        cordova.plugins.fileOpener2.open(
-          documentURL,
-          'application/vnd.ms-excel',
-          {
-            error: function (e) {
-              console.log('file system open3333366: ' + e + documentURL);
-            },
-            success: function () {},
-          }
-        );
-      }
+      const titleFile = 'PacientesEsperadosNoDia.xlsx';
+      // console.log('result' + titleFile);
+      DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob, loading);
     }
   },
   createArrayOfArrayRow(rows) {
@@ -525,70 +472,5 @@ export default {
     rows = [];
 
     return data;
-  },
-  downloadFile(fileName, fileType, blop) {
-    const titleFile = fileName + fileType;
-    console.log('result' + titleFile);
-    saveBlob2File(titleFile, blop);
-    function saveBlob2File(fileName, blob) {
-      const folder = cordova.file.externalRootDirectory + 'Download';
-      //  var folder = 'Download'
-      window.resolveLocalFileSystemURL(
-        folder,
-        function (dirEntry) {
-          createFile(dirEntry, fileName, blob);
-          // $q.loading.hide()
-        },
-        onErrorLoadFs
-      );
-    }
-    function createFile(dirEntry, fileName, blob) {
-      // Creates a new file
-      dirEntry.getFile(
-        fileName,
-        { create: true, exclusive: false },
-        function (fileEntry) {
-          writeFile(fileEntry, blob);
-        },
-        onErrorCreateFile
-      );
-    }
-
-    function writeFile(fileEntry, dataObj) {
-      // Create a FileWriter object for our FileEntry
-      fileEntry.createWriter(function (fileWriter) {
-        fileWriter.onwriteend = function () {
-          console.log('Successful file write...');
-          openFile();
-        };
-
-        fileWriter.onerror = function (error) {
-          console.log('Failed file write: ' + error);
-        };
-        fileWriter.write(dataObj);
-      });
-    }
-    function onErrorLoadFs(error) {
-      console.log(error);
-    }
-
-    function onErrorCreateFile(error) {
-      console.log('errorr: ' + error.toString());
-    }
-    function openFile() {
-      const strTitle = titleFile;
-      console.log('file system 44444: ' + strTitle);
-      const folder =
-        cordova.file.externalRootDirectory + 'Download/' + strTitle;
-      console.log('file system 2222: ' + folder);
-      const documentURL = decodeURIComponent(folder);
-      cordova.plugins.fileOpener2.open(documentURL, 'application/pdf', {
-        error: function (e) {
-          console.log('file system open3333366: ' + e + documentURL);
-        },
-        success: function () {},
-      });
-    }
-    // }
   },
 };

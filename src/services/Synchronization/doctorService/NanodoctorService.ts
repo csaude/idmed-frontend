@@ -1,17 +1,18 @@
+import doctorService from 'src/services/api/doctorService/doctorService';
 import api from '../../api/apiService/apiService';
-import { nSQL } from 'nano-sql';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
 import Doctor from 'src/stores/models/doctor/Doctor';
-import { useRepo } from 'pinia-orm';
 
-const doctor = useRepo(Doctor);
+const doctorDexie = db[Doctor.entity];
+
 export default {
   async getFromBackEnd(offset: number) {
     if (offset >= 0) {
       return await api()
         .get('doctor?offset=' + offset + '&max=100')
         .then((resp) => {
-          nSQL(Doctor.entity).query('upsert', resp.data).exec();
-          doctor.save(resp.data);
+          doctorService.addBulkMobile(resp.data);
           console.log('Data synced from backend: Doctor');
           offset = offset + 100;
           if (resp.data.length > 0) {
@@ -23,5 +24,18 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania Doctor');
+    (await SynchronizationService.hasData(doctorDexie))
+      ? await doctorService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie Doctor');
+    const getAllDoctor = doctorService.getAlldoctors();
+    await doctorDexie.bulkPut(getAllDoctor);
   },
 };

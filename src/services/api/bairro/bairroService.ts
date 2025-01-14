@@ -4,9 +4,10 @@ import api from '../apiService/apiService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 
 const localidade = useRepo(Localidade);
+const localidadeDexie = db[Localidade.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -15,9 +16,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile && !isOnline) {
-      this.putMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -60,7 +61,7 @@ export default {
           localidade.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           } else {
             closeLoading();
           }
@@ -92,23 +93,29 @@ export default {
     }
   },
   // Mobile
-  putMobile(params: string) {
-    return nSQL(localidade.use?.entity)
-      .query('upsert', params)
-      .exec()
+  addMobile(params: string) {
+    return localidadeDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         localidade.save(JSON.parse(params));
-        // alertSucess('O Registo foi efectuado com sucesso');
       })
       .catch((error: any) => {
-        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  putMobile(params: string) {
+    return localidadeDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        localidade.save(JSON.parse(params));
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },
   getMobile() {
-    return nSQL(localidade.use?.entity)
-      .query('select')
-      .exec()
+    return localidadeDexie
+      .toArray()
       .then((rows: any) => {
         localidade.save(rows);
       })
@@ -118,16 +125,24 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(localidade.use?.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return localidadeDexie
+      .delete(paramsId)
       .then(() => {
         localidade.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  addBulkMobile(params: any) {
+    return localidadeDexie
+      .bulkAdd(params)
+      .then(() => {
+        localidade.save(params);
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },

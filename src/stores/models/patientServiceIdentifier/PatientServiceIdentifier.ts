@@ -3,7 +3,7 @@ import Episode from '../episode/Episode';
 import IdentifierType from '../identifierType/IdentifierType';
 import Patient from '../patient/Patient';
 import ClinicalService from '../ClinicalService/ClinicalService';
-import Clinic from '../clinic/Clinic';
+import { Clinic } from '../clinic/ClinicHierarchy';
 import { v4 as uuidv4 } from 'uuid';
 
 export default class PatientServiceIdentifier extends Model {
@@ -23,6 +23,7 @@ export default class PatientServiceIdentifier extends Model {
       patient_id: this.attr(''),
       clinic_id: this.attr(''),
       syncStatus: this.attr(''),
+      origin: this.attr(''),
       // Relationships
       identifierType: this.belongsTo(IdentifierType, 'identifier_type_id'),
       service: this.belongsTo(ClinicalService, 'service_id'),

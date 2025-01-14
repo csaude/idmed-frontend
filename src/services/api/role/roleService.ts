@@ -4,11 +4,12 @@ import Role from 'src/stores/models/userLogin/Role';
 import RoleMenu from 'src/stores/models/userLogin/RoleMenu';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const role = useRepo(Role);
 const roleMenuRepo = useRepo(RoleMenu);
+const roleDexie = db[Role.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -16,31 +17,31 @@ const { isMobile, isOnline } = useSystemUtils();
 
 export default {
   async post(params: string) {
-    if (isMobile && !isOnline) {
-      this.putMobile(params);
+    if (isMobile.value && !isOnline.value) {
+      return this.putMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
-    if (isMobile && !isOnline) {
+    if (isMobile.value && !isOnline.value) {
       this.getMobile();
     } else {
       this.getWeb(offset);
     }
   },
   async patch(uuid: string, params: string) {
-    if (isMobile && !isOnline) {
+    if (isMobile.value && !isOnline.value) {
       this.putMobile(params);
     } else {
       this.patchWeb(uuid, params);
     }
   },
   async delete(uuid: string) {
-    if (isMobile && !isOnline) {
-      this.deleteMobile(uuid);
+    if (isMobile.value && !isOnline.value) {
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -54,15 +55,15 @@ export default {
       console.log(error);
     }
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('role?offset=' + offset + '&max=100')
         .then((resp) => {
           role.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           } else {
             closeLoading();
           }
@@ -98,10 +99,21 @@ export default {
     }
   },
   // Mobile
+  addMobile(params: string) {
+    return roleDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        role.save(JSON.parse(params));
+        // alertSucess('O Registo foi efectuado com sucesso');
+      })
+      .catch((error: any) => {
+        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
   putMobile(params: string) {
-    return nSQL(role.use?.entity)
-      .query('upsert', params)
-      .exec()
+    return roleDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         role.save(JSON.parse(params));
         // alertSucess('O Registo foi efectuado com sucesso');
@@ -112,9 +124,8 @@ export default {
       });
   },
   getMobile() {
-    return nSQL(role.use?.entity)
-      .query('select')
-      .exec()
+    return roleDexie
+      .toArray()
       .then((rows: any) => {
         role.save(rows);
       })
@@ -124,10 +135,8 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(role.use?.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return roleDexie
+      .delete(paramsId)
       .then(() => {
         role.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
@@ -137,7 +146,16 @@ export default {
         console.log(error);
       });
   },
-
+  addBulkMobile(params: any) {
+    return roleDexie
+      .bulkAdd(params)
+      .then(() => {
+        role.save(params);
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
   async apiGetAll() {
     return await api().get('/role');
   },

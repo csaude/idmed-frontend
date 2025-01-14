@@ -19,7 +19,12 @@
             </q-btn>
           </router-link>
         </div>
-        <div class="col" v-if="menusVisible('Grupos')">
+        <div
+          class="col"
+          v-if="
+            menusVisible('Grupos') && !isProvincialInstalation() && isOnline
+          "
+        >
           <router-link :to="`/group/search`">
             <q-btn round>
               <q-avatar size="190px">
@@ -90,7 +95,14 @@
             </q-btn>
           </router-link>
         </div>
-        <div class="col-2" v-if="menusVisible('Administração')">
+        <div
+          class="col-2"
+          v-if="
+            menusVisible('Administração') &&
+            !isProvincialInstalation() &&
+            isOnline
+          "
+        >
           <router-link :to="`/settings`">
             <q-btn round>
               <q-avatar size="190px">
@@ -186,33 +198,59 @@
     </div>
   </q-page>
 </template>
-
 <script setup>
 import { useOnline } from 'src/composables/shared/loadParams/online';
 import { useOffline } from 'src/composables/shared/loadParamsToOffline/offline';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted, watch, inject } from 'vue';
 import clinicService from 'src/services/api/clinicService/clinicService';
-import patientService from 'src/services/api/patientService/patientService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import InventoryService from 'src/services/api/inventoryService/InventoryService';
 import sysConfigsService from 'src/services/api/systemConfigs/systemConfigsService.ts';
 import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
+import DrugDistributorService from 'src/services/api/drugDistributorService/DrugDistributorService';
+import patientService from 'src/services/api/patientService/patientService';
 
-const { closeLoading, showloading } = useLoading();
+const { showloading } = useLoading();
 const { website, isMobile, isOnline } = useSystemUtils();
 const { isProvincialInstalation } = useSystemConfig();
 
-const { loadSettingParams, loadPatientData } = useOnline();
+const { loadSettingParams } = useOnline();
 
-const { loadPatientDataToOffline, loadSettingParamsToOffline } = useOffline();
+const {
+  loadParamsDataFromBackEndToPinia,
+  saveParamsFromPiniaToDexie,
+  loadPatientDataToOffline,
+} = useOffline();
 const { alertWarningTitle } = useSwal();
+
+const stockDistributionCount = inject('stockDistributionCount');
 let codeExecuted = false;
 
 const clinic = computed(() => {
   return clinicService.currClinic();
 });
+
+const isClinicSector = computed(() => {
+  return clinicService.isClinicSector(clinic.value);
+});
+
+const isPrivatePharmacy = computed(() => {
+  return clinicService.isPrivatePharmacy(clinic.value);
+});
+
+const getStockDistributionCount = (clinic) => {
+  DrugDistributorService.getDistributionsByStatus(clinic.id, 'P').then(
+    (list) => {
+      stockDistributionCount.value = list.length;
+      localStorage.setItem(
+        'stockDistributionCount',
+        stockDistributionCount.value
+      );
+    }
+  );
+};
 
 const menusVisible = (name) => {
   const menus = sessionStorage.getItem('role_menus');
@@ -224,18 +262,24 @@ const menusVisible = (name) => {
     }
 };
 
-onMounted(() => {
+onMounted(async () => {
   if (website.value || (isMobile.value && isOnline.value)) {
     showloading();
     loadSettingParams();
   } else {
-    if (patientService.getAllFromStorage().length <= 0) {
-      showloading();
-      loadSettingParamsToOffline();
-      setTimeout(() => {
-        loadPatientDataToOffline();
-      }, 5000);
-    }
+    patientService.getCountPatientFromDexie().then((resp) => {
+      if (resp <= 0) {
+        showloading();
+        loadParamsDataFromBackEndToPinia().then((pinia_resp) => {
+          showloading();
+          if (pinia_resp)
+            saveParamsFromPiniaToDexie().then((dexie_resp) => {
+              showloading();
+              if (dexie_resp) loadPatientDataToOffline();
+            });
+        });
+      }
+    });
   }
 });
 
@@ -248,13 +292,27 @@ watch(clinic, () => {
 
       if (isInventoryPeriod && config.value === 'LOCAL') {
         alertWarningTitle(
-          'Lembrete de Inventário',
+          'Lembrete de Inventário ',
           'Último inventário foi feito há mais de 28 dias. Por favor, efectue um novo inventário!'
         );
       }
     });
+    // getStockDistributionCount(clinic.value);
   }
 });
 </script>
 
-<style></style>
+<style scoped>
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 80px; /* Adjust gap between items */
+}
+
+.col {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+</style>

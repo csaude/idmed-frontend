@@ -3,9 +3,10 @@ import api from '../apiService/apiService';
 import PregnancyScreening from 'src/stores/models/screening/PregnancyScreening';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 
 const pregnancyScreening = useRepo(PregnancyScreening);
+const pregnancyScreeningDexie = db[PregnancyScreening.entity];
 
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -13,7 +14,7 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      return this.putMobile(params);
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
@@ -34,7 +35,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -55,7 +56,7 @@ export default {
           pregnancyScreening.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -78,18 +79,23 @@ export default {
       });
   },
   // Mobile
+  addMobile(params: string) {
+    return pregnancyScreeningDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        pregnancyScreening.save(JSON.parse(JSON.stringify(params)));
+      });
+  },
   putMobile(params: string) {
-    return nSQL(PregnancyScreening.entity)
-      .query('upsert', params)
-      .exec()
-      .then((resp) => {
-        pregnancyScreening.save(resp[0].affectedRows);
+    return pregnancyScreeningDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        pregnancyScreening.save(JSON.parse(JSON.stringify(params)));
       });
   },
   getMobile() {
-    return nSQL(PregnancyScreening.entity)
-      .query('select')
-      .exec()
+    return pregnancyScreeningDexie
+      .toArray()
       .then((rows: any) => {
         pregnancyScreening.save(rows);
       })
@@ -99,10 +105,8 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(PregnancyScreening.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return pregnancyScreeningDexie
+      .delete(paramsId)
       .then(() => {
         pregnancyScreening.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
@@ -111,6 +115,22 @@ export default {
         // alertError('Aconteceu um erro inesperado nesta operação.');
         console.log(error);
       });
+  },
+  addBulkMobile() {
+    const pregnancyScreeningFromPinia = this.getAllFromStorageForDexie();
+    return pregnancyScreeningDexie
+      .bulkPut(pregnancyScreeningFromPinia)
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
+  async getPregnancyScreeningsByVisitIdMobile(id: string) {
+    const pregnancyScreenings = await pregnancyScreeningDexie
+      .where('patient_visit_id')
+      .equalsIgnoreCase(id)
+      .toArray();
+    pregnancyScreening.save(pregnancyScreenings);
+    return pregnancyScreenings;
   },
   async apiGetAll(offset: number, max: number) {
     return await api().get(
@@ -139,7 +159,28 @@ export default {
   getAllFromStorage() {
     return pregnancyScreening.all();
   },
+  getAllFromStorageForDexie() {
+    return pregnancyScreening.makeHidden(['visit']).all();
+  },
   deleteAllFromStorage() {
     pregnancyScreening.flush();
+  },
+
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await pregnancyScreeningDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+  },
+
+  async getAllByPatientVisitIDsFromDexie(ids: []) {
+    return await pregnancyScreeningDexie
+      .where('patient_visit_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+  },
+  deleteAllFromDexie() {
+    pregnancyScreeningDexie.clear();
   },
 };

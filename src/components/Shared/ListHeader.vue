@@ -6,7 +6,7 @@
     class="text-white q-pa-none"
   >
     <span class="text-bold text-subtitle1 vertical-middle q-pl-md">
-      <slot> {{ title }}</slot>
+      <slot> {{ title }} </slot>
     </span>
     <template v-slot:action>
       <q-btn
@@ -57,6 +57,16 @@
         class="float-right"
         @click="addButtonActions()"
       />
+      <q-chip
+        class="glossy"
+        square
+        v-if="statusVisible"
+        :color="statusColor"
+        text-color="white"
+        :icon="statusIcon"
+      >
+        {{ statusTitle }}
+      </q-chip>
     </template>
   </q-banner>
 </template>
@@ -77,9 +87,13 @@ const props = defineProps([
   'bgColor',
   'addButtonActions',
   'doneVisible',
+  'statusVisible',
+  'statusTitle',
+  'statusColor',
+  'statusIcon',
 ]);
 
-const $emits = defineEmits(['done', 'initEdition']);
+const $emits = defineEmits(['done', 'initEdition', 'closeSection']);
 
 // Methods
 const determineHeaderClass = () => {

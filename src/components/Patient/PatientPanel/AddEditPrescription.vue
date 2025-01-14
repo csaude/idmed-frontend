@@ -177,7 +177,8 @@ import patientServiceIdentifierService from 'src/services/api/patientServiceIden
 import { v4 as uuidv4 } from 'uuid';
 import { useEpisode } from 'src/composables/episode/episodeMethods';
 import episodeService from 'src/services/api/episode/episodeService';
-
+import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
+import clinicService from 'src/services/api/clinicService/clinicService';
 // Declaration
 const { idadeCalculator, getDDMMYYYFromJSDate, getYYYYMMDDFromJSDate } =
   useDateUtils();
@@ -189,7 +190,7 @@ const selected_model = ref([]);
 const submitting = ref(false);
 const curPatientVisit = ref(new PatientVisit({ id: uuidv4() }));
 const { isReferenceOrTransferenceEpisode } = useEpisode();
-
+const { isOnlyPharmacyDDDO, isOnlyComunitaryDispense } = useSystemConfig();
 //Inject
 const patient = inject('patient');
 const closePrescriptionOption = inject('closePrescriptionOption');
@@ -218,6 +219,10 @@ const getIdentifierWithRefferalEpisode = computed(() => {
   );
 });
 
+const currClinic = computed(() => {
+  return clinicService.currClinic();
+});
+
 const dispenseLabel = computed(() => {
   return curPatientVisit.value.patientVisitDetails.length === 0
     ? 'Dispensar'
@@ -233,6 +238,13 @@ const init = () => {
   curPatientVisit.value.patient = patient.value;
   curPatientVisit.value.patient_id = patient.value.id;
   curPatientVisit.value.patientVisitDetails = [];
+
+  if (isOnlyPharmacyDDDO()) {
+    mds.value = 'DD_';
+  }
+  if (isOnlyComunitaryDispense()) {
+    mds.value = 'DC_';
+  }
 };
 
 const doValidationToDispense = () => {
@@ -240,7 +252,8 @@ const doValidationToDispense = () => {
   curPatientVisit.value.clinic.id = patient.value.clinic_id;
   curPatientVisit.value.patient = {};
   curPatientVisit.value.patient.id = patient.value.id;
-  curPatientVisit.value.syncStatus = 'R';
+
+  curPatientVisit.value.origin = currClinic.value.id;
   submitting.value = true;
   if (
     dispenseMode.value === null ||
@@ -252,6 +265,7 @@ const doValidationToDispense = () => {
   } else {
     curPatientVisit.value.patientVisitDetails.forEach((patientVisitDetail) => {
       curPatientVisit.value.visitDate = patientVisitDetail.pack.pickupDate;
+      patientVisitDetail.origin = currClinic.value.id;
       patientVisitDetail.clinic = {};
       patientVisitDetail.clinic.id = patient.value.clinic_id;
       patientVisitDetail.episode = {};
@@ -261,19 +275,37 @@ const doValidationToDispense = () => {
       patientVisitDetail.pack.dispenseMode = {};
       patientVisitDetail.pack.dispenseMode.id = dispenseMode.value.id;
       patientVisitDetail.pack.syncStatus = 'R';
-      patientVisitDetail.pack.providerUuid = sessionStorage.getItem('Btoa');
+
+      if (isOnlyPharmacyDDDO() || isOnlyComunitaryDispense()) {
+        patientVisitDetail.pack.providerUuid = null;
+      } else {
+        patientVisitDetail.pack.providerUuid = sessionStorage.getItem('Btoa');
+      }
+
+      patientVisitDetail.pack.origin = currClinic.value.id;
       patientVisitDetail.pack.packagedDrugs.forEach((packagedDrug) => {
         packagedDrug.drug = {};
         packagedDrug.drug.id = packagedDrug.drug_id;
+        
+        packagedDrug.origin = currClinic.value.id;
       });
       patientVisitDetail.prescription.clinic = {};
       patientVisitDetail.prescription.clinic.id = patient.value.clinic_id;
+
+      if (patientVisitDetail.prescription.origin !== patient.value.clinic_id) {
+        patientVisitDetail.prescription.origin = currClinic.value.id;
+      }
+
       patientVisitDetail.prescription.prescribedDrugs.forEach(
         (prescribedDrug) => {
           let drugID = prescribedDrug.drug.id;
           prescribedDrug.drug = {};
           prescribedDrug.drug.id = drugID;
-          // prescribedDrug.prescribedQty = 1;
+
+          if (prescribedDrug.origin !== patient.value.clinic_id) {
+            prescribedDrug.origin = currClinic.value.id;
+          }
+
         }
       );
       const checkEpisode = episodeService.getEpisodeById(
@@ -303,6 +335,7 @@ const doValidationToDispense = () => {
 };
 
 provide('curPatientVisit', curPatientVisit);
+provide('currClinic', currClinic);
 </script>
 
 <style lang="scss">
@@ -312,9 +345,4 @@ provide('curPatientVisit', curPatientVisit);
 .box-border {
   border: 1px solid $grey-4;
 }
-// .q-expansion-item--expanded {
-//   // border: 1px solid #000000;
-//   // border-color: coral;
-//   background-color: coral;
-// }
 </style>

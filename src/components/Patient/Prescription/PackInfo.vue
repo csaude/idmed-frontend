@@ -32,7 +32,26 @@
               <template #body="props">
                 <q-tr no-hover :props="props">
                   <q-td key="drug" :props="props">
-                    {{ props.row.drug !== null ? props.row.drug.name : '' }}
+                    {{
+                      props.row.drug !== null
+                        ? props.row.drug.name.includes(
+                            String(
+                              getDrugFirstLevelById(props.row.drug.id).form
+                                .description
+                            ).substring(0, 4)
+                          )
+                          ? props.row.drug.name
+                          : props.row.drug.name +
+                            ' - (' +
+                            props.row.drug.packSize +
+                            ' ' +
+                            String(
+                              getDrugFirstLevelById(props.row.drug.id).form
+                                .description
+                            ).substring(0, 4) +
+                            ')'
+                        : ''
+                    }}
                   </q-td>
                   <q-td key="qty" :props="props">
                     {{ props.row.quantitySupplied }}
@@ -66,7 +85,12 @@
                       "
                     >
                       {{ totalQuantityRemainFrascos(props.row.drug) }} Frasco(s)
-                      e ({{ totalUnityRemains(props.row.drug) }}) Unidades
+                      e
+                      {{
+                        totalUnityRemains(props.row.drug) +
+                        ' ' +
+                        getDrugFirstLevelById(props.row.drug.id).form.unit
+                      }}
                     </em>
                     <em v-else
                       >{{ totalQuantityRemainFrascos(props.row.drug) }}
@@ -83,15 +107,6 @@
                     :props="props"
                   >
                     <div class="col">
-                      <!-- <q-btn
-                        flat
-                        @click="editButtonActions(patientVisit)"
-                        round
-                        color="orange-5"
-                        icon="edit"
-                      >
-                        <q-tooltip class="bg-amber-5">Refazer</q-tooltip>
-                      </q-btn> -->
                       <q-btn
                         flat
                         @click.stop="removePack"

@@ -1,9 +1,11 @@
 import api from '../../api/apiService/apiService';
-import { nSQL } from 'nano-sql';
+// import db from '../../../stores/dexie';
+import identifierTypeService from 'src/services/api/identifierTypeService/identifierTypeService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
 import IdentifierType from 'src/stores/models/identifierType/IdentifierType';
-import { useRepo } from 'pinia-orm';
 
-const identifierType = useRepo(IdentifierType);
+const identifierTypeDexie = db[IdentifierType.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -11,8 +13,7 @@ export default {
       return await api()
         .get('identifierType?offset=' + offset + '&max=100')
         .then((resp) => {
-          nSQL(IdentifierType.entity).query('upsert', resp.data).exec();
-          identifierType.save(resp.data);
+          identifierTypeService.addBulkMobile(resp.data);
           console.log('Data synced from backend: IdentifierType');
           offset = offset + 100;
           if (resp.data.length > 0) {
@@ -24,5 +25,17 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania IdentifierType');
+    (await SynchronizationService.hasData(identifierTypeDexie))
+      ? await identifierTypeService.getWeb(offset)
+      : '';
+  },
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie IdentifierType');
+    const getAllIdentifierType = identifierTypeService.getAllIdentifierTypes();
+    await identifierTypeDexie.bulkPut(getAllIdentifierType);
   },
 };

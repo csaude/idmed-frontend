@@ -1,14 +1,15 @@
 import { useRepo } from 'pinia-orm';
-import ClinicSector from 'src/stores/models/clinicSector/ClinicSector';
+import { ClinicSector } from '../../../stores/models/clinic/ClinicHierarchy';
 import api from '../apiService/apiService';
-import { useStorage } from '@vueuse/core';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { nSQL } from 'nano-sql';
-import { v4 as uuidv4 } from 'uuid';
+import db from '../../../stores/dexie';
+import clinicService from '../clinicService/clinicService';
 
 const clinicSector = useRepo(ClinicSector);
+
+const clinicSectorDexie = db[ClinicSector.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -16,31 +17,31 @@ const { isMobile, isOnline } = useSystemUtils();
 
 export default {
   post(params: string) {
-    if (isMobile && !isOnline) {
-      this.putMobile(params);
+    if (isMobile.value && !isOnline.value) {
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
   },
   get(offset: number) {
-    if (isMobile && !isOnline) {
+    if (isMobile.value && !isOnline.value) {
       this.getMobile();
     } else {
       this.getWeb(offset);
     }
   },
   async patch(uuid: string, params: string) {
-    if (isMobile && !isOnline) {
+    if (isMobile.value && !isOnline.value) {
       this.putMobile(params);
     } else {
       this.patchWeb(uuid, params);
     }
   },
   async delete(uuid: string) {
-    if (isMobile && !isOnline) {
-      this.deleteMobile(uuid);
+    if (isMobile.value && !isOnline.value) {
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteMobile(uuid);
     }
   },
   // WEB
@@ -53,21 +54,18 @@ export default {
         closeLoading();
       });
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('clinicSector?offset=' + offset + '&max=100')
         .then((resp) => {
           clinicSector.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -89,13 +87,26 @@ export default {
       });
   },
   // Mobile
+  addMobile(params: string) {
+    showloading();
+    return clinicSectorDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        clinicSector.save(params);
+        // alertSucess('O Registo foi efectuado com sucesso');
+        closeLoading();
+      })
+      .catch((error: any) => {
+        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
   putMobile(params: string) {
     showloading();
-    return nSQL(clinicSector.use?.entity)
-      .query('upsert', params)
-      .exec()
+    return clinicSectorDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
-        clinicSector.save(JSON.parse(params));
+        clinicSector.save(params);
         // alertSucess('O Registo foi efectuado com sucesso');
         closeLoading();
       })
@@ -106,9 +117,8 @@ export default {
   },
   getMobile() {
     showloading();
-    return nSQL(clinicSector.use?.entity)
-      .query('select')
-      .exec()
+    return clinicSectorDexie
+      .toArray()
       .then((rows: any) => {
         clinicSector.save(rows);
         closeLoading();
@@ -119,16 +129,24 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(clinicSector.use?.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return clinicSectorDexie
+      .delete(paramsId)
       .then(() => {
         clinicSector.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  addBulkMobile(params: any) {
+    return clinicSectorDexie
+      .bulkPut(params)
+      .then(() => {
+        clinicSector.save(params);
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },
@@ -140,6 +158,7 @@ export default {
 
   /*Pinia Methods*/
   getAllClinicSectors() {
+    // return clinicService.getAllClinicSectors()
     return clinicSector.withAll().get();
   },
 
@@ -148,26 +167,31 @@ export default {
   },
 
   getClinicSectorsByClinicId(clinicId: string) {
-    return clinicSector.query().where('clinic_id', clinicId).get();
+    return clinicSector.query().where('parentClinic_id', clinicId).get();
   },
 
-  getClinicSectorsByClinicIdSectorTypeId(
-    clinicId: string,
-    sectorTypeId: string
-  ) {
+  getClinicSectorsByFacilityTypeId(clinicId: string, facilityTypeId: string) {
     return clinicSector
       .query()
-      .where('clinic_id', clinicId)
-      .where('clinic_sector_type_id', sectorTypeId)
+      .where('parentClinic_id', clinicId)
+      .where('facilityTypeId', facilityTypeId)
+      .get();
+  },
+
+  getClinicSectorsByIdAndFacilityTypeId(id: string, facilityTypeId: string) {
+    return clinicSector
+      .query()
+      .where('id', id)
+      .where('facilityTypeId', facilityTypeId)
       .get();
   },
 
   getActivebyClinicId(clinicId: string) {
     return clinicSector
       .query()
-      .with('clinicSectorType')
+      .with('facilityType')
       .where((clinicSector) => {
-        return clinicSector.active && clinicSector.clinic_id === clinicId;
+        return clinicSector.active && clinicSector.parentClinic_id === clinicId;
       })
       .get();
   },
@@ -176,9 +200,9 @@ export default {
       .withAllRecursive(1)
       .where('active', true)
       .where((sector) => {
-        return sector.clinic_id === clinicId;
+        return sector.parentClinic_id === clinicId;
       })
-      .whereHas('clinicSectorType', (query) => {
+      .whereHas('facilityType', (query) => {
         query.where('code', 'PARAGEM_UNICA').orWhere('code', 'NORMAL');
       })
       .orderBy('code', 'asc')
@@ -189,5 +213,35 @@ export default {
   },
   getClinicSectorSlimByCode(code: string) {
     return clinicSector.query().where('code', code).first();
+  },
+
+  async getClinicSectorsDexie() {
+    // const dexiDatabase1 = ClinicSector.entity;
+    try {
+      const clinicSectors = await clinicSectorDexie.toArray();
+
+      /*
+      const clinicSectors = await db[dexiTable]
+        .where('code')
+        .equalsIgnoreCase('TesteDex')
+        .first();
+        */
+      clinicSector.save(clinicSectors);
+      console.log(clinicSectors);
+      // Fetch associated patients for each appointment
+      /*
+      const appointmentsWithPatients = await Promise.all(clinicSectors.map(async (clinicSector) => {
+        const patient = await db.patients.get(appointment.patientId);
+        return { ...appointment, patient };
+        */
+      return clinicSectors;
+      // console.log('Appointments with patients:', appointmentsWithPatients);
+    } catch (error) {
+      console.error('Failed to get appointments:', error);
+    }
+  },
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await clinicSectorDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

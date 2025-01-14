@@ -33,8 +33,8 @@
               color="primary"
               icon-right="refresh"
               label="Actualizar Lista"
-              no-caps
               @click="getClinicalServicesFromProvincialServer"
+              no-caps
             />
           </div>
           <div class="q-pa-md q-gutter-sm">
@@ -265,15 +265,7 @@ const submitClinicalService = () => {
     clinicSector.clinicSectorType = {};
     clinicSector.clinicSectorType.id = clinicSector.clinic_sector_type_id;
   });
-  /*
-  clinicalService.value.therapeuticRegimens.forEach((therapeuticalRegimen) => {
-    therapeuticalRegimen.drugs = [];
-    therapeuticalRegimen.clinicalService = {};
-    therapeuticalRegimen.clinicalService.id =
-      therapeuticalRegimen.clinical_service_id;
-  });
-  */
-  clinicalService.value.therapeuticRegimens = [];
+
   if (isNewClinicalService.value) {
     clinicalServiceService
       .post(clinicalService.value)
@@ -350,7 +342,7 @@ const getClinicalServicesFromProvincialServer = () => {
   clinicalServiceService
     .getFromProvincial(0)
     .then(() => {
-      console.log('Inicio actualizacao da lista Regimens');
+      console.log('Inicio actualizacao da lista de Servicos');
     })
     .catch((error) => {
       closeLoading();
@@ -358,7 +350,6 @@ const getClinicalServicesFromProvincialServer = () => {
       console.log('Erro', error);
     });
 };
-
 /*Provides*/
 
 provide('clinicalService', clinicalService);

@@ -1,9 +1,10 @@
 import api from '../../api/apiService/apiService';
-import { nSQL } from 'nano-sql';
+import healthInformationSystemService from 'src/services/api/HealthInformationSystem/healthInformationSystemService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
 import HealthInformationSystem from 'src/stores/models/healthInformationSystem/HealthInformationSystem';
-import { useRepo } from 'pinia-orm';
 
-const healthInformationSystem = useRepo(HealthInformationSystem);
+const healthInformationSystemDexie = db[HealthInformationSystem.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -11,10 +12,7 @@ export default {
       return await api()
         .get('healthInformationSystem?offset=' + offset + '&max=100')
         .then((resp) => {
-          nSQL(HealthInformationSystem.entity)
-            .query('upsert', resp.data)
-            .exec();
-          healthInformationSystem.save(resp.data);
+          healthInformationSystemService.addBulkMobile(resp.data);
           console.log('Data synced from backend: HealthInformationSystem');
           offset = offset + 100;
           if (resp.data.length > 0) {
@@ -26,5 +24,19 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania HealthInformationSystem');
+    (await SynchronizationService.hasData(healthInformationSystemDexie))
+      ? await healthInformationSystemService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie HealthInformationSystem');
+    const getAllHealthInformationSystem =
+      healthInformationSystemService.getAllFromStorage();
+    await healthInformationSystemDexie.bulkPut(getAllHealthInformationSystem);
   },
 };

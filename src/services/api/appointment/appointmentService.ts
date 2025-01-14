@@ -1,11 +1,12 @@
 import { useRepo } from 'pinia-orm';
 import api from '../apiService/apiService';
 import Appointment from 'src/stores/models/appointment/Appointment';
-import { nSQL } from 'nano-sql';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
+import db from '../../../stores/dexie';
 
 const appointment = useRepo(Appointment);
+const appointmenDexie = db[Appointment.entity];
 
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -55,7 +56,7 @@ export default {
           appointment.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -78,18 +79,33 @@ export default {
       });
   },
   // Mobile
+  addMobile(params: string) {
+    return appointmenDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        appointment.save(params);
+        // alertSucess('O Registo foi efectuado com sucesso');
+      })
+      .catch((error: any) => {
+        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
   putMobile(params: string) {
-    return nSQL(Appointment.entity)
-      .query('upsert', params)
-      .exec()
-      .then((resp) => {
-        appointment.save(resp[0].affectedRows);
+    return appointmenDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        appointment.save(params);
+        // alertSucess('O Registo foi efectuado com sucesso');
+      })
+      .catch((error: any) => {
+        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
       });
   },
   getMobile() {
-    return nSQL(Appointment.entity)
-      .query('select')
-      .exec()
+    return appointmenDexie
+      .toArray()
       .then((rows: any) => {
         appointment.save(rows);
       })
@@ -99,16 +115,24 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(Appointment.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return appointmenDexie
+      .delete(paramsId)
       .then(() => {
         appointment.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  addBulkMobile(params: string) {
+    return appointmenDexie
+      .bulkAdd(params)
+      .then(() => {
+        appointment.save(params);
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },
@@ -121,5 +145,8 @@ export default {
   },
   getAllFromStorage() {
     return appointment.all();
+  },
+  deleteAllFromDexie() {
+    appointmenDexie.clear();
   },
 };

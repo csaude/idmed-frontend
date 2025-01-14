@@ -4,9 +4,11 @@ import PackagedDrugStock from 'src/stores/models/packagedDrug/PackagedDrugStock'
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
+import packagedDrugService from '../packagedDrug/packagedDrugService';
 
 const packagedDrugStock = useRepo(PackagedDrugStock);
+const packagedDrugStockDexie = db[PackagedDrugStock.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -15,9 +17,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile && !isOnline) {
-      this.putMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -36,9 +38,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile && !isOnline) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -60,7 +62,7 @@ export default {
           packagedDrugStock.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           } else {
             closeLoading();
           }
@@ -92,13 +94,22 @@ export default {
     }
   },
   // Mobile
+  addMobile(params: string) {
+    return packagedDrugStockDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        packagedDrugStock.save(JSON.parse(JSON.stringify(params)));
+      })
+      .catch((error: any) => {
+        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
   putMobile(params: string) {
-    return nSQL(packagedDrugStock.use?.entity)
-      .query('upsert', params)
-      .exec()
+    return packagedDrugStockDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         packagedDrugStock.save(JSON.parse(params));
-        // alertSucess('O Registo foi efectuado com sucesso');
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
@@ -106,9 +117,8 @@ export default {
       });
   },
   getMobile() {
-    return nSQL(packagedDrugStock.use?.entity)
-      .query('select')
-      .exec()
+    return packagedDrugStockDexie
+      .toArray()
       .then((rows: any) => {
         packagedDrugStock.save(rows);
       })
@@ -118,10 +128,8 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(packagedDrugStock.use?.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return packagedDrugStockDexie
+      .delete(paramsId)
       .then(() => {
         packagedDrugStock.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
@@ -131,7 +139,39 @@ export default {
         console.log(error);
       });
   },
+  addBulkMobile(params: any) {
+    return packagedDrugStockDexie
+      .bulkAdd(params)
+      .then(() => {
+        packagedDrugStock.save(params);
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
+  async getAllByStockIDsFromDexie(ids: []) {
+    const packagedDrugStocks = await packagedDrugStockDexie
+      .where('stock_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
 
+    const packagedDrugIds = packagedDrugStocks.map(
+      (packagedDrugStock: any) => packagedDrugStock.packagedDrug_id
+    );
+
+    const [packagedDrugList] = await Promise.all([
+      packagedDrugService.getAllPackagedDrugByIDsFromDexie(packagedDrugIds),
+    ]);
+
+    packagedDrugStocks.map((packagedDrugStock: any) => {
+      packagedDrugStock.packagedDrug = packagedDrugList.find(
+        (packagedDrug: any) =>
+          packagedDrug.id === packagedDrugStock.packagedDrug_id
+      );
+    });
+
+    return packagedDrugStocks;
+  },
   async apiGetAll() {
     return await api().get('/packagedDrugStock?offset=' + 0 + '&max=' + 200);
   },

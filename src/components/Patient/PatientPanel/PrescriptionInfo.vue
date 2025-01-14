@@ -4,7 +4,12 @@
       :addButtonActions="newPrescriptionOption"
       :mainContainer="true"
       bgColor="bg-primary"
-      :add-visible="showAddPrescriptionButton && !isProvincialInstalation()"
+      :add-visible="
+        showAddPrescriptionButton &&
+        (!isProvincialInstalation() ||
+          isProvincialInstalationPharmacysMode() ||
+          isProvincialInstalationMobileClinic())
+      "
       :expandVisible="false"
       :title="title"
     />
@@ -15,7 +20,6 @@
           v-for="identifier in patient.identifiers"
           :key="identifier.id"
           :identifierId="identifier.id"
-          :serviceId="identifier.service.id"
         />
       </div>
       <q-dialog persistent v-model="showAddPrescription">
@@ -33,7 +37,6 @@ import PrescriptionInfoContainer from 'components/Patient/Prescription/Prescript
 import { computed, provide, inject, onMounted, ref } from 'vue';
 import { usePatient } from 'src/composables/patient/patientMethods';
 import { useLoading } from 'src/composables/shared/loading/loading';
-import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
 
 //Declaration
@@ -42,13 +45,14 @@ const {
   hasOneAndClosedIdentifier,
   hasNoObitOrTransferedForEpisode,
 } = usePatient();
-const { website, isDeskTop, isMobile } = useSystemUtils();
-const { isProvincialInstalation } = useSystemConfig();
+const {
+  isProvincialInstalation,
+  isProvincialInstalationPharmacysMode,
+  isProvincialInstalationMobileClinic,
+} = useSystemConfig();
 const { closeLoading, showloading } = useLoading();
 const showAddPrescription = ref(false);
 const isNewPrescription = ref(false);
-const selectedVisitDetails = ref('');
-const step = ref('');
 const title = ref('Prescrição');
 const titleEmptyList = ref('Nenhuma Prescrição Adicionada');
 const bgColor = ref('bg-primary');
@@ -63,10 +67,6 @@ onMounted(() => {
 });
 
 // Computed
-const patientHasNoPrescription = computed(() => {
-  if (patient.value.identifiers.length <= 0) return true;
-  return !patientHasEpisodes.value;
-});
 const showAddButton = computed(() => {
   return patientHasEpisodes.value && !patientHasClosedIdentifier.value;
 });
@@ -90,18 +90,6 @@ const showAddPrescriptionButton = computed(() => {
 // Methods
 const init = async () => {
   closeLoading();
-};
-
-const addNewPack = (patientVisitDetails) => {
-  selectedVisitDetails.value = patientVisitDetails;
-  step.value = 'addNewPack';
-  showAddPrescription.value = true;
-};
-
-const editPack = (patientVisitDetails) => {
-  selectedVisitDetails.value = patientVisitDetails;
-  step.value = 'editPack';
-  showAddPrescription.value = true;
 };
 
 const newPrescriptionOption = () => {

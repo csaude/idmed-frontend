@@ -2,11 +2,12 @@ import { useRepo } from 'pinia-orm';
 import api from '../apiService/apiService';
 import Inventory from 'src/stores/models/stockinventory/Inventory';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { nSQL } from 'nano-sql';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import moment from 'moment';
+import db from 'src/stores/dexie';
 
 const { closeLoading, showloading } = useLoading();
+const inventoryDexie = db[Inventory.entity];
 
 const inventory = useRepo(Inventory);
 const { isMobile, isOnline } = useSystemUtils();
@@ -15,7 +16,7 @@ export default {
   // Axios API call
   async post(params: string) {
     if (!isOnline.value) {
-      return this.putMobile(params);
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
@@ -52,8 +53,16 @@ export default {
     }
   },
 
-  async apiClose(id: string) {
-    return await api().patch(`/inventory/close/${id}`);
+  async getAllByClinic(clinicId: any, offset: number) {
+    if (!isOnline.value) {
+      this.apiGetAllByClinicIdMobile(clinicId);
+    } else {
+      this.apiGetAllByClinicIdWeb(clinicId, offset);
+    }
+  },
+
+  async apiClose(id: string, endDate: string) {
+    return await api().patch(`/inventory/close/${id}/${endDate}`);
   },
 
   async apiRemove(id: string) {
@@ -71,7 +80,7 @@ export default {
   },
 
   async isInventoryPeriod(clinicId: any) {
-    if (isOnline) {
+    if (isOnline.value) {
       return api()
         .get('inventory/isInventoryPeriod/' + clinicId)
         .then((resp) => {
@@ -81,6 +90,76 @@ export default {
       return false;
     }
   },
+
+  getInventoryInPreviousMonth(startDate: any, endDate: any) {
+    return inventory
+      .query()
+      .where('generic', true)
+      .where('endDate', (value: Date) => {
+        const startDateMoment = moment(value, 'YYYY-MM-DD');
+        return (
+          startDateMoment.isSameOrAfter(startDate) &&
+          startDateMoment.isSameOrBefore(endDate)
+        );
+      })
+      .first();
+  },
+
+  isInventoryStartDateBetweenDates(startDate: any, endDate: any) {
+    const list = inventory
+      .query()
+      .where('startDate', (value: Date) => {
+        const startDateMoment = moment(value, 'YYYY-MM-DD');
+        return (
+          startDateMoment.isSameOrAfter(startDate) &&
+          startDateMoment.isSameOrBefore(endDate)
+        );
+      })
+      .get();
+    return list.length > 0;
+  },
+
+  hasInventoryBeforeDate(dateLimit: any) {
+    const items = inventory
+      .query()
+      .where('endDate', (value: Date) => {
+        const startDateMoment = moment(value, 'YYYY-MM-DD');
+        return startDateMoment.isSameOrBefore(dateLimit);
+      })
+      .get();
+    return items.length > 0;
+  },
+  lastInventoryBeforeDate(dateLimit: any) {
+    const items = inventory
+      .query()
+      .where('endDate', (value: Date) => {
+        const startDateMoment = moment(value, 'YYYY-MM-DD');
+        return startDateMoment.isSameOrBefore(dateLimit);
+      })
+      .orderBy('endDate', 'desc')
+      .first();
+    return items;
+  },
+  isDateBetween21And25(dateMoment: any) {
+    const currentDate = new Date();
+    const startDate = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      21
+    );
+
+    const endDate = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      25
+    );
+    const date = moment(dateMoment, 'YYYY-MM-DD');
+    return (
+      date.isSameOrAfter(moment(startDate)) &&
+      date.isSameOrBefore(moment(endDate))
+    );
+  },
+
   // Pinia
   newInstanceEntity() {
     return inventory.getModel().$newInstance();
@@ -94,9 +173,9 @@ export default {
       .get();
   },
 
-  closeInventoryPinia(inventoryOb: any) {
+  closeInventoryPinia(inventoryOb: any, endDate: any) {
     inventoryOb.open = false;
-    inventoryOb.endDate = new Date();
+    inventoryOb.endDate = endDate;
     inventory.save(inventoryOb);
   },
 
@@ -123,46 +202,6 @@ export default {
       .first();
   },
 
-  //Mobile
-  async putMobile(params: any) {
-    const resp = await nSQL('inventorys')
-      .query('upsert', JSON.parse(JSON.stringify(params)))
-      .exec();
-    inventory.save(params);
-    return resp;
-  },
-
-  getMobile() {
-    return nSQL('inventorys')
-      .query('select')
-      .exec()
-      .then((result) => {
-        console.log(result);
-        inventory.save(result);
-        //  return result
-      });
-  },
-
-  async deleteMobile(id: any) {
-    const resp = await nSQL('inventorys')
-      .query('delete')
-      .where(['id', '=', id])
-      .exec();
-    inventory.destroy(id);
-    return resp;
-  },
-
-  apiFetchByIdMobile(id: any) {
-    return nSQL('inventorys')
-      .query('select')
-      .where(['id', '=', id])
-      .exec()
-      .then((result) => {
-        console.log(result);
-        inventory.save(result);
-      });
-  },
-
   // WEB
   postWeb(params: string) {
     return api()
@@ -180,7 +219,23 @@ export default {
           inventory.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
+          } else {
+            closeLoading();
+          }
+        });
+    }
+  },
+
+  async apiGetAllByClinicIdWeb(clinicId: string, offset: number) {
+    if (offset >= 0) {
+      return api()
+        .get('inventory/clinic/' + clinicId + '?offset=' + offset + '&max=100')
+        .then((resp) => {
+          if (resp.data.length > 0) {
+            inventory.save(resp.data);
+            offset = offset + 100;
+            this.apiGetAllByClinicIdWeb(clinicId, offset);
           } else {
             closeLoading();
           }
@@ -214,5 +269,69 @@ export default {
   // Local Storage Pinia
   deleteAllFromStorage() {
     inventory.flush();
+  },
+
+  //Mobile
+  addMobile(params: string) {
+    return inventoryDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
+      inventory.save(JSON.parse(JSON.stringify(params)));
+    });
+  },
+
+  async getMobile() {
+    try {
+      const rows = await inventoryDexie.toArray();
+      inventory.save(rows);
+    } catch (error) {
+      // alertError('Aconteceu um erro inesperado nesta operação.');
+      console.log(error);
+    }
+  },
+
+  async putMobile(params: any) {
+    return await inventoryDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        inventory.save(JSON.parse(JSON.stringify(params)));
+      });
+  },
+
+  async deleteMobile(id: any) {
+    try {
+      await inventoryDexie.delete(id);
+      inventory.destroy(id);
+      // alertSucess('O Registo foi removido com sucesso');
+    } catch (error) {
+      // alertError('Aconteceu um erro inesperado nesta operação.');
+      console.log(error);
+    }
+  },
+
+  apiFetchByIdMobile(id: any) {
+    return inventoryDexie
+      .where('id')
+      .equalsIgnoreCase(id)
+      .toArray()
+      .then((rows: any) => {
+        inventory.save(rows);
+        return rows;
+      });
+  },
+
+  apiGetAllByClinicIdMobile(id: any) {
+    return inventoryDexie
+      .where('clinic_id')
+      .equalsIgnoreCase(id)
+      .toArray()
+      .then((rows: any) => {
+        inventory.save(rows);
+        return rows;
+      });
+  },
+  async getAllByIDsFromDexie(ids: []) {
+    return await inventoryDexie.where('id').anyOfIgnoreCase(ids).toArray();
+  },
+  deleteAllFromDexie() {
+    inventoryDexie.clear();
   },
 };

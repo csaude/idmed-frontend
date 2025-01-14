@@ -1,8 +1,10 @@
 import api from '../../api/apiService/apiService';
-import { nSQL } from 'nano-sql';
+import durationService from 'src/services/api/duration/durationService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
 import Duration from 'src/stores/models/duration/Duration';
-import { useRepo } from 'pinia-orm';
-const duration = useRepo(Duration);
+
+const durationDexie = db[Duration.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -10,8 +12,7 @@ export default {
       return await api()
         .get('duration?offset=' + offset + '&max=100')
         .then((resp) => {
-          nSQL(Duration.entity).query('upsert', resp.data).exec();
-          duration.save(resp.data);
+          durationService.addBulkMobile(resp.data);
           console.log('Data synced from backend: Duration');
           offset = offset + 100;
           if (resp.data.length > 0) {
@@ -23,5 +24,18 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania Duration');
+    (await SynchronizationService.hasData(durationDexie))
+      ? await durationService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie Duration');
+    const getAllDuration = durationService.getAllFromStorage();
+    await durationDexie.bulkPut(getAllDuration);
   },
 };

@@ -2,11 +2,18 @@ import { useRepo } from 'pinia-orm';
 import api from '../apiService/apiService';
 import Prescription from 'src/stores/models/prescription/Prescription';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
+import ChunkArray from 'src/utils/ChunkArray';
+import durationService from '../duration/durationService';
+import doctorService from '../doctorService/doctorService';
+import clinicService from '../clinicService/clinicService';
+import prescriptionDetailsService from '../prescriptionDetails/prescriptionDetailsService';
+import prescribedDrugService from '../prescribedDrug/prescribedDrugService';
 
 const prescription = useRepo(Prescription);
+const prescriptionDexie = db[Prescription.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -36,7 +43,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -57,7 +64,7 @@ export default {
           prescription.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -80,17 +87,23 @@ export default {
       });
   },
   // Mobile
+  addMobile(params: string) {
+    return prescriptionDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        prescription.save(JSON.parse(JSON.stringify(params)));
+      });
+  },
   putMobile(params: string) {
-    return nSQL(Prescription.entity)
-      .query('upsert', params)
-      .exec()
-      .then((resp) => {
-        prescription.save(resp[0].affectedRows);
+    return prescriptionDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        prescription.save(JSON.parse(JSON.stringify(params)));
       });
   },
   async getMobile() {
     try {
-      const rows = await nSQL(Prescription.entity).query('select').exec();
+      const rows = await prescriptionDexie.toArray();
       prescription.save(rows);
     } catch (error) {
       // alertError('Aconteceu um erro inesperado nesta operação.');
@@ -99,16 +112,22 @@ export default {
   },
   async deleteMobile(paramsId: string) {
     try {
-      await nSQL(Prescription.entity)
-        .query('delete')
-        .where(['id', '=', paramsId])
-        .exec();
+      await prescriptionDexie.delete(paramsId);
       prescription.destroy(paramsId);
       alertSucess('O Registo foi removido com sucesso');
     } catch (error) {
       // alertError('Aconteceu um erro inesperado nesta operação.');
       console.log(error);
     }
+  },
+  addBulkMobile() {
+    const prescriptionFromPinia = this.getAllFromStorageForDexie();
+
+    return prescriptionDexie
+      .bulkPut(prescriptionFromPinia)
+      .catch((error: any) => {
+        console.log(error);
+      });
   },
 
   async apiSave(prescriptionObject: any) {
@@ -132,8 +151,7 @@ export default {
           max
       )
       .then((resp) => {
-        nSQL(Prescription.entity).query('upsert', resp.data).exec();
-        prescription.save(resp.data);
+        this.addBulkMobile(resp.data);
       });
   },
 
@@ -144,6 +162,14 @@ export default {
         prescription.save(resp.data);
         return resp;
       });
+  },
+
+  async getPrescriptionMobileById(id: string) {
+    const resp = await prescriptionDexie
+      .where('id')
+      .equalsIgnoreCase(id)
+      .first();
+    return resp;
   },
 
   async apiFetchLastByIdentifierId(id: string) {
@@ -180,6 +206,19 @@ export default {
   getAllFromStorage() {
     return prescription.all();
   },
+  getAllFromStorageForDexie() {
+    return prescription
+      .makeHidden([
+        'clinic',
+        'doctor',
+        'patientVisitDetails',
+        'prescriptionDetails',
+        'duration',
+        'prescribedDrugs',
+        'groupMemberPrescription',
+      ])
+      .all();
+  },
   deleteAllFromStorage() {
     prescription.flush();
   },
@@ -211,5 +250,98 @@ export default {
 
   removeFromStorage(prescriptionId: string) {
     return prescription.destroy(prescriptionId);
+  },
+
+  async getAllMobileByIds(prescriptionIds: any) {
+    const resp = await prescriptionDexie
+      .where('id')
+      .anyOf(prescriptionIds)
+      .toArray();
+
+    prescription.save(resp);
+    return resp;
+  },
+
+  async getPrescriptionsByIds(prescriptionIds: any) {
+    const limit = 100; // Define your limit
+    const offset = 0;
+
+    const chunks = ChunkArray.chunkArrayWithOffset(
+      prescriptionIds,
+      limit,
+      offset
+    );
+
+    const allPrescriptions = [];
+
+    for (const chunk of chunks) {
+      const prescriptions = await api().post(
+        '/prescription/getAllByPrescriptionIds/',
+        chunk
+      );
+      allPrescriptions.push(...prescriptions.data);
+    }
+    this.addBulkMobile(allPrescriptions);
+  },
+
+  // Dexie Block
+  async getByIdFromDexie(id: string) {
+    return prescriptionDexie.get(id);
+  },
+  async getAllByIDsFromDexie(ids: []) {
+    const prescriptions = await prescriptionDexie
+      .where('id')
+      .anyOf(ids)
+      .reverse()
+      .sortBy('prescriptionDate');
+    const prescriptionsIds = prescriptions.map(
+      (prescription: any) => prescription.id
+    );
+    const durationIds = prescriptions.map(
+      (prescription: any) => prescription.duration_id
+    );
+    const doctorIds = prescriptions.map(
+      (prescription: any) => prescription.doctor_id
+    );
+    const clinicIds = prescriptions.map(
+      (prescription: any) => prescription.clinic_id
+    );
+    const [clinics, durations, doctors, prescriptionDetails, prescribedDrugs] =
+      await Promise.all([
+        clinicService.getAllByIDsFromDexie(clinicIds),
+        durationService.getAllByIDsFromDexie(durationIds),
+        doctorService.getAllByIDsFromDexie(doctorIds),
+        prescriptionDetailsService.getLastByPrescriprionIdListFromDexie(
+          prescriptionsIds
+        ),
+        prescribedDrugService.getAllByPrescriprionIdListFromDexie(
+          prescriptionsIds
+        ),
+      ]);
+
+    prescriptions.map((prescription: any) => {
+      prescription.clinic = clinics.find(
+        (clinic: any) => clinic.id === prescription.clinic_id
+      );
+      prescription.duration = durations.find(
+        (duration: any) => duration.id === prescription.duration_id
+      );
+      prescription.doctor = doctors.find(
+        (doctor: any) => doctor.id === prescription.doctor_id
+      );
+      prescription.prescriptionDetails = prescriptionDetails.filter(
+        (prescriptionDetail: any) =>
+          prescriptionDetail.prescription_id === prescription.id
+      );
+      prescription.prescribedDrugs = prescribedDrugs.filter(
+        (prescribedDrug: any) =>
+          prescribedDrug.prescription_id === prescription.id
+      );
+    });
+
+    return prescriptions;
+  },
+  deleteAllFromDexie() {
+    prescriptionDexie.clear();
   },
 };

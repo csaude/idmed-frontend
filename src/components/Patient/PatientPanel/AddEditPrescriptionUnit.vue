@@ -181,7 +181,22 @@
                 {{
                   getDrugById(props.row.drug.id) !== null &&
                   getDrugById(props.row.drug.id) !== undefined
-                    ? getDrugById(props.row.drug.id).name
+                    ? getDrugById(props.row.drug.id).name.includes(
+                        String(
+                          getDrugFirstLevelById(props.row.drug.id).form
+                            .description
+                        ).substring(0, 4)
+                      )
+                      ? getDrugById(props.row.drug.id).name
+                      : getDrugById(props.row.drug.id).name +
+                        ' - (' +
+                        getDrugById(props.row.drug.id).packSize +
+                        ' ' +
+                        String(
+                          getDrugFirstLevelById(props.row.drug.id).form
+                            .description
+                        ).substring(0, 4) +
+                        ')'
                     : ''
                 }}
               </q-td>
@@ -189,9 +204,11 @@
                 {{
                   getDrugById(props.row.drug.id) !== null &&
                   getDrugById(props.row.drug.id) !== undefined
-                    ? ' Toma ' +
+                    ? getDrugFirstLevelById(props.row.drug.id).form.howToUse +
+                      ' ' +
                       props.row.amtPerTime +
                       '   ' +
+                      getDrugFirstLevelById(props.row.drug.id).form.unit +
                       ' - ' +
                       props.row.timesPerDay +
                       ' vez(es) por ' +
@@ -236,9 +253,12 @@
                         props.row.drug.packSize
                     )
                   }}
-                  Frasco(s) e ({{
-                    getQtyRemain(props.row, curPrescription.duration.weeks)
-                  }}) Unidades
+                  Frasco(s) e
+                  {{
+                    getQtyRemain(props.row, curPrescription.duration.weeks) +
+                    ' ' +
+                    getDrugFirstLevelById(props.row.drug.id).form.unit
+                  }}
                 </em>
                 <em v-else>
                   {{
@@ -503,11 +523,14 @@ import packService from 'src/services/api/pack/packService';
 import { usePrescription } from 'src/composables/prescription/prescriptionMethods';
 import patientVisitDetailsService from 'src/services/api/patientVisitDetails/patientVisitDetailsService';
 //import { usePackagedDrugs } from 'src/composables/packaging/packagedDrugMethods';
-
+import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { v4 as uuidv4 } from 'uuid';
 import drugService from 'src/services/api/drugService/drugService';
 import { useDrug } from 'src/composables/drug/drugMethods';
-
+import clinicService from 'src/services/api/clinicService/clinicService';
+import clinicalServiceService from 'src/services/api/clinicalServiceService/clinicalServiceService';
+import patientServiceIdentifierService from 'src/services/api/patientServiceIdentifier/patientServiceIdentifierService';
+const { isMobile, isOnline } = useSystemUtils();
 //props
 const props = defineProps(['identifier']);
 
@@ -576,10 +599,11 @@ const columns = [
     name: 'dosage',
     align: 'left',
     field: (row) =>
-      'Tomar ' +
+      row.drug.form.howToUse +
+      ' ' +
       row.amtPerTime +
       ' ' +
-      row.drug.form.description +
+      row.drug.form.unit +
       ' ' +
       row.timesPerDay +
       ' vez(es)' +
@@ -666,9 +690,16 @@ const hasPrescriptionChangeMotive = computed(() => {
   return result;
 });
 const therapeuticRegimens = computed(() => {
-  return therapeuticalRegimenService.getAllTherapeuticalByclinicalService(
-    props.identifier.service.id
-  );
+  const clinicalServiceData =
+    clinicalServiceService.getClinicalServicePersonalizedById(
+      props.identifier.service.id
+    );
+  if (!clinicalServiceData || !clinicalServiceData.therapeuticRegimens) {
+    return therapeuticalRegimenService.getAllTherapeuticalByclinicalService(
+      props.identifier.service.id
+    );
+  }
+  return clinicalServiceData.therapeuticRegimens;
 });
 const therapeuticLines = computed(() => {
   return therapeuticLineService.getAllFromStorage();
@@ -700,10 +731,18 @@ const lastPatientVisit = computed(() => {
 
     if (
       listPatietVisitDetails !== null &&
-      listPatietVisitDetails !== undefined
+      listPatietVisitDetails !== undefined &&
+      listPatietVisitDetails.length !== 0
     ) {
       listPatietVisitDetails.forEach((patientvisitdetails) => {
         listPatietVisitIds.push(patientvisitdetails.patient_visit_id);
+      });
+    } else {
+      const listPatientVisits = patientVisitService.getAllFromPatient(
+        patient.value.id
+      );
+      listPatientVisits.forEach((patientvisit) => {
+        listPatietVisitIds.push(patientvisit.id);
       });
     }
     return patientVisitService.getLastFromPatientVisitList(listPatietVisitIds);
@@ -714,10 +753,21 @@ const lastPatientVisit = computed(() => {
 
 const lastPatientVisitDetails = computed(() => {
   if (lastPatientVisit.value !== null && lastPatientVisit.value !== undefined) {
-    return patientVisitDetailsService.getLastPatientVisitDetailFromPatientVisitAndEpisode(
-      lastPatientVisit.value.id,
-      lastStartEpisode.value.id
-    );
+    const lastPatientVisitDetailsFromEpisode =
+      patientVisitDetailsService.getLastPatientVisitDetailFromPatientVisitAndEpisode(
+        lastPatientVisit.value.id,
+        lastStartEpisode.value.id
+      );
+    if (
+      lastPatientVisitDetailsFromEpisode === null ||
+      lastPatientVisitDetailsFromEpisode === undefined
+    ) {
+      return patientVisitDetailsService.getLastPatientVisitDetailFromPatientVisit(
+        lastPatientVisit.value.id
+      );
+    } else {
+      return lastPatientVisitDetailsFromEpisode;
+    }
   } else {
     return null;
   }
@@ -735,6 +785,20 @@ const lastPrescription = computed(() => {
     return null;
   }
 });
+
+const patientServiceIdentifierFromEpisode = computed(() => {
+  if (
+    lastPatientVisitDetails.value !== null &&
+    lastPatientVisitDetails.value !== undefined
+  ) {
+    return episodeService.getEpisodeById(
+      lastPatientVisitDetails.value.episode.id
+    );
+  } else {
+    return null;
+  }
+});
+
 const lastPack = computed(() => {
   if (lastPrescription.value !== null && lastPrescription.value !== undefined) {
     return packService.getLastPackFromPatientVisitAndPrescription(
@@ -811,7 +875,11 @@ const validateDate = (identifier) => {
         validatePrescriptionDate,
         'DD-MM-YYYY'
       );
-      if (momentNextPickUpDate.isAfter(momentPrescriptionDate)) {
+      if (
+        momentNextPickUpDate.isAfter(momentPrescriptionDate) &&
+        patientServiceIdentifierFromEpisode.value.patientServiceIdentifier
+          .service.code === props.identifier.service.code
+      ) {
         alertWarningAction(
           'O paciente ainda possui medicamentos ' +
             identifier.service.code +
@@ -1158,7 +1226,9 @@ const checkStockToPack = async () => {
       const i = packagedDrugs.indexOf(packageDrug);
       indexToRemove.push(i);
     } else {
-      generatePacks(packageDrug);
+      if (isMobile.value && !isOnline.value) {
+        generatePacks(packageDrug);
+      }
     }
   }
 
@@ -1252,7 +1322,9 @@ const addPatientVisitDetail = async () => {
   } else if (lastPack.value !== null && lastPack.value !== undefined) {
     if (
       getYYYYMMDDFromJSDate(lastPack.value.nextPickUpDate) >
-      getYYYYMMDDFromJSDate(pickupDate4daysAdd)
+        getYYYYMMDDFromJSDate(pickupDate4daysAdd) &&
+      patientServiceIdentifierFromEpisode.value.patientServiceIdentifier.service
+        .code === props.identifier.service.code
     ) {
       alertWarningAction(
         'O paciente ainda possui medicamentos em casa provenientes da ultima dispensa, ' +
@@ -1405,7 +1477,9 @@ const checkStock = async (prescribedDrug, weeksSupply) => {
   const resp = await StockService.checkStockStatus(
     prescribedDrug.drug.id,
     prescrDate,
-    qtyPrescribed
+    qtyPrescribed,
+    clinicService.currClinic().id,
+    weeksSupply
   );
   return resp;
 };

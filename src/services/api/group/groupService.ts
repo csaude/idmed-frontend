@@ -3,14 +3,16 @@ import api from '../apiService/apiService';
 import Group from 'src/stores/models/group/Group';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import groupMemberService from '../groupMember/groupMemberService';
 import { useLoading } from 'src/composables/shared/loading/loading';
+
+const group = useRepo(Group);
+const groupDexie = db[Group.entity];
 
 const { isMobile, isOnline } = useSystemUtils();
 const { alertSucess, alertError, alertInfo } = useSwal();
 const { closeLoading } = useLoading();
-const group = useRepo(Group);
 
 export default {
   // Axios API call
@@ -28,14 +30,10 @@ export default {
             }
           });
       } else {
-        return nSQL('groups')
-          .query('select')
-          .exec()
-          .then((result) => {
-            console.log('groups' + result);
-            group.save(result);
-            closeLoading();
-          });
+        return groupDexie.then((result) => {
+          group.save(result);
+          closeLoading();
+        });
       }
     }
   },
@@ -155,12 +153,7 @@ export default {
     }
   },
   */
-
-  async apiValidateBeforeAdd(
-    patientId: string,
-    code: string,
-    dispenseTypeCode: string
-  ) {
+  async apiValidateBeforeAdd(patientId: string, code: string) {
     return await api().get(
       `/groupInfo/validadePatient/${patientId}/${code}/${dispenseTypeCode}`
     );
@@ -229,5 +222,8 @@ export default {
       })
       .orderBy('startDate', 'desc')
       .first();
+  },
+  deleteAllFromDexie() {
+    groupDexie.clear();
   },
 };

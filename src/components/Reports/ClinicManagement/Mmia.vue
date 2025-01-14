@@ -84,6 +84,9 @@ const closeSection = (params) => {
     const paramId = params.id;
     isReportClosed.value = true;
     LocalStorage.remove(paramId);
+  } else {
+    isReportClosed.value = true;
+    LocalStorage.remove(props.id);
   }
 };
 
@@ -119,40 +122,44 @@ const initReportProcessing = async (params) => {
 };
 
 const getProcessingStatus = (params) => {
-  Report.getProcessingStatus('mmiaReport', params).then((resp) => {
-    if (resp.data.progress > 0.001) {
-      progress.value = resp.data.progress;
-      if (progress.value < 100) {
-        updateParamsOnLocalStrage(params, isReportClosed);
-        params.progress = resp.data.progress;
-        setTimeout(() => {
-          getProcessingStatus(params);
-        }, 3000);
+  if (isOnline.value) {
+    Report.getProcessingStatus('mmiaReport', params).then((resp) => {
+      if (resp.data.progress > 0.001) {
+        progress.value = resp.data.progress;
+        if (progress.value < 100) {
+          updateParamsOnLocalStrage(params, isReportClosed);
+          params.progress = resp.data.progress;
+          setTimeout(() => {
+            getProcessingStatus(params);
+          }, 3000);
+        } else {
+          progress.value = 100;
+          params.progress = 100;
+          updateParamsOnLocalStrage(params, isReportClosed);
+        }
       } else {
         progress.value = 100;
         params.progress = 100;
         updateParamsOnLocalStrage(params, isReportClosed);
       }
-    } else {
-      progress.value = 100;
-      params.progress = 100;
-      updateParamsOnLocalStrage(params, isReportClosed);
-    }
-  });
+    });
+  }
 };
 
 const generateReport = (id, fileType) => {
   if (fileType === 'PDF') {
-    mmiaReport.downloadPDF(id).then((resp) => {
-      if (resp === 204)
+    mmiaReport.downloadPDF(id, downloadingPdf).then((resp) => {
+      if (resp === 204) {
         alertError('Não existem Dados para o período selecionado');
-      downloadingPdf.value = false;
+        downloadingPdf.value = false;
+      }
     });
   } else {
-    mmiaReport.downloadExcel(id).then((resp) => {
-      if (resp === 204)
+    mmiaReport.downloadExcel(id, downloadingXls).then((resp) => {
+      if (resp === 204) {
         alertError('Não existem Dados para o período selecionado');
-      downloadingXls.value = false;
+        downloadingXls.value = false;
+      }
     });
   }
 };

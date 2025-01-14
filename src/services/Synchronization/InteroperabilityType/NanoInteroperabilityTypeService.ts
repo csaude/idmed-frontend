@@ -1,9 +1,10 @@
 import api from '../../api/apiService/apiService';
-import { nSQL } from 'nano-sql';
+import InteroperabilityTypeService from 'src/services/api/InteroperabilityType/InteroperabilityTypeService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
 import InteroperabilityType from 'src/stores/models/interoperabilityType/InteroperabilityType';
-import { useRepo } from 'pinia-orm';
 
-const interoperabilityType = useRepo(InteroperabilityType);
+const InteroperabilityTypeDexie = db[InteroperabilityType.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -11,8 +12,7 @@ export default {
       return await api()
         .get('interoperabilityType?offset=' + offset + '&max=100')
         .then((resp) => {
-          nSQL(InteroperabilityType.entity).query('upsert', resp.data).exec();
-          interoperabilityType.save(resp.data);
+          InteroperabilityTypeService.addBulkMobile(resp.data);
           console.log('Data synced from backend: InteroperabilityType');
           offset = offset + 100;
           if (resp.data.length > 0) {
@@ -24,5 +24,19 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania InteroperabilityType');
+    (await SynchronizationService.hasData(InteroperabilityTypeDexie))
+      ? await InteroperabilityTypeService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie InteroperabilityType');
+    const getAllInteroperabilityType =
+      InteroperabilityTypeService.getAllFromStorage();
+    await InteroperabilityTypeDexie.bulkPut(getAllInteroperabilityType);
   },
 };

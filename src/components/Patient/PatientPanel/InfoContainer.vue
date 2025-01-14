@@ -8,7 +8,11 @@
           : 'bg-red-7 text-white text-bold vertical-middle q-pl-md'
       "
       expand-icon-class="text-white"
-      :default-opened="curIdentifier.service.code === 'TARV' || !website"
+      :default-opened="
+        curIdentifier.service !== null && curIdentifier.service !== undefined
+          ? curIdentifier.service.code === 'TARV' || !website
+          : true
+      "
     >
       <template v-slot:header>
         <q-item-section avatar>
@@ -81,7 +85,11 @@
             <div class="row q-my-md">
               <q-space />
               <q-btn
-                v-if="!showEndDetails"
+                v-if="
+                  !showEndDetails &&
+                  !isPharmacyDDDOrAPEOrDCP() &&
+                  !isProvincialInstalation()
+                "
                 unelevated
                 color="orange-5"
                 label="Editar"
@@ -89,7 +97,12 @@
                 class="float-right"
               />
               <q-btn
-                v-if="!showEndDetails"
+                v-if="
+                  !showEndDetails &&
+                  !isPharmacyDDDOrAPEOrDCP() &&
+                  !isProvincialInstalationMobileClinic() &&
+                  !isProvincialInstalation()
+                "
                 unelevated
                 color="red"
                 label="Fechar"
@@ -108,7 +121,12 @@
           </div>
           <div class="col q-py-md">
             <ListHeader
-              :addVisible="islastEpisodeClosed && !isProvincialInstalation()"
+              :addVisible="
+                islastEpisodeClosed &&
+                (!isProvincialInstalation() ||
+                  isProvincialInstalationPharmacysMode() ||
+                  isProvincialInstalationMobileClinic())
+              "
               bgColor="bg-primary"
               :addButtonActions="openEpisodeCreation"
               >Histórico Clínico</ListHeader
@@ -159,11 +177,16 @@ import packService from 'src/services/api/pack/packService';
 import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
 
 //props
-const props = defineProps(['identifierId', 'serviceId']);
+const props = defineProps(['identifierId']);
 
 // Declaration
 const { hasVisits, isCloseEpisode, isDCReferenceEpisode } = useEpisode();
-const { isProvincialInstalation } = useSystemConfig();
+const {
+  isProvincialInstalation,
+  isPharmacyDDDOrAPEOrDCP,
+  isProvincialInstalationPharmacysMode,
+  isProvincialInstalationMobileClinic,
+} = useSystemConfig();
 const { canBeEdited } = usePatientServiceIdentifier();
 const { alertSucess, alertError, alertInfo, alertWarningAction } = useSwal();
 const { preferedIdentifierValue, fullName } = usePatient();
@@ -171,7 +194,6 @@ const { website, isDeskTop, isMobile } = useSystemUtils();
 const { formatDate } = useDateUtils();
 const isPatientActive = ref(false);
 const isNewEpisode = ref(false);
-// const isCloseEpisoded = ref(false);
 const isClosingEpisode = ref(false);
 const selectedEpisode = ref(new Episode());
 const showAddEditEpisode = ref(false);
@@ -179,28 +201,26 @@ const serviceInfoVisible = ref(true);
 const showEditClinicalService = ref(false);
 
 //Injection
-const patient = inject('patient');
-const showAddEditClinicalService = inject('showAddEditClinicalService');
 const isEditStep = inject('isEditStep');
 const isCreateStep = inject('isCreateStep');
 const isCloseStep = inject('isCloseStep');
 const isReOpenStep = inject('isReOpenStep');
 
-const addServiceLabel = ref('Adicionar Historico');
-// Hook
-
 // Computed
 const curIdentifier = computed(() => {
-  return patientServiceIdentifierService.identifierCurr(
-    props.identifierId,
-    props.serviceId
-  );
+  return patientServiceIdentifierService.identifierCurr(props.identifierId, '');
 });
 const curEpisode = computed(() => {
   return episodeService.lastEpisodeByIdentifier(curIdentifier.value.id);
 });
 const lastPack = computed(() => {
-  return packService.getLastPackFromEpisode(curEpisode.value.id);
+  let lastPack = packService.getLastPackFromEpisode(curEpisode.value.id);
+  if (lastPack === null) {
+    lastPack = packService.getLastPackFromPatientId(
+      curEpisode.value.patientServiceIdentifier_id
+    );
+  }
+  return lastPack;
 });
 // Methods
 const openEpisodeCreation = () => {
@@ -218,11 +238,7 @@ const editEpisodeCreation = () => {
   isNewEpisode.value = false;
   isClosingEpisode.value = false;
 };
-const checkPatientStatusOnService = () => {
-  if (curIdentifier.value.endDate !== '') {
-    isPatientActive.value = true;
-  }
-};
+
 // Methods
 const editClinicService = () => {
   if (!canBeEdited(curIdentifier.value)) {
@@ -261,22 +277,6 @@ const close = () => {
   showEditClinicalService.value = false;
 };
 
-const createFirstEpisode = (identifier) => {
-  selectedIdentifier.value = identifier;
-  showAddEditClinicalService.value = false;
-  showAddEditEpisode.value = true;
-};
-const cancelOperation = () => {
-  alert.visible = false;
-};
-const canEditIdentifier = () => {
-  // const curIdentifier = PatientServiceIdentifier.query()
-  //   .with('episodes.patientVisitDetails')
-  //   .where('id', curIdentifier.id)
-  //   .first();
-  return canBeEdited(curIdentifier);
-};
-
 // Computed
 const clinicalServiceHeaderColor = computed(() => {
   return !showEndDetails.value;
@@ -313,10 +313,6 @@ const islastEpisodeClosed = computed(() => {
 
 const get3LastEpisodes = computed(() => {
   return episodeService.getlast3EpisodesByIdentifier(curIdentifier.value.id);
-});
-
-const canEdit = computed(() => {
-  return canEditIdentifier();
 });
 
 //Provide

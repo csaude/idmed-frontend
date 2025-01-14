@@ -207,7 +207,11 @@
           <q-page-sticky
             position="bottom-right"
             :offset="[18, 18]"
-            v-if="!isProvincialInstalation()"
+            v-if="
+              !isProvincialInstalation() ||
+              !isProvincialInstalationPharmacysMode() ||
+              isProvincialInstalationMobileClinic()
+            "
           >
             <q-btn
               class="q-mb-xl q-mr-xl"
@@ -237,25 +241,27 @@ import Patient from 'src/stores/models/patient/Patient';
 import { useDateUtils } from 'src/composables/shared/dateUtils/dateUtils';
 import { usePatient } from 'src/composables/patient/patientMethods';
 import { useRouter } from 'vue-router';
-import patientServiceIdentifierService from 'src/services/api/patientServiceIdentifier/patientServiceIdentifierService';
 import patientVisitService from 'src/services/api/patientVisit/patientVisitService';
 import patientVisitDetailsService from 'src/services/api/patientVisitDetails/patientVisitDetailsService';
-import prescriptionService from 'src/services/api/prescription/prescriptionService';
-import packService from 'src/services/api/pack/packService';
 import PatientServiceIdentifier from 'src/stores/models/patientServiceIdentifier/PatientServiceIdentifier';
 import clinicalServiceService from 'src/services/api/clinicalServiceService/clinicalServiceService';
 import districtService from 'src/services/api/districtService/districtService';
 import { v4 as uuidv4 } from 'uuid';
 import { useOnline } from 'src/composables/shared/loadParams/online';
 import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
+import patientServiceIdentifierService from 'src/services/api/patientServiceIdentifier/patientServiceIdentifierService';
 
 const { alertSucess, alertError, alertInfo } = useSwal();
 const { closeLoading, showloading } = useLoading();
 const { idadeCalculator, getDDMMYYYFromJSDate } = useDateUtils();
 const { website, isOnline, isDeskTop, isMobile } = useSystemUtils();
 const { preferedIdentifierValue, fullName } = usePatient();
-const { deleteStorageWithoutPatientInfo } = useOnline();
-const { isProvincialInstalation } = useSystemConfig();
+const { deleteStorageWithoutPatientInfo, deleteDexieInfo } = useOnline();
+const {
+  isProvincialInstalation,
+  isProvincialInstalationPharmacysMode,
+  isProvincialInstalationMobileClinic,
+} = useSystemConfig();
 
 //Declaration
 
@@ -335,15 +341,11 @@ const canClear = computed(() => {
 });
 
 const onRequest = async (props) => {
-  console.log(props);
   const { page, rowsPerPage, sortBy, descending } = props.pagination;
   // const filter = props.filter;
   if (page !== actualPage.value || rowsPerPage !== actualRowsPerPage.value) {
     loading.value = true;
   }
-  // actualPage.value = page;
-  console.log(actualPage.value);
-  console.log(page);
   // emulate server
   setTimeout(() => {
     // update rowsCount with appropriate value
@@ -567,22 +569,29 @@ const closePatient = () => {
 
 const goToPatientPanel = async (patient) => {
   showloading();
-  // Delete all Except this patient
   deleteStorageWithoutPatientInfo();
   await patientService.deleteAllExceptIdFromStorage(patient.id);
   currPatient.value = patient;
   localStorage.setItem('patientuuid', currPatient.value.id);
-  await patientService.getPatientByID(currPatient.value.id);
-  // Rest Calls
-  await patientServiceIdentifierService.apiGetAllByPatientId(
-    currPatient.value.id
-  );
-  await patientVisitService.apiGetAllByPatientId(currPatient.value.id);
-  await patientVisitDetailsService.apiGetPatientVisitDetailsByPatientId(
-    currPatient.value.id
-  );
-  await prescriptionService.apiGetByPatientId(currPatient.value.id);
-  await packService.apiGetByPatientId(currPatient.value.id);
+
+  if (isMobile.value && !isOnline.value) {
+    await patientService.getPatientMobileWithAllByPatientId(currPatient.value);
+  } else {
+    deleteDexieInfo();
+    localStorage.setItem('patientuuid', currPatient.value.id);
+    await patientService.getPatientByID(currPatient.value.id);
+    // Rest Calls
+    await patientServiceIdentifierService.apiGetAllByPatientId(
+      currPatient.value.id
+    );
+    await patientVisitService.apiGetAllByPatientId(currPatient.value.id);
+    await patientVisitDetailsService.apiGetPatientVisitDetailsByPatientId(
+      currPatient.value.id
+    );
+  }
+
+  localStorage.setItem('patientuuid', currPatient.value.id);
+
   router.push('/patientpanel/');
 };
 
@@ -655,7 +664,8 @@ const localSearch = async () => {
     currPatient.value.offset = offset.value;
     patientService.apiSearch(currPatient.value);
   } else {
-    patientService.get(0);
+    patientService.getMobile();
+    patientServiceIdentifierService.getMobile();
   }
 };
 

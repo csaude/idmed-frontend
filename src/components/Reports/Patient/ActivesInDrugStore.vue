@@ -46,7 +46,7 @@ import moment from 'moment';
 import Report from 'src/services/api/report/ReportService';
 import { LocalStorage } from 'quasar';
 import activePatients from 'src/services/reports/Patients/ActivePatients.ts';
-import { ref, provide } from 'vue';
+import { ref, provide, onMounted } from 'vue';
 import reportDatesParams from 'src/services/reports/ReportDatesParams';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import ListHeader from 'components/Shared/ListHeader.vue';
@@ -78,6 +78,9 @@ const closeSection = (params) => {
     const paramId = params.id;
     isReportClosed.value = true;
     LocalStorage.remove(paramId);
+  } else {
+    isReportClosed.value = true;
+    LocalStorage.remove(props.id);
   }
 };
 
@@ -92,36 +95,38 @@ const initReportProcessing = (params) => {
       getProcessingStatus(params);
     });
   } else {
-    updateParamsOnLocalStrage(params, isReportClosed);
     const reportParams = reportDatesParams.determineStartEndDate(params);
     activeInDrugStoreMobileService.getDataLocalDb(reportParams).then((resp) => {
       progress.value = 100;
       params.progress = 100;
+      updateParamsOnLocalStrage(params, isReportClosed);
     });
   }
 };
 
 const getProcessingStatus = (params) => {
-  Report.getProcessingStatus('activePatientReport', params).then((resp) => {
-    if (resp.data.progress > 0.001) {
-      progress.value = resp.data.progress;
-      if (progress.value < 100) {
-        updateParamsOnLocalStrage(params, isReportClosed);
-        params.progress = resp.data.progress;
+  if (isOnline.value) {
+    Report.getProcessingStatus('activePatientReport', params).then((resp) => {
+      if (resp.data.progress > 0.001) {
+        progress.value = resp.data.progress;
+        if (progress.value < 100) {
+          updateParamsOnLocalStrage(params, isReportClosed);
+          params.progress = resp.data.progress;
+          setTimeout(() => {
+            getProcessingStatus(params);
+          }, 3000);
+        } else {
+          progress.value = 100;
+          params.progress = 100;
+          updateParamsOnLocalStrage(params, isReportClosed);
+        }
+      } else {
         setTimeout(() => {
           getProcessingStatus(params);
         }, 3000);
-      } else {
-        progress.value = 100;
-        params.progress = 100;
-        updateParamsOnLocalStrage(params, isReportClosed);
       }
-    } else {
-      setTimeout(() => {
-        getProcessingStatus(params);
-      }, 3000);
-    }
-  });
+    });
+  }
 };
 
 const generateReport = async (id, fileType) => {
@@ -139,22 +144,24 @@ const generateReport = async (id, fileType) => {
             patientAux.province,
             moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
             moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-            resp.data
+            resp.data,
+            downloadingPdf
           );
-          downloadingPdf.value = false;
         } else {
           activePatients.downloadExcel(
             patientAux.province,
             moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
             moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-            resp.data
+            resp.data,
+            downloadingXls
           );
-          downloadingXls.value = false;
         }
       }
     });
   } else {
-    const data = await ActiveInDrugStoreMobileService.getDataLocalReport(id);
+    const data = await ActiveInDrugStoreMobileService.localDbGetAllByReportId(
+      id
+    );
     if (data.length === 0) {
       alertError('Não existem Dados para o período selecionado');
       downloadingXls.value = false;
@@ -167,19 +174,27 @@ const generateReport = async (id, fileType) => {
           patientAux.province,
           moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
           moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-          data
+          data,
+          downloadingPdf
         );
       } else {
         await activePatients.downloadExcel(
           patientAux.province,
           moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
           moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-          data
+          data,
+          downloadingXls
         );
       }
     }
   }
 };
+
+onMounted(() => {
+  if (props.params) {
+    getProcessingStatus(props.params);
+  }
+});
 
 provide('downloadingPdf', downloadingPdf);
 provide('downloadingXls', downloadingXls);

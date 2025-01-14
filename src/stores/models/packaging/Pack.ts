@@ -1,5 +1,5 @@
 import { Model } from 'pinia-orm';
-import Clinic from '../clinic/Clinic';
+import { Clinic } from '../clinic/ClinicHierarchy';
 import DispenseMode from '../dispenseMode/DispenseMode';
 import GroupPack from '../group/GroupPack';
 import PackagedDrug from '../packagedDrug/PackagedDrug';
@@ -29,6 +29,7 @@ export default class Pack extends Model {
       syncStatus: this.attr(''),
       isreferral: this.boolean(false),
       isreferalSynced: this.boolean(false),
+      origin: this.attr(''),
       // Relationships
       clinic: this.belongsTo(Clinic, 'clinic_id'),
       patientVisitDetails: this.hasMany(PatientVisitDetails, 'pack_id'),

@@ -3,16 +3,21 @@ import api from '../apiService/apiService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import Drug from 'src/stores/models/drug/Drug';
 import { useLoading } from 'src/composables/shared/loading/loading';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { v4 as uuidv4 } from 'uuid';
 import moment from 'moment';
+import InventoryStockAdjustmentService from '../stockAdjustment/InventoryStockAdjustmentService';
+import StockService from '../stockService/StockService';
+import formService from '../formService/formService';
+import clinicalServiceService from '../clinicalServiceService/clinicalServiceService';
 
 const { isMobile, isOnline } = useSystemUtils();
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError, alertWarning } = useSwal();
 const drug = useRepo(Drug);
+const drugDexie = db[Drug.entity];
 
 export default {
   async post(params: string) {
@@ -20,27 +25,48 @@ export default {
     drug.save(resp.data);
     alertSucess('O Registo foi efectuado com sucesso');
   },
-  get(offset: number) {
+  async get(offset: number) {
+    if (isMobile.value && !isOnline.value) {
+      this.getMobile();
+    } else {
+      if (offset >= 0) {
+        // showloading();
+        return await (
+          api()
+            .get('drug?offset=' + offset + '&max=100', {
+              onDownloadProgress(progressEvent) {
+                // showloading();
+              },
+            })
+            // .get('drug?offset=' + offset + '&max=100')
+            .then((resp) => {
+              drug.save(resp.data);
+              offset = offset + 100;
+              if (resp.data.length > 0) {
+                this.get(offset);
+              } else {
+                closeLoading();
+              }
+            })
+        );
+      }
+    }
+  },
+  getWeb(offset: number) {
     if (offset >= 0) {
-      // showloading();
-      return (
-        api()
-          .get('drug?offset=' + offset + '&max=100', {
-            onDownloadProgress(progressEvent) {
-              // showloading();
-            },
-          })
-          // .get('drug?offset=' + offset + '&max=100')
-          .then((resp) => {
-            drug.save(resp.data);
-            offset = offset + 100;
-            if (resp.data.length > 0) {
-              this.get(offset);
-            } else {
-              closeLoading();
-            }
-          })
-      );
+      return api()
+        .get('drug?offset=' + offset + '&max=100')
+        .then((resp) => {
+          drug.save(resp.data);
+          offset = offset + 100;
+          if (resp.data.length > 0) {
+            this.getWeb(offset);
+          }
+        })
+        .catch((error) => {
+          // alertError('Aconteceu um erro inesperado nesta operação.');
+          console.log(error);
+        });
     }
   },
   getFromProvincial(offset: number) {
@@ -59,12 +85,11 @@ export default {
     }
   },
   async getInventoryDrugs(id: string) {
-    return api()
-      .get('drug/getInventoryDrugs/' + id)
-      .then((resp) => {
-        closeLoading();
-        return resp.data;
-      });
+    if (isOnline.value) {
+      return await this.getInventoryDrugsWeb(id);
+    } else {
+      return await this.getInventoryDrugsMobile(id);
+    }
   },
   async patch(id: string, params: string) {
     const resp = await api().patch('drug/' + id, params);
@@ -75,11 +100,79 @@ export default {
     await api().delete('drug/' + id);
     drug.destroy(id);
   },
+
+  async getInventoryDrugsWeb(id: any) {
+    return api()
+      .get('drug/getInventoryDrugs/' + id)
+      .then((resp) => {
+        closeLoading();
+        return resp.data;
+      });
+  },
+
+  //Mobile
+  getMobile() {
+    return drugDexie
+      .toArray()
+      .then((rows: any) => {
+        drug.save(rows);
+      })
+      .catch((error: any) => {
+        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+
+  async getDrugsByIds(drugIds: any) {
+    return await drugDexie.where('id').anyOf(drugIds).toArray();
+  },
+
+  async getMobileDrugById(drugId: any) {
+    return drugDexie
+      .where('id')
+      .equalsIgnoreCase(drugId)
+      .first()
+      .then((result: any) => {
+        return result;
+      });
+  },
+  async getInventoryDrugsMobile(inventoryId: any) {
+    // Step 1: Query StockAdjustments table for the given inventory ID
+    const adjustments =
+      await InventoryStockAdjustmentService.apiGetAdjustmentsByInventoryIdMobile(
+        inventoryId
+      );
+    const adjustedStockIds = adjustments.map((adj) => adj.adjustedStock.id);
+    const stocks = await StockService.getStocksByIds(adjustedStockIds);
+
+    const drugIds = stocks.map((stock) => stock.drug.id);
+    const drugs = await this.getDrugsByIds(drugIds);
+    const drugMap = new Map();
+    drugs.forEach((drug) => {
+      const key = `${drug.fnmCode}-${drug.name}-${drug.id}`;
+      if (!drugMap.has(key)) {
+        drugMap.set(key, drug);
+      }
+    });
+
+    return Array.from(drugMap.values());
+  },
+  addBulkMobile(params: any) {
+    return drugDexie
+      .bulkPut(params)
+      .then(() => {
+        drug.save(params);
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
   getActiveDrugs() {
     return drug.query().withAllRecursive(1).where('active', true).get();
   },
   getDrugsFromListId(drugListId: []) {
-    return drug.query().withAllRecursive(1).find(drugListId);
+    const item = drug.query().withAllRecursive(1).find(drugListId);
+    return item;
   },
   getDrugsWithValidStockInList() {
     return drug
@@ -162,5 +255,49 @@ export default {
       .then((result) => {
         return result.length > 0;
       });
+  },
+  async getAllByIDsFromDexie(ids: []) {
+    const drugs = await drugDexie.where('id').anyOf(ids).toArray();
+
+    const formsIds = drugs.map((drug: any) => drug.form_id);
+
+    const clinicalServiceIds = drugs.map(
+      (drug: any) => drug.clinical_service_id
+    );
+
+    const [forms, clinicalServices] = await Promise.all([
+      formService.getAllByIDsFromDexie(formsIds),
+      clinicalServiceService.getAllByIDsFromDexie(clinicalServiceIds),
+    ]);
+
+    drugs.map((drug: any) => {
+      drug.form = forms.find((form: any) => form.id === drug.form_id);
+      drug.clinicalService = clinicalServices.find(
+        (clinicalService: any) =>
+          clinicalService.id === drug.clinical_service_id
+      );
+    });
+    return drugs;
+  },
+
+  async getAllWithStocksFromDexie() {
+    const [stocksList] = await Promise.all([
+      StockService.getAllWithPackagedDrugStocksAndAdjustmentsFromDexie(),
+    ]);
+
+    const drugIds = stocksList.map((stock: any) => stock.drug_id);
+
+    const drugsWithStock = await drugDexie
+      .where('id')
+      .anyOfIgnoreCase(drugIds)
+      .toArray();
+
+    drugsWithStock.map((drug: any) => {
+      drug.stocks = stocksList.filter(
+        (stock: any) => stock.drug_id === drug.id
+      );
+    });
+
+    return drugsWithStock;
   },
 };

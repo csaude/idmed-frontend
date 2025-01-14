@@ -3,15 +3,18 @@ import JsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { saveAs } from 'file-saver';
 import * as ExcelJS from 'exceljs';
-import { MOHIMAGELOG } from 'src/assets/imageBytes.ts';
+import { MOHIMAGELOG } from 'src/assets/imageBytes.js';
 import Report from 'src/services/api/report/ReportService';
 import moment from 'moment';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import MmiaMobileService from 'src/services/api/report/mobile/MmiaMobileService';
 import clinicService from 'src/services/api/clinicService/clinicService';
-
+import DownloadFileMobile from 'src/utils/DownloadFileMobile';
+import { fetchFontAsBase64 } from 'src/utils/ReportUtils';
+import fontPath from 'src/assets/NotoSans-Regular.ttf';
 const { isMobile, isOnline } = useSystemUtils();
 
+//const fontPath = '/src/assets/NotoSans-Regular.ttf';
 const logoTitle =
   'REPÚBLICA DE MOÇAMBIQUE \nMINISTÉRIO DA SAÚDE \nCENTRAL DE MEDICAMENTOS E ARTIGOS MÉDICOS';
 const title = 'MMIA \n MAPA MENSAL DE INFORMAÇÃO ARV';
@@ -35,7 +38,8 @@ const months = [
 ];
 
 export default {
-  async downloadPDF(id) {
+  async downloadPDF(id, loading) {
+    const fontBase64 = await fetchFontAsBase64(fontPath);
     const doc = new JsPDF({
       orientation: 'p',
       unit: 'mm',
@@ -44,6 +48,9 @@ export default {
       putOnlyUsedFonts: true,
       floatPrecision: 'smart', // or "smart", default is 16
     });
+    doc.addFileToVFS('NotoSans-Regular.ttf', fontBase64.split(',')[1]);
+    doc.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
+    doc.setFont('NotoSans');
     doc.setFontSize(10);
     const image = new Image();
     image.src = 'data:image/png;base64,' + MOHIMAGELOG;
@@ -92,17 +99,17 @@ export default {
     const miaRegimenTotalData = this.createRegimenTotalArrayRow(
       mmiaData,
       isOnline.value ? mmiaData.mmiaRegimenSubReportList : mmiaRegimenData,
-      'XLS'
+      'PDF'
     );
     const miaLinesSumaryData = this.createLinesSumaryArrayRow(
       mmiaData,
       isOnline.value ? mmiaData.mmiaRegimenSubReportList : mmiaRegimenData,
-      'XLS'
+      'PDF'
     );
     const miaLinesSumaryTotalData = this.createLinesSumaryTotalArrayRow(
       mmiaData,
       isOnline.value ? mmiaData.mmiaRegimenSubReportList : mmiaRegimenData,
-      'XLS'
+      'PDF'
     );
     const mmiadsTypeData = this.createMmiaDispenseTypeDSArrayRow(mmiaData);
     const mmiadtTypeData = this.createMmiaDispenseTypeDTArrayRow(mmiaData);
@@ -111,13 +118,19 @@ export default {
     const mmiaAjusteData = this.createMmiaAjustePercentageArrayRow(mmiaData);
     const footer = this.createFotterTableRow();
 
-    const month = months[new Date(mmiaData.endDate).getMonth()];
+    const month =
+      months[
+        new Date(
+          isOnline.value ? mmiaData.endDate : mmiaStockData[0].endDate
+        ).getMonth()
+      ];
 
     const regimenCols = [
       'Código',
       'Regime Terapêutico',
       'Total doentes',
       'Farmácia Comunitária',
+      'Doentes Referidos',
     ];
 
     const headData = [];
@@ -129,6 +142,7 @@ export default {
       content:
         'REPÚBLICA DE MOÇAMBIQUE \nMINISTÉRIO DA SAÚDE \nCENTRAL DE MEDICAMENTOS E ARTIGOS MÉDICOS',
       styles: {
+        font: 'NotoSans',
         halign: 'left',
         valign: 'middle',
         fontStyle: 'bold',
@@ -138,6 +152,7 @@ export default {
     row1.push({
       content: 'MMIA \n MAPA MENSAL DE INFORMAÇÃO ARV',
       styles: {
+        font: 'NotoSans',
         halign: 'center',
         valign: 'middle',
         fontStyle: 'bold',
@@ -147,6 +162,7 @@ export default {
     row1.push({
       content: 'Mês: ' + month,
       styles: {
+        font: 'NotoSans',
         valign: 'middle',
         halign: 'center',
         fontStyle: 'bold',
@@ -157,22 +173,38 @@ export default {
     row2.push({
       content: 'Unidade Sanitária: ' + clinic.clinicName,
       colSpan: 3,
-      styles: { halign: 'left', fontStyle: 'bold', textColor: 0 },
+      styles: {
+        font: 'NotoSans',
+        halign: 'left',
+        fontStyle: 'bold',
+        textColor: 0,
+      },
     });
 
     row3.push({
       colSpan: 2,
       content: 'Distrito: ' + clinic.district.description,
-      styles: { halign: 'left', fontStyle: 'bold', textColor: 0 },
+      styles: {
+        font: 'NotoSans',
+        halign: 'left',
+        fontStyle: 'bold',
+        textColor: 0,
+      },
     });
     row3.push({
       content: 'Província: ' + clinic.province.description,
-      styles: { halign: 'left', fontStyle: 'bold', textColor: 0 },
+      styles: {
+        font: 'NotoSans',
+        halign: 'left',
+        fontStyle: 'bold',
+        textColor: 0,
+      },
     });
     row2.push({
       rowSpan: 2,
-      content: 'Ano: ' + mmiaData.year,
+      content: 'Ano: ' + isOnline.value ? mmiaData.year : mmiaStockData[0].year,
       styles: {
+        font: 'NotoSans',
         valign: 'middle',
         halign: 'center',
         fontStyle: 'bold',
@@ -187,6 +219,7 @@ export default {
     autoTable(doc, {
       theme: 'grid',
       bodyStyles: {
+        font: 'NotoSans',
         halign: 'center',
         fontSize: 6,
         textColor: 0,
@@ -224,6 +257,7 @@ export default {
         8: { cellWidth: 17 },
       },
       headStyles: {
+        font: 'NotoSans',
         halign: 'center',
         valign: 'middle',
         fontSize: 8,
@@ -245,10 +279,12 @@ export default {
       },
       columnStyles: {
         0: { cellWidth: 13 },
-        2: { cellWidth: 15 },
+        2: { cellWidth: 15.1 },
         3: { cellWidth: 18 },
+        4: { cellWidth: 21.2 },
       },
       headStyles: {
+        font: 'NotoSans',
         halign: 'center',
         valign: 'middle',
         fontSize: 6,
@@ -273,10 +309,12 @@ export default {
         fontSize: 6,
       },
       columnStyles: {
-        1: { cellWidth: 15 },
+        1: { cellWidth: 15.1 },
         2: { cellWidth: 18 },
+        3: { cellWidth: 21.2 },
       },
       headStyles: {
+        font: 'NotoSans',
         halign: 'center',
         valign: 'middle',
         fontSize: 6,
@@ -289,30 +327,37 @@ export default {
       margin: { right: 90.1 },
     });
 
-    const hirdTableHeigth = doc.lastAutoTable.finalY;
+    const thirdTableHeigth = doc.lastAutoTable.finalY;
 
     autoTable(doc, {
       // Quarta  tabela (Linhas Terapêuticas)
       theme: 'grid',
       bodyStyles: {
+        font: 'NotoSans',
         halign: 'center',
         fontSize: 6,
       },
       columnStyles: {
+        // 0: { fillColor: [240, 241, 242] },
+        // 1: { cellWidth: 15 },
+        // 2: { cellWidth: 18 },
+
         0: { fillColor: [240, 241, 242] },
-        1: { cellWidth: 15 },
-        2: { cellWidth: 18 },
+        // 2: { cellWidth: 15.1 },
+        // 3: { cellWidth: 18 },
+        // 4: { cellWidth: 21.2 },
       },
       head: [
         [
           {
             content: 'Linhas Terapêuticas\n',
-            colSpan: 3,
+            colSpan: 4,
             styles: { halign: 'center', fillColor: [75, 76, 77] },
           },
         ],
       ],
       headStyles: {
+        font: 'NotoSans',
         halign: 'center',
         valign: 'middle',
         fontSize: 6,
@@ -321,7 +366,7 @@ export default {
         maxCellHeight: 4,
       },
       body: miaLinesSumaryData,
-      startY: hirdTableHeigth + 1,
+      startY: thirdTableHeigth + 1,
       margin: { right: 90.1 },
     });
 
@@ -331,12 +376,16 @@ export default {
       // Quinta tabela (Total Linhas)
       theme: 'grid',
       bodyStyles: {
+        font: 'NotoSans',
         halign: 'center',
         fontSize: 6,
       },
       columnStyles: {
-        1: { cellWidth: 15 },
+        // 1: { cellWidth: 15 },
+        // 2: { cellWidth: 18 },
+        1: { cellWidth: 15.1 },
         2: { cellWidth: 18 },
+        3: { cellWidth: 21.2 },
       },
       headStyles: {
         halign: 'center',
@@ -357,6 +406,7 @@ export default {
       // Sexta tabela (Tipo de Doencas em TARV)
       theme: 'grid',
       bodyStyles: {
+        font: 'NotoSans',
         halign: 'center',
         fontSize: 6,
       },
@@ -374,6 +424,7 @@ export default {
         ],
       ],
       headStyles: {
+        font: 'NotoSans',
         halign: 'center',
         valign: 'middle',
         fontSize: 6,
@@ -391,6 +442,7 @@ export default {
     autoTable(doc, {
       theme: 'grid',
       bodyStyles: {
+        font: 'NotoSans',
         halign: 'center',
         fontSize: 6,
       },
@@ -408,6 +460,7 @@ export default {
         ],
       ],
       headStyles: {
+        font: 'NotoSans',
         halign: 'center',
         valign: 'middle',
         fontSize: 6,
@@ -425,6 +478,7 @@ export default {
     autoTable(doc, {
       theme: 'grid',
       bodyStyles: {
+        font: 'NotoSans',
         halign: 'center',
         fontSize: 6,
       },
@@ -442,6 +496,7 @@ export default {
         ],
       ],
       headStyles: {
+        font: 'NotoSans',
         halign: 'center',
         valign: 'middle',
         fontSize: 6,
@@ -459,6 +514,7 @@ export default {
     autoTable(doc, {
       theme: 'grid',
       bodyStyles: {
+        font: 'NotoSans',
         halign: 'center',
         fontSize: 6,
       },
@@ -471,6 +527,7 @@ export default {
         ],
       ],
       headStyles: {
+        font: 'NotoSans',
         halign: 'center',
         valign: 'middle',
         fontSize: 6,
@@ -533,10 +590,12 @@ export default {
     autoTable(doc, {
       theme: 'grid',
       bodyStyles: {
+        font: 'NotoSans',
         halign: 'center',
         fontSize: 6,
       },
       headStyles: {
+        font: 'NotoSans',
         halign: 'center',
         valign: 'middle',
         fontSize: 6,
@@ -609,6 +668,7 @@ export default {
     autoTable(doc, {
       theme: 'grid',
       bodyStyles: {
+        font: 'NotoSans',
         halign: 'center',
         fontSize: 6,
       },
@@ -626,6 +686,7 @@ export default {
     autoTable(doc, {
       theme: 'grid',
       bodyStyles: {
+        font: 'NotoSans',
         halign: 'left',
         fontSize: 6,
       },
@@ -658,14 +719,13 @@ export default {
     if (isOnline.value && !isMobile.value) {
       // return doc.save(fileName.concat('.pdf'));
       window.open(doc.output('bloburl'));
+      loading.value = false;
     } else {
-      console.log(doc);
-      var pdfOutput = doc.output();
-      console.log(pdfOutput);
-      this.downloadFile(fileName, 'pdf', pdfOutput);
+      const pdfOutput = doc.output();
+      DownloadFileMobile.downloadFile(fileName, '.pdf', pdfOutput, loading);
     }
   },
-  async downloadExcel(id) {
+  async downloadExcel(id, loading) {
     const clinic = clinicService.currClinic();
     let mmiaReport = {};
     let mmiaData = [];
@@ -712,14 +772,12 @@ export default {
     const footer = this.createFotterTableRow();
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'FGH';
-    workbook.lastModifiedBy = 'FGH';
+    workbook.creator = 'CSAUDE';
+    workbook.lastModifiedBy = 'CSAUDE';
     workbook.created = new Date();
     workbook.modified = new Date();
     workbook.lastPrinted = new Date();
 
-    // Force workbook calculation on load
-    //workbook.calcProperties.fullCalcOnLoad = true;
     const worksheet = workbook.addWorksheet(reportName);
     const imageId = workbook.addImage({
       base64: 'data:image/png;base64,' + MOHIMAGELOG,
@@ -733,7 +791,6 @@ export default {
     const cellProvince = worksheet.getCell('C9');
     const cellPeriodo = worksheet.getCell('I1');
     const cellYear = worksheet.getCell('I8');
-
     // Get Rows
     const headerRow = worksheet.getRow(11);
 
@@ -747,6 +804,7 @@ export default {
     const colG = worksheet.getColumn('G');
     const colH = worksheet.getColumn('H');
     const colI = worksheet.getColumn('I');
+    const colJ = worksheet.getColumn('J');
 
     // Format Table Cells
     // Alignment Format
@@ -799,6 +857,7 @@ export default {
     worksheet.mergeCells('B1:B7');
     worksheet.mergeCells('C1:H7');
     worksheet.mergeCells('I1:I7');
+
     worksheet.mergeCells('A8:H8');
     worksheet.mergeCells('A9:B9');
     worksheet.mergeCells('C9:H9');
@@ -812,13 +871,14 @@ export default {
     // add width size to Columns
     colA.width = 13;
     colB.width = 70;
-    colC.width = 10;
-    colD.width = 9;
-    colE.width = 10;
+    colC.width = 15;
+    colD.width = 15;
+    colE.width = 15;
     colF.width = 9;
     colG.width = 10;
     colH.width = 12;
     colI.width = 13;
+    colJ.width = 14;
 
     // Add Style
     cellTitle.font =
@@ -842,7 +902,7 @@ export default {
     // Cereate Table
     worksheet.addTable({
       name: reportName,
-      ref: 'A10',
+      ref: 'A10', // Inicia na celula A10
       headerRow: true,
       totalsRow: false,
       style: {
@@ -913,10 +973,17 @@ export default {
           totalsRowFunction: 'none',
           filterButton: false,
         },
+        {
+          name: 'Doentes Referidos',
+          totalsRowFunction: 'none',
+          filterButton: false,
+        },
       ],
       rows: regimendata,
     });
+
     worksheet.mergeCells(
+      // Label "Total"
       'A' +
         (Number(worksheet.lastRow.number) + 1) +
         ':B' +
@@ -939,6 +1006,7 @@ export default {
         { name: 'Total', totalsRowLabel: 'Totals:', filterButton: false },
         { name: 'toatl1', totalsRowFunction: 'none', filterButton: false },
         { name: 'total2', totalsRowFunction: 'none', filterButton: false },
+        { name: 'total3', totalsRowFunction: 'none', filterButton: false },
       ],
       rows: miaRegimenTotalData,
     });
@@ -946,7 +1014,7 @@ export default {
     worksheet.mergeCells(
       'A' +
         (Number(worksheet.lastRow.number) + 1) +
-        ':D' +
+        ':E' +
         (Number(worksheet.lastRow.number) + 1)
     );
 
@@ -986,6 +1054,7 @@ export default {
         { name: 'Total', totalsRowLabel: 'Totals:', filterButton: false },
         { name: 'toatl1', totalsRowFunction: 'none', filterButton: false },
         { name: 'total2', totalsRowFunction: 'none', filterButton: false },
+        { name: 'total3', totalsRowFunction: 'none', filterButton: false },
       ],
       rows: miaLinesSumaryData,
     });
@@ -1010,25 +1079,26 @@ export default {
         { name: 'Total', totalsRowLabel: 'Totals:', filterButton: false },
         { name: 'toatl1', totalsRowFunction: 'none', filterButton: false },
         { name: 'total2', totalsRowFunction: 'none', filterButton: false },
+        { name: 'total3', totalsRowFunction: 'none', filterButton: false },
       ],
       rows: miaLinesSumaryTotalData,
     });
 
-    worksheet.mergeCells('E' + RegimenTableRef + ':I' + RegimenTableRef);
+    worksheet.mergeCells('F' + RegimenTableRef + ':I' + RegimenTableRef);
     worksheet.mergeCells(
-      'E' + (RegimenTableRef + 1) + ':H' + (RegimenTableRef + 1)
+      'F' + (RegimenTableRef + 1) + ':H' + (RegimenTableRef + 1)
     );
     worksheet.mergeCells(
-      'E' + (RegimenTableRef + 2) + ':H' + (RegimenTableRef + 2)
+      'F' + (RegimenTableRef + 2) + ':H' + (RegimenTableRef + 2)
     );
     worksheet.mergeCells(
-      'E' + (RegimenTableRef + 3) + ':H' + (RegimenTableRef + 3)
+      'F' + (RegimenTableRef + 3) + ':H' + (RegimenTableRef + 3)
     );
     worksheet.mergeCells(
-      'E' + (RegimenTableRef + 4) + ':H' + (RegimenTableRef + 4)
+      'F' + (RegimenTableRef + 4) + ':H' + (RegimenTableRef + 4)
     );
     worksheet.mergeCells(
-      'E' + (RegimenTableRef + 5) + ':H' + (RegimenTableRef + 5)
+      'F' + (RegimenTableRef + 5) + ':H' + (RegimenTableRef + 5)
     );
 
     const cellTipoDoenteHeader = worksheet.getCell('F' + RegimenTableRef);
@@ -1052,21 +1122,21 @@ export default {
 
     const refFaixaEtaria = RegimenTableRef + 6;
 
-    const cellFaixaEtariaHeader = worksheet.getCell('E' + refFaixaEtaria);
+    const cellFaixaEtariaHeader = worksheet.getCell('F' + refFaixaEtaria);
 
     cellFaixaEtariaHeader.value = 'Faixa Etária dos Pacientes TARV';
-    worksheet.mergeCells('E' + refFaixaEtaria + ':I' + refFaixaEtaria);
+    worksheet.mergeCells('F' + refFaixaEtaria + ':I' + refFaixaEtaria);
     worksheet.mergeCells(
-      'E' + (refFaixaEtaria + 1) + ':H' + (refFaixaEtaria + 1)
+      'F' + (refFaixaEtaria + 1) + ':H' + (refFaixaEtaria + 1)
     );
     worksheet.mergeCells(
-      'E' + (refFaixaEtaria + 2) + ':H' + (refFaixaEtaria + 2)
+      'F' + (refFaixaEtaria + 2) + ':H' + (refFaixaEtaria + 2)
     );
     worksheet.mergeCells(
-      'E' + (refFaixaEtaria + 3) + ':H' + (refFaixaEtaria + 3)
+      'F' + (refFaixaEtaria + 3) + ':H' + (refFaixaEtaria + 3)
     );
     worksheet.mergeCells(
-      'E' + (refFaixaEtaria + 4) + ':H' + (refFaixaEtaria + 4)
+      'F' + (refFaixaEtaria + 4) + ':H' + (refFaixaEtaria + 4)
     );
 
     worksheet.addTable({
@@ -1085,20 +1155,20 @@ export default {
     });
 
     const refProfilaxia = refFaixaEtaria + 5;
-    const cellProfilaxiaHeader = worksheet.getCell('E' + refProfilaxia);
+    const cellProfilaxiaHeader = worksheet.getCell('F' + refProfilaxia);
     cellFaixaEtariaHeader.value = 'Faixa Etária dos Pacientes TARV';
-    worksheet.mergeCells('E' + refProfilaxia + ':I' + refProfilaxia);
+    worksheet.mergeCells('F' + refProfilaxia + ':I' + refProfilaxia);
     worksheet.mergeCells(
-      'E' + (refProfilaxia + 1) + ':H' + (refProfilaxia + 1)
+      'F' + (refProfilaxia + 1) + ':H' + (refProfilaxia + 1)
     );
     worksheet.mergeCells(
-      'E' + (refProfilaxia + 2) + ':H' + (refProfilaxia + 2)
+      'F' + (refProfilaxia + 2) + ':H' + (refProfilaxia + 2)
     );
     worksheet.mergeCells(
-      'E' + (refProfilaxia + 3) + ':H' + (refProfilaxia + 3)
+      'F' + (refProfilaxia + 3) + ':H' + (refProfilaxia + 3)
     );
     worksheet.mergeCells(
-      'E' + (refProfilaxia + 4) + ':H' + (refProfilaxia + 4)
+      'F' + (refProfilaxia + 4) + ':H' + (refProfilaxia + 4)
     );
 
     cellProfilaxiaHeader.value = 'Profilaxia';
@@ -1118,7 +1188,7 @@ export default {
       rows: miaProfilaxiaData,
     });
 
-    const refDispenseType = refProfilaxia + 5;
+    const refDispenseType = refProfilaxia + 6;
     const cellDispenseTypeHeader = worksheet.getCell('E' + refDispenseType);
     cellDispenseTypeHeader.value = 'Tipo de Dispensa';
     worksheet.mergeCells('E' + refDispenseType + ':I' + refDispenseType);
@@ -1370,72 +1440,10 @@ export default {
 
     if (isOnline.value && !isMobile.value) {
       saveAs(blob, fileName + fileExtension);
+      loading.value = false;
     } else {
       const titleFile = 'Mmia.xlsx';
-      saveBlob2File(titleFile, blob);
-      function saveBlob2File(fileName, blob) {
-        const folder = cordova.file.externalRootDirectory + 'Download';
-        //  var folder = 'Download'
-        window.resolveLocalFileSystemURL(
-          folder,
-          function (dirEntry) {
-            createFile(dirEntry, fileName, blob);
-            // $q.loading.hide()
-          },
-          onErrorLoadFs
-        );
-      }
-      function createFile(dirEntry, fileName, blob) {
-        // Creates a new file
-        dirEntry.getFile(
-          fileName,
-          { create: true, exclusive: false },
-          function (fileEntry) {
-            writeFile(fileEntry, blob);
-          },
-          onErrorCreateFile
-        );
-      }
-
-      function writeFile(fileEntry, dataObj) {
-        // Create a FileWriter object for our FileEntry
-        fileEntry.createWriter(function (fileWriter) {
-          fileWriter.onwriteend = function () {
-            console.log('Successful file write...');
-            openFile();
-          };
-
-          fileWriter.onerror = function (error) {
-            console.log('Failed file write: ' + error);
-          };
-          fileWriter.write(dataObj);
-        });
-      }
-      function onErrorLoadFs(error) {
-        console.log(error);
-      }
-
-      function onErrorCreateFile(error) {
-        console.log('errorr: ' + error.toString());
-      }
-      function openFile() {
-        const strTitle = titleFile;
-        console.log('file system 44444: ' + strTitle);
-        const folder =
-          cordova.file.externalRootDirectory + 'Download/' + strTitle;
-        console.log('file system 2222: ' + folder);
-        const documentURL = decodeURIComponent(folder);
-        cordova.plugins.fileOpener2.open(
-          documentURL,
-          'application/vnd.ms-excel',
-          {
-            error: function (e) {
-              console.log('file system open3333366: ' + e + documentURL);
-            },
-            success: function () {},
-          }
-        );
-      }
+      DownloadFileMobile.downloadFile(titleFile, '.xlsx', blob, loading);
     }
   },
 
@@ -1446,18 +1454,27 @@ export default {
       const createRow = [];
       createRow.push(rows[row].fnmCode);
       createRow.push(rows[row].drugName);
-      createRow.push(rows[row].unit + ' comp');
-      createRow.push(
-        rows[row].inventory -
-          rows[row].initialEntrance +
-          rows[row].outcomes -
-          rows[row].lossesAdjustments
-      );
+      createRow.push(rows[row].unit);
+      if (isOnline.value) {
+        createRow.push(
+          rows[row].inventory -
+            rows[row].initialEntrance +
+            rows[row].outcomes -
+            rows[row].lossesAdjustments
+        );
+      } else {
+        createRow.push(rows[row].balance);
+      }
+
       createRow.push(rows[row].initialEntrance);
       createRow.push(rows[row].outcomes);
       createRow.push(rows[row].lossesAdjustments);
       createRow.push(rows[row].inventory);
-      createRow.push(moment(rows[row].expireDate).format('DD-MM-YYYY'));
+      if (isOnline.value) {
+        createRow.push(moment(rows[row].expireDate).format('DD-MM-YYYY'));
+      } else {
+        createRow.push(rows[row].expireDate);
+      }
 
       data.push(createRow);
     }
@@ -1473,6 +1490,7 @@ export default {
       createRow.push(rows[row].regimen);
       createRow.push(rows[row].totalPatients);
       createRow.push(rows[row].cumunitaryClinic);
+      createRow.push(rows[row].totalReferidos);
 
       data.push(createRow);
     }
@@ -1487,24 +1505,34 @@ export default {
     const createRow3 = [];
     const createRow4 = [];
     const createRow5 = [];
-
-    createRow1.push('Novos');
-    createRow1.push(rows.totalPacientesInicio);
-    createRow2.push('Manutenção');
-    createRow2.push(rows.totalPacientesManter);
-    createRow3.push('Alteração');
-    createRow3.push(rows.totalPacientesAlterar);
-    createRow4.push('Trânsito');
-    createRow4.push(rows.totalPacientesTransito);
-    createRow5.push('Transferências');
-    createRow5.push(rows.totalPacientesTransferidoDe);
-
+    if (isOnline.value && !isMobile.value) {
+      createRow1.push('Novos');
+      createRow1.push(rows.totalPacientesInicio);
+      createRow2.push('Manutenção');
+      createRow2.push(rows.totalPacientesManter);
+      createRow3.push('Alteração');
+      createRow3.push(rows.totalPacientesAlterar);
+      createRow4.push('Trânsito');
+      createRow4.push(rows.totalPacientesTransito);
+      createRow5.push('Transferências');
+      createRow5.push(rows.totalPacientesTransferidoDe);
+    } else {
+      createRow1.push('Novos');
+      createRow1.push(rows[0].totalPacientesInicio);
+      createRow2.push('Manutenção');
+      createRow2.push(rows[0].totalPacientesManter);
+      createRow3.push('Alteração');
+      createRow3.push(rows[0].totalPacientesAlterar);
+      createRow4.push('Trânsito');
+      createRow4.push(rows[0].totalPacientesTransito);
+      createRow5.push('Transferências');
+      createRow5.push(rows[0].totalPacientesTransferidoDe);
+    }
     data.push(createRow1);
     data.push(createRow2);
     data.push(createRow3);
     data.push(createRow4);
     data.push(createRow5);
-
     return data;
   },
   createMmiaFaixaEtariaArrayRow(rows) {
@@ -1514,16 +1542,21 @@ export default {
     const createRow2 = [];
     const createRow3 = [];
     const createRow4 = [];
-
     createRow1.push('Adultos');
-    createRow1.push(rows.totalPacientesAdulto);
     createRow2.push('Pediátricos 0 aos 4');
-    createRow2.push(rows.totalPacientes04);
     createRow3.push('Pediátricos 5 aos 9');
-    createRow3.push(rows.totalPacientes59);
     createRow4.push('Pediátricos 10 aos 14');
-    createRow4.push(rows.totalPacientes1014);
-
+    if (isOnline.value && !isMobile.value) {
+      createRow1.push(rows.totalPacientesAdulto);
+      createRow2.push(rows.totalPacientes04);
+      createRow3.push(rows.totalPacientes59);
+      createRow4.push(rows.totalPacientes1014);
+    } else {
+      createRow1.push(rows[0].totalPacientesAdulto);
+      createRow2.push(rows[0].totalPacientes04);
+      createRow3.push(rows[0].totalPacientes59);
+      createRow4.push(rows[0].totalPacientes1014);
+    }
     data.push(createRow1);
     data.push(createRow2);
     data.push(createRow3);
@@ -1540,13 +1573,20 @@ export default {
     const createRow4 = [];
 
     createRow1.push('PPE');
-    createRow1.push(rows.totalPacientesPPE);
     createRow2.push('PrEP');
-    createRow2.push(rows.totalPacientesPREP);
     createRow3.push('Crianças Expostas');
-    createRow3.push(rows.totalpacientesCE);
     createRow4.push('Total de pacientes em TARV na US');
     createRow4.push('Ver Resumo Mensal');
+
+    if (isOnline.value && !isMobile.value) {
+      createRow1.push(rows.totalPacientesPPE);
+      createRow2.push(rows.totalPacientesPREP);
+      createRow3.push(rows.totalpacientesCE);
+    } else {
+      createRow1.push(rows[0].totalPacientesPPE);
+      createRow2.push(rows[0].totalPacientesPREP);
+      createRow3.push(rows[0].totalpacientesCE);
+    }
 
     data.push(createRow1);
     data.push(createRow2);
@@ -1559,10 +1599,12 @@ export default {
     const data = [];
     let totalPatients = 0;
     let cumunitaryClinic = 0;
+    let totalReferidos = 0;
 
     for (const row in rows) {
       totalPatients += rows[row].totalPatients;
       cumunitaryClinic += rows[row].cumunitaryClinic;
+      totalReferidos += rows[row].totalReferidos;
     }
     const createRow = [];
     if (fileType == 'PDF') {
@@ -1573,13 +1615,9 @@ export default {
     } else {
       createRow.push('Total');
     }
-    createRow.push(
-      totalPatients -
-        generalRows.totalPacientesPPE -
-        generalRows.totalPacientesPREP -
-        generalRows.totalpacientesCE
-    );
+    createRow.push(totalPatients);
     createRow.push(cumunitaryClinic);
+    createRow.push(totalReferidos);
 
     data.push(createRow);
 
@@ -1593,14 +1631,20 @@ export default {
     let totallinha1DC = 0;
     let totallinha2DC = 0;
     let totallinha3DC = 0;
+    let totallinha1Ref = 0;
+    let totallinha2Ref = 0;
+    let totallinha3Ref = 0;
 
     for (const row in rows) {
       totallinha1Nr += rows[row].totalline1;
       totallinha1DC += rows[row].totaldcline1;
+      totallinha1Ref += rows[row].totalrefline1;
       totallinha2Nr += rows[row].totalline2;
       totallinha2DC += rows[row].totaldcline2;
+      totallinha2Ref += rows[row].totalrefline2;
       totallinha3Nr += rows[row].totalline3;
       totallinha3DC += rows[row].totaldcline3;
+      totallinha3Ref += rows[row].totalrefline3;
     }
     const createRow1 = [];
     const createRow2 = [];
@@ -1616,23 +1660,35 @@ export default {
     }
     createRow1.push(totallinha1Nr);
     createRow1.push(totallinha1DC);
+    createRow1.push(totallinha1Ref);
 
     if (fileType == 'PDF') {
       createRow2.push({
-        // colSpan: 1,
         content: '2as Linhas',
         styles: { halign: 'right' },
       });
     } else {
       createRow2.push('2as Linhas');
     }
-    createRow2.push(
-      totallinha2Nr -
-        generalRows.totalPacientesPPE -
-        generalRows.totalPacientesPREP -
-        generalRows.totalpacientesCE
-    );
-    createRow2.push(totallinha2DC);
+    console.log(fileType);
+    if (fileType == 'PDF') {
+      createRow2.push({
+        content: totallinha2Nr,
+        styles: { cellWidth: 15.1 },
+      });
+      createRow2.push({
+        content: totallinha2DC,
+        styles: { cellWidth: 18 },
+      });
+      createRow2.push({
+        content: totallinha2Ref,
+        styles: { cellWidth: 21.2 },
+      });
+    } else {
+      createRow2.push(totallinha2Nr);
+      createRow2.push(totallinha2DC);
+      createRow2.push(totallinha2Ref);
+    }
 
     if (fileType == 'PDF') {
       createRow3.push({
@@ -1645,6 +1701,7 @@ export default {
     }
     createRow3.push(totallinha3Nr);
     createRow3.push(totallinha3DC);
+    createRow3.push(totallinha3Ref);
 
     data.push(createRow1);
     data.push(createRow2);
@@ -1656,6 +1713,7 @@ export default {
     const data = [];
     let totallinhaNr = 0;
     let totallinhaDC = 0;
+    let totallinhaRefidos = 0;
 
     for (const row in rows) {
       totallinhaNr +=
@@ -1664,6 +1722,10 @@ export default {
         rows[row].totaldcline1 +
         rows[row].totaldcline2 +
         rows[row].totaldcline3;
+      totallinhaRefidos +=
+        rows[row].totalrefline1 +
+        rows[row].totalrefline2 +
+        rows[row].totalrefline3;
     }
     const createRow1 = [];
     if (fileType == 'PDF') {
@@ -1675,13 +1737,10 @@ export default {
     } else {
       createRow1.push('Total');
     }
-    createRow1.push(
-      totallinhaNr -
-        generalRows.totalPacientesPPE -
-        generalRows.totalPacientesPREP -
-        generalRows.totalpacientesCE
-    );
+
+    createRow1.push(totallinhaNr);
     createRow1.push(totallinhaDC);
+    createRow1.push(totallinhaRefidos);
 
     data.push(createRow1);
 
@@ -1697,23 +1756,39 @@ export default {
     const createRow6 = [];
     const createRow7 = [];
     const createRow8 = [];
-
     createRow2.push('Mês-5');
-    createRow2.push(rows.dsM5);
     createRow3.push('Mês-4');
-    createRow3.push(rows.dsM4);
     createRow4.push('Mês-3');
-    createRow4.push(rows.dsM3);
     createRow5.push('Mês-2');
-    createRow5.push(rows.dsM2);
     createRow6.push('Mês-1');
-    createRow6.push(rows.dsM1);
     createRow7.push('No Mês');
-    createRow7.push(rows.dsM0);
     createRow8.push('Total');
-    createRow8.push(
-      rows.dsM5 + rows.dsM4 + rows.dsM3 + rows.dsM2 + rows.dsM1 + rows.dsM0
-    );
+    if (isOnline.value && !isMobile.value) {
+      createRow2.push(rows.dsM5);
+      createRow3.push(rows.dsM4);
+      createRow4.push(rows.dsM3);
+      createRow5.push(rows.dsM2);
+      createRow6.push(rows.dsM1);
+      createRow7.push(rows.dsM0);
+      createRow8.push(
+        rows.dsM5 + rows.dsM4 + rows.dsM3 + rows.dsM2 + rows.dsM1 + rows.dsM0
+      );
+    } else {
+      createRow2.push(rows[0].dsM5);
+      createRow3.push(rows[0].dsM4);
+      createRow4.push(rows[0].dsM3);
+      createRow5.push(rows[0].dsM2);
+      createRow6.push(rows[0].dsM1);
+      createRow7.push(rows[0].dsM0);
+      createRow8.push(
+        rows[0].dsM5 +
+          rows[0].dsM4 +
+          rows[0].dsM3 +
+          rows[0].dsM2 +
+          rows[0].dsM1 +
+          rows[0].dsM0
+      );
+    }
 
     data.push(createRow2);
     data.push(createRow3);
@@ -1732,11 +1807,17 @@ export default {
     const createRow6 = [];
     const createRow7 = [];
     const createRow8 = [];
-
-    createRow5.push(rows.dtM2);
-    createRow6.push(rows.dtM1);
-    createRow7.push(rows.dtM0);
-    createRow8.push(rows.dtM2 + rows.dtM1 + rows.dtM0);
+    if (isOnline.value && !isMobile.value) {
+      createRow5.push(rows.dtM2);
+      createRow6.push(rows.dtM1);
+      createRow7.push(rows.dtM0);
+      createRow8.push(rows.dtM2 + rows.dtM1 + rows.dtM0);
+    } else {
+      createRow5.push(rows[0].dtM2);
+      createRow6.push(rows[0].dtM1);
+      createRow7.push(rows[0].dtM0);
+      createRow8.push(rows[0].dtM2 + rows[0].dtM1 + rows[0].dtM0);
+    }
 
     data.push(createRow5);
     data.push(createRow6);
@@ -1750,10 +1831,15 @@ export default {
     const createRow6 = [];
     const createRow7 = [];
     const createRow8 = [];
-
-    createRow6.push(rows.dbM1);
-    createRow7.push(rows.dbM0);
-    createRow8.push(rows.dbM1 + rows.dbM0);
+    if (isOnline.value && !isMobile.value) {
+      createRow6.push(rows.dbM1);
+      createRow7.push(rows.dbM0);
+      createRow8.push(rows.dbM1 + rows.dbM0);
+    } else {
+      createRow6.push(rows[0].dbM1);
+      createRow7.push(rows[0].dbM0);
+      createRow8.push(rows[0].dbM1 + rows[0].dbM0);
+    }
 
     data.push(createRow6);
     data.push(createRow7);
@@ -1765,25 +1851,45 @@ export default {
     const data = [];
 
     const createRow5 = [];
-    const createRow8 = [];
 
-    createRow5.push(rows.dM);
-    createRow5.push(rows.dM + rows.dsM0 + rows.dtM0 + rows.dbM0);
-    createRow8.push(rows.dM);
-    createRow8.push(
-      rows.dM +
-        rows.dtM2 +
-        rows.dtM1 +
-        rows.dtM0 +
-        rows.dbM0 +
-        rows.dbM1 +
-        rows.dsM5 +
-        rows.dsM4 +
-        rows.dsM3 +
-        rows.dsM2 +
-        rows.dsM1 +
-        rows.dsM0
-    );
+    const createRow8 = [];
+    if (isOnline.value && !isMobile.value) {
+      createRow5.push(rows.dM);
+      createRow5.push(rows.dM + rows.dsM0 + rows.dtM0 + rows.dbM0);
+      createRow8.push(rows.dM);
+      createRow8.push(
+        rows.dM +
+          rows.dtM2 +
+          rows.dtM1 +
+          rows.dtM0 +
+          rows.dbM0 +
+          rows.dbM1 +
+          rows.dsM5 +
+          rows.dsM4 +
+          rows.dsM3 +
+          rows.dsM2 +
+          rows.dsM1 +
+          rows.dsM0
+      );
+    } else {
+      createRow5.push(rows[0].dM);
+      createRow5.push(rows[0].dM + rows[0].dsM0 + rows[0].dtM0 + rows[0].dbM0);
+      createRow8.push(rows[0].dM);
+      createRow8.push(
+        rows[0].dM +
+          rows[0].dtM2 +
+          rows[0].dtM1 +
+          rows[0].dtM0 +
+          rows[0].dbM0 +
+          rows[0].dbM1 +
+          rows[0].dsM5 +
+          rows[0].dsM4 +
+          rows[0].dsM3 +
+          rows[0].dsM2 +
+          rows[0].dsM1 +
+          rows[0].dsM0
+      );
+    }
 
     data.push(createRow5);
     data.push(createRow8);
@@ -1796,24 +1902,45 @@ export default {
     const createRow1 = [];
 
     createRow1.push('Ajuste');
-    createRow1.push(
-      Math.round(
-        ((rows.dM +
-          rows.dtM2 +
-          rows.dtM1 +
-          rows.dtM0 +
-          rows.dbM0 +
-          rows.dbM1 +
-          rows.dsM5 +
-          rows.dsM4 +
-          rows.dsM3 +
-          rows.dsM2 +
-          rows.dsM1 +
-          rows.dsM0) /
-          (rows.dM + rows.dsM0 + rows.dtM0 + rows.dbM0)) *
-          100
-      ) + '%'
-    );
+    if (isOnline.value && !isMobile.value) {
+      createRow1.push(
+        Math.round(
+          ((rows.dM +
+            rows.dtM2 +
+            rows.dtM1 +
+            rows.dtM0 +
+            rows.dbM0 +
+            rows.dbM1 +
+            rows.dsM5 +
+            rows.dsM4 +
+            rows.dsM3 +
+            rows.dsM2 +
+            rows.dsM1 +
+            rows.dsM0) /
+            (rows.dM + rows.dsM0 + rows.dtM0 + rows.dbM0)) *
+            100
+        ) + '%'
+      );
+    } else {
+      createRow1.push(
+        Math.round(
+          ((rows[0].dM +
+            rows[0].dtM2 +
+            rows[0].dtM1 +
+            rows[0].dtM0 +
+            rows[0].dbM0 +
+            rows[0].dbM1 +
+            rows[0].dsM5 +
+            rows[0].dsM4 +
+            rows[0].dsM3 +
+            rows[0].dsM2 +
+            rows[0].dsM1 +
+            rows[0].dsM0) /
+            (rows[0].dM + rows[0].dsM0 + rows[0].dtM0 + rows[0].dbM0)) *
+            100
+        ) + '%'
+      );
+    }
 
     data.push(createRow1);
 
@@ -1836,70 +1963,5 @@ export default {
   },
   getFormatDDMMYYYY(date) {
     return moment(date).format('DD-MM-YYYY');
-  },
-
-  downloadFile(fileName, fileType, blop) {
-    var titleFile = fileName + fileType;
-    console.log('result' + titleFile);
-    saveBlob2File(titleFile, blop);
-    function saveBlob2File(fileName, blob) {
-      var folder = cordova.file.externalRootDirectory + 'Download';
-      //  var folder = 'Download'
-      window.resolveLocalFileSystemURL(
-        folder,
-        function (dirEntry) {
-          createFile(dirEntry, fileName, blob);
-          // $q.loading.hide()
-        },
-        onErrorLoadFs
-      );
-    }
-    function createFile(dirEntry, fileName, blob) {
-      // Creates a new file
-      dirEntry.getFile(
-        fileName,
-        { create: true, exclusive: false },
-        function (fileEntry) {
-          writeFile(fileEntry, blob);
-        },
-        onErrorCreateFile
-      );
-    }
-
-    function writeFile(fileEntry, dataObj) {
-      // Create a FileWriter object for our FileEntry
-      fileEntry.createWriter(function (fileWriter) {
-        fileWriter.onwriteend = function () {
-          console.log('Successful file write...');
-          openFile();
-        };
-
-        fileWriter.onerror = function (error) {
-          console.log('Failed file write: ' + error);
-        };
-        fileWriter.write(dataObj);
-      });
-    }
-    function onErrorLoadFs(error) {
-      console.log(error);
-    }
-
-    function onErrorCreateFile(error) {
-      console.log('errorr: ' + error.toString());
-    }
-    function openFile() {
-      var strTitle = titleFile;
-      console.log('file system 44444: ' + strTitle);
-      var folder = cordova.file.externalRootDirectory + 'Download/' + strTitle;
-      console.log('file system 2222: ' + folder);
-      var documentURL = decodeURIComponent(folder);
-      cordova.plugins.fileOpener2.open(documentURL, 'application/pdf', {
-        error: function (e) {
-          console.log('file system open3333366: ' + e + documentURL);
-        },
-        success: function () {},
-      });
-    }
-    // }
   },
 };

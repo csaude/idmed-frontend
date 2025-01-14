@@ -22,12 +22,17 @@
                 style="font-family: 'Gill Sans'; font-size: 25px"
                 >{{
                   currClinic !== null
-                    ? currClinic.clinicName
+                    ? currClinic.parentClinic_id !== undefined &&
+                      currClinic.parentClinic_id !== null
+                      ? currClinic.parentClinic.clinicName +
+                        ' - ' +
+                        currClinic.clinicName
+                      : currClinic.clinicName
                     : currProvince !== null
                     ? 'Provincia - ' + currProvince.description
                     : ''
-                }}</q-item-label
-              >
+                }}
+              </q-item-label>
             </q-item-section>
           </q-toolbar-title>
           <q-tabs
@@ -56,7 +61,9 @@
               label="Pacientes/Utentes"
             />
             <q-route-tab
-              v-if="menusVisible('Grupos') && !isProvincialInstalation()"
+              v-if="
+                menusVisible('Grupos') && !isProvincialInstalation() && isOnline
+              "
               exact
               :to="'/group/search'"
               name="groups"
@@ -64,13 +71,27 @@
               label="Grupos"
             />
             <q-route-tab
-              v-if="menusVisible('Stock') && !isProvincialInstalation()"
+              v-if="
+                menusVisible('Stock') &&
+                (!isProvincialInstalation() ||
+                  isProvincialInstalationPharmacysMode() ||
+                  isProvincialInstalationMobileClinic)
+              "
               exact
               :to="'/stock'"
               name="stock"
               icon="shopping_cart"
               label="Stock"
-            />
+            >
+              <q-badge
+                color="red"
+                floating
+                transparent
+                v-if="stockDistributionCount > 0"
+              >
+                {{ stockDistributionCount }}
+              </q-badge>
+            </q-route-tab>
             <q-route-tab
               v-if="menusVisible('Dashboard')"
               exact
@@ -109,7 +130,11 @@
               label="Migração"
             />
             <q-route-tab
-              v-if="menusVisible('DCProvedor') && !isProvincialInstalation()"
+              v-if="
+                menusVisible('DCProvedor') &&
+                !isProvincialInstalation() &&
+                website
+              "
               exact
               :to="'/loadfiledc'"
               name="migration"
@@ -150,6 +175,14 @@
                   >Sincronizar</q-item-section
                 >
               </q-item>
+              <q-item clickable v-if="mobile">
+                <q-item-section avatar clickable @click="sync()">
+                  <q-avatar icon="delete"> </q-avatar>
+                </q-item-section>
+                <q-item-section clickable @click="wipeDataMobile()"
+                  >Limpar Dados</q-item-section
+                >
+              </q-item>
               <q-separator spaced />
               <q-item clickable v-close-popup @click="onItemClick" to="/Logout">
                 <q-item-section avatar>
@@ -165,26 +198,52 @@
         </q-toolbar>
       </q-header>
     </div>
+
+    <q-dialog persistent v-model="showLoginScreen">
+      <loginDialog @close="showLoginScreen = false" />
+    </q-dialog>
     <q-page-container>
       <router-view v-slot="{ Component }">
         <component :is="Component" />
       </router-view>
     </q-page-container>
+    <q-footer
+      class="text-right text-caption text-italic"
+      style="font-family: 'Gill Sans'"
+    >
+      <span class="gt-sm inline">iDMED v{{ version }}</span>
+    </q-footer>
   </q-layout>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, onBeforeUnmount } from 'vue';
+import {
+  computed,
+  onMounted,
+  ref,
+  onBeforeUnmount,
+  provide,
+  onBeforeMount,
+} from 'vue';
+import { version } from '../../package.json';
 import systemConfigsService from 'src/services/api/systemConfigs/systemConfigsService';
 import clinicService from 'src/services/api/clinicService/clinicService';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { sendData } from 'src/services/SendInfo';
+import { sendData } from 'src/services/Mobile/SendInfo';
 import useNotify from 'src/composables/shared/notify/UseNotify';
 import provinceService from 'src/services/api/provinceService/provinceService';
 import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
-
+import DrugDistributorService from 'src/services/api/drugDistributorService/DrugDistributorService';
+import { useOffline } from 'src/composables/shared/loadParamsToOffline/offline';
+import { wipeData } from 'src/services/Mobile/WipeData';
+import UsersService from 'src/services/UsersService';
+import loginDialog from 'src/components/Shared/LoginDialog.vue';
 const { website } = useSystemUtils();
-const { isProvincialInstalation } = useSystemConfig();
+const {
+  isProvincialInstalation,
+  isProvincialInstalationPharmacysMode,
+  isProvincialInstalationMobileClinic,
+} = useSystemConfig();
 const userInfoOpen = ref(false);
 const onMainClick = ref('');
 const onItemClick = ref('');
@@ -195,8 +254,16 @@ const mobile = ref(false);
 const { notifyError } = useNotify();
 const { isOnline } = useSystemUtils();
 const { getPatientsToSend, getGroupsToSend } = sendData();
+const { getPatientsVisitToWipe } = wipeData();
+const {
+  loadPatientDataToOffline,
+  loadSettingParamsToOffline,
+  loadSettingParamsInOfflineMode,
+} = useOffline();
+const stockDistributionCount = ref(0);
 
 const logoutTimer = ref(null);
+const showLoginScreen = ref(false);
 
 // Função para fazer o logout
 const logout = () => {
@@ -227,13 +294,14 @@ const warningMessage = () => {
 };
 
 const setTimer = () => {
-  logoutTimer.value = setTimeout(warningMessage, 1200 * 1000); // 20 min
+  logoutTimer.value = setTimeout(warningMessage, 1200 * 10000); // 20 min
 };
 
-onMounted(() => {
+onMounted(async () => {
   if (website.value || isOnline.value) {
     mobile.value = false;
-    systemConfigsService.apiGetAll();
+    await systemConfigsService.apiGetAll();
+    await clinicService.apiWebGetAll();
   } else {
     mobile.value = true;
   }
@@ -273,6 +341,11 @@ const migrationConfig = computed(() => {
 const currClinic = computed(() => {
   return clinicService.currClinic();
 });
+/*
+const stockDistributionCount = computed(() => {
+  return localStorage.getItem('stockDistributionCount');
+});
+*/
 
 const currProvince = computed(() => {
   const instalationType = systemConfigsService.getInstallationType();
@@ -293,7 +366,36 @@ const menusVisible = (name) => {
 };
 
 const sync = async () => {
-  getGroupsToSend();
-  getPatientsToSend();
+  UsersService.refreshToken()
+    .then((resp) => {
+      if (resp.data.refresh_token === undefined) {
+        showLoginScreen.value = true;
+      } else {
+        getPatientsToSend();
+        // getStockDistributionCount();
+      }
+    })
+    .catch((error) => {
+      showLoginScreen.value = true;
+      console.log(error);
+    });
 };
+const getStockDistributionCount = () => {
+  DrugDistributorService.getDistributionsByStatus(
+    currClinic.value.id,
+    'P'
+  ).then((list) => {
+    stockDistributionCount.value = list.length;
+    localStorage.setItem(
+      'stockDistributionCount',
+      stockDistributionCount.value
+    );
+  });
+};
+const wipeDataMobile = async () => {
+  getPatientsVisitToWipe();
+};
+provide('stockDistributionCount', stockDistributionCount);
+provide('showLoginScreen', showLoginScreen);
+// provide('getStockDistributionCount', getStockDistributionCount);
 </script>

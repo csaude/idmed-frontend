@@ -4,9 +4,10 @@ import Duration from 'src/stores/models/duration/Duration';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 
 const duration = useRepo(Duration);
+const durationDexie = db[Duration.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -36,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -52,21 +53,18 @@ export default {
       console.log(error);
     }
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('duration?offset=' + offset + '&max=100')
         .then((resp) => {
           duration.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -92,23 +90,29 @@ export default {
     }
   },
   // Mobile
-  putMobile(params: string) {
-    return nSQL(Duration.entity)
-      .query('upsert', params)
-      .exec()
+  addMobile(params: string) {
+    return durationDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         duration.save(JSON.parse(params));
-        // alertSucess('O Registo foi efectuado com sucesso');
       })
       .catch((error: any) => {
-        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  putMobile(params: string) {
+    return durationDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        duration.save(JSON.parse(params));
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },
   getMobile() {
-    return nSQL(Duration.entity)
-      .query('select')
-      .exec()
+    return durationDexie
+      .toArray()
       .then((rows: any) => {
         duration.save(rows);
       })
@@ -118,16 +122,22 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(Duration.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return durationDexie
+      .delete(paramsId)
       .then(() => {
         duration.destroy(paramsId);
-        alertSucess('O Registo foi removido com sucesso');
       })
       .catch((error: any) => {
-        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  addBulkMobile(params: any) {
+    return durationDexie
+      .bulkPut(params)
+      .then(() => {
+        duration.save(params);
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },
@@ -152,5 +162,10 @@ export default {
 
   getDurationById(id: any) {
     return duration.where('id', id).first();
+  },
+
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await durationDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

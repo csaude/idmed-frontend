@@ -1,6 +1,10 @@
 import api from '../../api/apiService/apiService';
-import { nSQL } from 'nano-sql';
+import clinicalServiceService from 'src/services/api/clinicalServiceService/clinicalServiceService';
 import ClinicalService from 'src/stores/models/ClinicalService/ClinicalService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
+
+const clinicalServiceDexie = db[ClinicalService.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -8,7 +12,7 @@ export default {
       return await api()
         .get('clinicalService?offset=' + offset + '&max=100')
         .then((resp) => {
-          nSQL(ClinicalService.entity).query('upsert', resp.data).exec();
+          clinicalServiceService.addBulkMobile(resp.data);
           console.log('Data synced from backend: ClinicalService');
           offset = offset + 100;
           if (resp.data.length > 0) {
@@ -20,5 +24,18 @@ export default {
           console.log(error);
         });
     }
+  },
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania ClinicalService');
+    (await SynchronizationService.hasData(clinicalServiceDexie))
+      ? await clinicalServiceService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie ClinicalService');
+    const getAllClinicalService =
+      clinicalServiceService.getAllClinicalServices();
+    await clinicalServiceDexie.bulkPut(getAllClinicalService);
   },
 };

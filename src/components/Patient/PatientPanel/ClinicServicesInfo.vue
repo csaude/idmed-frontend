@@ -1,7 +1,12 @@
 <template>
   <div>
     <ListHeader
-      :addVisible="!isProvincialInstalation()"
+      :addVisible="
+        (isProvincialInstalation() &&
+          isProvincialInstalationMobileClinic() &&
+          !isProvincialInstalationPharmacysMode()) ||
+        isLocalInstalation()
+      "
       :mainContainer="true"
       bgColor="bg-primary"
       :addButtonActions="addClinicService"
@@ -15,7 +20,6 @@
           v-for="identifier in patient.identifiers"
           :key="identifier.id"
           :identifierId="identifier.id"
-          :serviceId="identifier.service.id"
         />
       </span>
     </div>
@@ -28,7 +32,7 @@
 <script setup>
 import AddClinicService from 'components/Patient/PatientPanel/AddClinicService.vue';
 import PatientServiceIdentifier from 'src/stores/models/patientServiceIdentifier/PatientServiceIdentifier';
-import { provide, inject, ref, computed } from 'vue';
+import { provide, inject, ref, computed, onMounted } from 'vue';
 import ListHeader from 'components/Shared/ListHeader.vue';
 import EmptyList from 'components/Shared/ListEmpty.vue';
 // import AddEditEpisode from 'components/Patient/PatientPanel/AddEditEpisode.vue';
@@ -40,7 +44,13 @@ import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
 
 // Declaration
 const { preferedIdentifier } = usePatient();
-const { isProvincialInstalation } = useSystemConfig();
+const {
+  isProvincialInstalation,
+  isProvincialInstalationPharmacysMode,
+  isProvincialInstalationMobileClinic,
+  isPharmacyDDDOrAPEOrDCP,
+  isLocalInstalation,
+} = useSystemConfig();
 const { canBeEdited } = usePatientServiceIdentifier();
 const emptyList = ref(false);
 const selectedIdentifier = ref(new PatientServiceIdentifier());
@@ -71,6 +81,20 @@ const currIdentifier = computed(() => {
   } else {
     return [];
   }
+});
+
+//Hook
+onMounted(() => {
+  // console.log(isProvincialInstalation());
+  // console.log(isProvincialInstalationMobileClinic());
+  /*
+  console.log(isProvincialInstalation());
+  console.log(isProvincialInstalationPharmacysMode());
+  console.log(isProvincialInstalationMobileClinic());
+  console.log(
+    !isProvincialInstalation() || !isProvincialInstalationPharmacysMode()
+  );
+  */
 });
 
 //Method

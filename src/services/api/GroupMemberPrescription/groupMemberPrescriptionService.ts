@@ -5,11 +5,13 @@ import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { nSQL } from 'nano-sql';
 import { useGroupMemberPrescription } from 'src/composables/group/groupMemberPrescriptionMethods';
+import db from 'src/stores/dexie';
 
 const { isOnline, isMobile } = useSystemUtils();
 
 const { alertSucess, alertError, alertInfo } = useSwal();
 const groupMemberPrescription = useRepo(GroupMemberPrescription);
+const groupMemberPrescriptionDexie = db[GroupMemberPrescription.entity];
 
 export default {
   // Axios API call
@@ -129,5 +131,8 @@ export default {
         groupMemberPrescriptions
       );
     return groupMemberPrescriptionObj;
+  },
+  deleteAllFromDexie() {
+    groupMemberPrescriptionDexie.clear();
   },
 };

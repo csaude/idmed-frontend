@@ -3,9 +3,11 @@ import api from '../apiService/apiService';
 import PrescribedDrug from 'src/stores/models/prescriptionDrug/PrescribedDrug';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
+import drugService from '../drugService/drugService';
 
 const prescribedDrug = useRepo(PrescribedDrug);
+const prescribedDrugDexie = db[PrescribedDrug.entity];
 
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -13,7 +15,7 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      return this.putMobile(params);
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
@@ -34,7 +36,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -55,7 +57,7 @@ export default {
           prescribedDrug.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -78,18 +80,23 @@ export default {
       });
   },
   // Mobile
+  addMobile(params: string) {
+    return prescribedDrugDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        prescribedDrug.save(JSON.parse(JSON.stringify(params)));
+      });
+  },
   putMobile(params: string) {
-    return nSQL(PrescribedDrug.entity)
-      .query('upsert', params)
-      .exec()
-      .then((resp) => {
-        prescribedDrug.save(resp[0].affectedRows);
+    return prescribedDrugDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        prescribedDrug.save(JSON.parse(JSON.stringify(params)));
       });
   },
   getMobile() {
-    return nSQL(prescribedDrug.use?.entity)
-      .query('select')
-      .exec()
+    return prescribedDrugDexie
+      .toArray()
       .then((rows: any) => {
         prescribedDrug.save(rows);
       })
@@ -99,10 +106,8 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(prescribedDrug.use?.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return prescribedDrugDexie
+      .delete(paramsId)
       .then(() => {
         prescribedDrug.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
@@ -111,6 +116,23 @@ export default {
         // alertError('Aconteceu um erro inesperado nesta operação.');
         console.log(error);
       });
+  },
+  addBulkMobile() {
+    const prescribedDrugFromPinia = this.getAllFromStorageForDexie();
+
+    return prescribedDrugDexie
+      .bulkAdd(prescribedDrugFromPinia)
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
+  async getLastByPrescriprionIdFromDexie(prescriptionId: string) {
+    const prescribedDrugs = await prescribedDrugDexie
+      .where('prescription_id')
+      .equals(prescriptionId)
+      .toArray();
+    prescribedDrug.save(prescribedDrugs);
+    return prescribedDrugs;
   },
   async apiGetAllByPrescriptionId(prescriptionId: string) {
     return await api()
@@ -130,10 +152,37 @@ export default {
   getAllFromStorage() {
     return prescribedDrug.all();
   },
+  getAllFromStorageForDexie() {
+    return prescribedDrug.makeHidden(['prescription', 'drug']).all();
+  },
   deleteAllFromStorage() {
     prescribedDrug.flush();
   },
   getLastByPrescriprionId(prescriptionId: string) {
     return prescribedDrug.where('prescription_id', prescriptionId).first();
+  },
+  async getAllByPrescriprionIdListFromDexie(prescriptionIds: []) {
+    const prescribedDrugs = await prescribedDrugDexie
+      .where('prescription_id')
+      .anyOf(prescriptionIds)
+      .toArray();
+
+    const drugIds = prescribedDrugs.map(
+      (prescribedDrug: any) => prescribedDrug.drug_id
+    );
+
+    const [drugs] = await Promise.all([
+      drugService.getAllByIDsFromDexie(drugIds),
+    ]);
+
+    prescribedDrugs.map((prescribedDrug: any) => {
+      prescribedDrug.drug = drugs.find(
+        (drug: any) => drug.id === prescribedDrug.drug_id
+      );
+    });
+    return prescribedDrugs;
+  },
+  deleteAllFromDexie() {
+    prescribedDrugDexie.clear();
   },
 };

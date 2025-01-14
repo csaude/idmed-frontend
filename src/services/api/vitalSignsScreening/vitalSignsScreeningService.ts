@@ -1,12 +1,13 @@
 import { useRepo } from 'pinia-orm';
 import api from '../apiService/apiService';
 import VitalSignsScreening from 'src/stores/models/screening/VitalSignsScreening';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const vitalSignsScreening = useRepo(VitalSignsScreening);
+const vitalSignsScreeningDexie = db[VitalSignsScreening.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -15,7 +16,7 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      return this.putMobile(params);
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
@@ -36,7 +37,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -57,7 +58,7 @@ export default {
           vitalSignsScreening.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -80,18 +81,28 @@ export default {
       });
   },
   // Mobile
+  addMobile(params: string) {
+    return vitalSignsScreeningDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        vitalSignsScreening.save(JSON.parse(JSON.stringify(params)));
+        // alertSucess('O Registo foi efectuado com sucesso');
+      })
+      .catch((error: any) => {
+        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
   putMobile(params: string) {
-    return nSQL(VitalSignsScreening.entity)
-      .query('upsert', params)
-      .exec()
-      .then((resp) => {
-        vitalSignsScreening.save(resp[0].affectedRows);
+    return vitalSignsScreeningDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        vitalSignsScreening.save(JSON.parse(JSON.stringify(params)));
       });
   },
   getMobile() {
-    return nSQL(VitalSignsScreening.entity)
-      .query('select')
-      .exec()
+    return vitalSignsScreeningDexie
+      .toArray()
       .then((rows: any) => {
         vitalSignsScreening.save(rows);
       })
@@ -101,10 +112,8 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(VitalSignsScreening.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return vitalSignsScreeningDexie
+      .delete(paramsId)
       .then(() => {
         vitalSignsScreening.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
@@ -113,6 +122,23 @@ export default {
         // alertError('Aconteceu um erro inesperado nesta operação.');
         console.log(error);
       });
+  },
+  addBulkMobile() {
+    const vitalSignsScreeningFromPinia = this.getAllFromStorageForDexie();
+
+    return vitalSignsScreeningDexie
+      .bulkAdd(vitalSignsScreeningFromPinia)
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
+  async getVitalSignsScreeningByVisitIdMobile(id: string) {
+    const vitalSignsScreenings = await vitalSignsScreeningDexie
+      .where('patient_visit_id')
+      .equalsIgnoreCase(id)
+      .toArray();
+    vitalSignsScreening.save(vitalSignsScreenings);
+    return vitalSignsScreenings;
   },
   async apiGetAll(offset: number, max: number) {
     return await api().get(
@@ -126,7 +152,26 @@ export default {
   getAllFromStorage() {
     return vitalSignsScreening.all();
   },
+  getAllFromStorageForDexie() {
+    return vitalSignsScreening.makeHidden(['visit']).all();
+  },
   deleteAllFromStorage() {
     vitalSignsScreening.flush();
+  },
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await vitalSignsScreeningDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+  },
+  async getAllByPatientVisitIDsFromDexie(ids: []) {
+    return await vitalSignsScreeningDexie
+      .where('patient_visit_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+  },
+  deleteAllFromDexie() {
+    vitalSignsScreeningDexie.clear();
   },
 };

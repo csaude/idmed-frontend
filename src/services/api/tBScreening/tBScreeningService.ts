@@ -1,12 +1,13 @@
 import { useRepo } from 'pinia-orm';
 import api from '../apiService/apiService';
 import TBScreening from 'src/stores/models/screening/TBScreening';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const tBScreening = useRepo(TBScreening);
+const tBScreeningDexie = db[TBScreening.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -15,7 +16,7 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      return this.putMobile(params);
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
@@ -36,7 +37,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -57,7 +58,7 @@ export default {
           tBScreening.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -80,18 +81,24 @@ export default {
       });
   },
   // Mobile
-  putMobile(params: string) {
-    return nSQL(TBScreening.entity)
-      .query('upsert', params)
-      .exec()
-      .then((resp) => {
-        tBScreening.save(resp[0].affectedRows);
+  addMobile(params: string) {
+    return tBScreeningDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        tBScreening.save(JSON.parse(JSON.stringify(params)));
+      })
+      .catch((error: any) => {
+        console.log(error);
       });
   },
+  putMobile(params: string) {
+    return tBScreeningDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
+      tBScreening.save(JSON.parse(JSON.stringify(params)));
+    });
+  },
   getMobile() {
-    return nSQL(TBScreening.entity)
-      .query('select')
-      .exec()
+    return tBScreeningDexie
+      .toArray()
       .then((rows: any) => {
         tBScreening.save(rows);
       })
@@ -101,10 +108,8 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(TBScreening.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return tBScreeningDexie
+      .delete(paramsId)
       .then(() => {
         tBScreening.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
@@ -113,6 +118,23 @@ export default {
         // alertError('Aconteceu um erro inesperado nesta operação.');
         console.log(error);
       });
+  },
+  addBulkMobile() {
+    const tBScreeningFromPinia = this.getAllFromStorageForDexie();
+
+    return tBScreeningDexie
+      .bulkAdd(tBScreeningFromPinia)
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
+  async getTBScreeningsByVisitIdMobile(id: string) {
+    const tBScreenings = await tBScreeningDexie
+      .where('patient_visit_id')
+      .equalsIgnoreCase(id)
+      .toArray();
+    tBScreening.save(tBScreenings);
+    return tBScreenings;
   },
   async apiGetAll(offset: number, max: number) {
     return this.get(offset);
@@ -124,7 +146,27 @@ export default {
   getAllFromStorage() {
     return tBScreening.all();
   },
+  getAllFromStorageForDexie() {
+    return tBScreening.makeHidden(['visit']).all();
+  },
   deleteAllFromStorage() {
     tBScreening.flush();
   },
+    // Dexie Block
+    async getAllByIDsFromDexie(ids: []) {
+      return await tBScreeningDexie
+        .where('id')
+        .anyOfIgnoreCase(ids)
+        .toArray();
+    },
+
+    async getAllByPatientVisitIDsFromDexie(ids: []) {
+      return await tBScreeningDexie
+        .where('patient_visit_id')
+        .anyOfIgnoreCase(ids)
+        .toArray();
+    },
+    deleteAllFromDexie() {
+      tBScreeningDexie.clear();
+    },
 };

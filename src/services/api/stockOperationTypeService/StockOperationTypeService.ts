@@ -1,7 +1,7 @@
 import api from '../apiService/apiService';
 import stockOperationType from 'src/stores/models/stockoperation/StockOperationType';
 import { useRepo } from 'pinia-orm';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { useLoading } from 'src/composables/shared/loading/loading';
 
@@ -10,26 +10,21 @@ const { closeLoading, showloading } = useLoading();
 const { isMobile, isOnline } = useSystemUtils();
 
 const stockOperationRepo = useRepo(stockOperationType);
+const stockOperationDexie = db[stockOperationType.entity];
 
 export default {
   // Axios API call static async
 
-  get(offset: number) {
+  async get(offset: number) {
     if (!isOnline.value) {
-      return nSQL().onConnected(() => {
-        nSQL('stockOperationTypes')
-          .query('select')
-          .exec()
-          .then((result) => {
-            console.log(result);
-            stockOperationRepo.save(result);
-            return result;
-          });
+      return stockOperationDexie.toArray().then((result: any) => {
+        stockOperationRepo.save(result);
+        return result;
       });
     } else {
       if (offset >= 0) {
         showloading();
-        return api()
+        return await api()
           .get('/stockOperationType?offset=' + offset + '&limit=100')
           .then((resp) => {
             stockOperationRepo.save(resp.data);
@@ -44,6 +39,33 @@ export default {
       }
     }
   },
+  getWeb(offset: number) {
+    if (offset >= 0) {
+      return api()
+        .get('stockOperationType?offset=' + offset + '&max=100')
+        .then((resp) => {
+          stockOperationRepo.save(resp.data);
+          offset = offset + 100;
+          if (resp.data.length > 0) {
+            this.getWeb(offset);
+          }
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    }
+  },
+  //mobile
+  addBulkMobile(params: string) {
+    return stockOperationDexie
+      .bulkPut(params)
+      .then(() => {
+        stockOperationRepo.save(params);
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
 
   async apiGetAll(offset: number, max: number) {
     return api().get('/stockOperationType?offset=' + offset + '&max=' + max);
@@ -55,8 +77,13 @@ export default {
   getStockOperatinTypeById(Id: string) {
     return stockOperationRepo.query().where('id', Id).first();
   },
+  async getAllByIDsFromDexie(ids: []) {
+    return await stockOperationDexie.where('id').anyOfIgnoreCase(ids).toArray();
+  },
   //Pinia
-
+  getAllFromStorage() {
+    return stockOperationRepo.all();
+  },
   savePinia(st: any) {
     stockOperationRepo.save(st);
   },

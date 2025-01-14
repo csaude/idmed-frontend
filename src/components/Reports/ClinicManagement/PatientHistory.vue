@@ -45,7 +45,7 @@
 import moment from 'moment';
 import Report from 'src/services/api/report/ReportService';
 import { LocalStorage } from 'quasar';
-import { ref, provide } from 'vue';
+import { ref, provide, onMounted, reactive } from 'vue';
 import patientHistoryTS from 'src/services/reports/ClinicManagement/PatientHistory.ts';
 import ListHeader from 'components/Shared/ListHeader.vue';
 import FiltersInput from 'components/Reports/shared/FiltersInput.vue';
@@ -63,8 +63,8 @@ const qtyProcessed = ref(0);
 const progress = ref(0.0);
 const filterDPatientHistorySection = ref('');
 const report = 'HISTORICO_DE_LEVANTAMENTO';
-const downloadingPdf = ref(false);
-const downloadingXls = ref(false);
+const downloadingPdf = reactive(ref(false));
+const downloadingXls = reactive(ref(false));
 const serviceAux = ref(null);
 const resultFromLocalStorage = ref(false);
 
@@ -73,12 +73,21 @@ const updateParamsOnLocalStrage = (params, isReportClosed) => {
   if (!isReportClosed.value) LocalStorage.set(params.id, params);
 };
 
+onMounted(() => {
+  if (props.params) {
+    getProcessingStatus(props.params);
+  }
+});
+
 const closeSection = (params) => {
   filterDPatientHistorySection.value.remove();
   if (params) {
     const paramId = params.id;
     isReportClosed.value = true;
     LocalStorage.remove(paramId);
+  } else {
+    isReportClosed.value = true;
+    LocalStorage.remove(props.id);
   }
 };
 
@@ -102,28 +111,30 @@ const initReportProcessing = (params) => {
 };
 
 const getProcessingStatus = (params) => {
-  Report.getProcessingStatus('historicoLevantamentoReport', params).then(
-    (resp) => {
-      if (resp.data.progress > 0.001) {
-        progress.value = resp.data.progress;
-        if (progress.value < 100) {
-          updateParamsOnLocalStrage(params, isReportClosed);
-          params.progress = resp.data.progress;
+  if (isOnline.value) {
+    Report.getProcessingStatus('historicoLevantamentoReport', params).then(
+      (resp) => {
+        if (resp.data.progress > 0.001) {
+          progress.value = resp.data.progress;
+          if (progress.value < 100) {
+            updateParamsOnLocalStrage(params, isReportClosed);
+            params.progress = resp.data.progress;
+            setTimeout(() => {
+              getProcessingStatus(params);
+            }, 3000);
+          } else {
+            progress.value = 100;
+            params.progress = 100;
+            updateParamsOnLocalStrage(params, isReportClosed);
+          }
+        } else {
           setTimeout(() => {
             getProcessingStatus(params);
           }, 3000);
-        } else {
-          progress.value = 100;
-          params.progress = 100;
-          updateParamsOnLocalStrage(params, isReportClosed);
         }
-      } else {
-        setTimeout(() => {
-          getProcessingStatus(params);
-        }, 3000);
       }
-    }
-  );
+    );
+  }
 };
 
 const generateReport = (id, fileType) => {
@@ -144,9 +155,9 @@ const generateReport = (id, fileType) => {
               moment(new Date(firstReg.startDate)).format('DD-MM-YYYY'),
               moment(new Date(firstReg.endDate)).format('DD-MM-YYYY'),
               resp.data,
-              'tarv'
+              'tarv',
+              downloadingPdf
             );
-            downloadingPdf.value = false;
           } else {
             downloadingXls.value = true;
             patientHistoryTS.downloadExcel(
@@ -154,9 +165,9 @@ const generateReport = (id, fileType) => {
               moment(new Date(firstReg.startDate)).format('DD-MM-YYYY'),
               moment(new Date(firstReg.endDate)).format('DD-MM-YYYY'),
               resp.data,
-              'tarv'
+              'tarv',
+              downloadingXls
             );
-            downloadingXls.value = false;
           }
         }
       }
@@ -169,17 +180,17 @@ const generateReport = (id, fileType) => {
           '',
           moment(new Date(firstReg.startDate)).format('DD-MM-YYYY'),
           moment(new Date(firstReg.endDate)).format('DD-MM-YYYY'),
-          reports
+          reports,
+          downloadingPdf
         );
-        downloadingPdf.value = false;
       } else {
         patientHistoryTS.downloadExcel(
           '',
           moment(new Date(firstReg.startDate)).format('DD-MM-YYYY'),
           moment(new Date(firstReg.endDate)).format('DD-MM-YYYY'),
-          reports
+          reports,
+          downloadingXls
         );
-        downloadingXls.value = false;
       }
     });
   }

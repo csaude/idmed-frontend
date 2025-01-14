@@ -1,24 +1,30 @@
 import Province from 'src/stores/models/province/Province';
 import { useRepo } from 'pinia-orm';
-import Clinic from 'src/stores/models/clinic/Clinic';
+import { Clinic } from 'src/stores/models/clinic/Clinic';
 import api from '../apiService/apiService';
-import { nSQL } from 'nano-sql';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { P } from 'app/dist/spa/assets/apiService.4d03f836';
+import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
+import db from '../../../stores/dexie';
+import systemConfigsService from '../systemConfigs/systemConfigsService';
+import { ClinicSector } from 'src/stores/models/clinic/ClinicSector';
 
 const clinic = useRepo(Clinic);
+const clinicSector = useRepo(ClinicSector);
+const clinicDexie = db[Clinic.entity];
+
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError, alertWarning } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
+const { isProvincialInstalation } = useSystemConfig();
 
 export default {
   async post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.putMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -37,9 +43,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -57,16 +63,17 @@ export default {
       return api()
         .get('clinic?offset=' + offset + '&max=100')
         .then((resp) => {
-          clinic.save(resp.data);
+          const clinics = resp?.data?.filter(
+            (item: any) => !String(item?.entity).includes('clinicSector')
+          );
+
+          clinic.save(clinics);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -90,13 +97,25 @@ export default {
       // alertError('Aconteceu um erro inesperado nesta operação.');
     }
   },
+  async apiWebGetAll() {
+    return await this.getWeb(0);
+  },
   // Mobile
-  putMobile(params: string) {
-    return nSQL(Clinic.entity)
-      .query('upsert', params)
-      .exec()
+  addMobile(params: string) {
+    return clinicDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
-        clinic.save(JSON.parse(params));
+        clinic.save(params);
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
+  putMobile(params: string) {
+    return clinicDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        clinic.save(params);
         // alertSucess('O Registo foi efectuado com sucesso');
         closeLoading();
       })
@@ -105,9 +124,8 @@ export default {
       });
   },
   getMobile() {
-    return nSQL(Clinic.entity)
-      .query('select')
-      .exec()
+    return clinicDexie
+      .toArray()
       .then((rows: any) => {
         clinic.save(rows);
       })
@@ -116,16 +134,24 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(Clinic.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return clinicDexie
+      .delete(paramsId)
       .then(() => {
         clinic.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
+      });
+  },
+  addBulkMobile(params: any) {
+    return clinicDexie
+      .bulkPut(params)
+      .then(() => {
+        clinic.save(params);
+      })
+      .catch((error: any) => {
+        console.log(error);
       });
   },
   // Methods
@@ -164,7 +190,7 @@ export default {
     return clinic.getModel().$newInstance();
   },
   getAllFromStorage() {
-    return clinic.all();
+    return clinic.query().withAllRecursive(1).get();
   },
   getClinicsByDistrictId(districtid: string) {
     return clinic
@@ -178,13 +204,51 @@ export default {
 
   /*PINIA*/
   currClinic() {
-    return clinic.withAllRecursive(2).where('mainClinic', true).first();
+    const instalationType = systemConfigsService.getInstallationType();
+    const clinicUser = localStorage.getItem('clinicUsers');
+    if (instalationType !== null &&
+      ((clinicUser === 'undefined' && !isProvincialInstalation()) ||
+      (clinicUser === '' && !isProvincialInstalation()) ||
+      String(clinicUser).includes('NORMAL'))
+    ) {
+      return clinic
+        .withAllRecursive(2)
+        .where('mainClinic', true)
+        .where('id', instalationType.description)
+        .first();
+    } else if (clinicUser !== null && clinicUser !== '') {
+      let sectorCode = clinicUser;
+      if (clinicUser.includes(',')) {
+        const arrayOfSectors = clinicUser.split(',');
+        sectorCode = arrayOfSectors[0];
+      }
+
+      return this.getByCode(sectorCode);
+    }
+    return null;
   },
 
   savePinia(clin: any) {
     clinic.save(clin);
   },
+
   getAllClinics() {
+    return clinic
+      .query()
+      .with('nationalClinic')
+      .with('province')
+      .with('facilityType')
+      .with('district')
+      .with('sectors')
+      .where('type', 'CLINIC')
+      .get();
+  },
+
+  getAllClinicSectors() {
+    return clinic.query().withAll().where('type', 'CLINIC_SECTOR').get();
+  },
+
+  getAllClinicsAndClinicSectors() {
     return clinic
       .query()
       .with('nationalClinic')
@@ -239,7 +303,7 @@ export default {
       .where('district_id', districtId)
       .whereHas('facilityType', (query) => {
         query.where((facilityType) => {
-          return facilityType.code !== 'US';
+          return facilityType.code !== 'US' && facilityType.type === 'clinic';
         });
       })
       .orderBy('code', 'asc')
@@ -276,7 +340,42 @@ export default {
       .withAllRecursive(2)
       .first();
   },
-  deleteFromPinia(){
-    return clinic.flush()
-  }
+  getByCode(code: string) {
+    return clinic
+      .query()
+      .where((clinic) => {
+        return clinic.code === code;
+      })
+      .withAllRecursive(2)
+      .first();
+  },
+  getActivebyClinicId(clinicId: string) {
+    return clinic
+      .query()
+      .with('facilityType')
+      .where((clinic) => {
+        return clinic.active && clinic.parentClinic_id === clinicId;
+      })
+      .get();
+  },
+  deleteFromPinia() {
+    return clinic.flush();
+  },
+
+  isClinicSector(currClinic: Clinic) {
+    return currClinic && currClinic.facilityType.type == 'clinic_sector';
+  },
+
+  isPrivatePharmacy(currClinic: Clinic) {
+    return currClinic && currClinic.facilityType.code == 'FP';
+  },
+
+  // Dexie Block
+  async getByIdFromDexie(id: string) {
+    return await clinicDexie.get(id);
+  },
+
+  async getAllByIDsFromDexie(ids: []) {
+    return await clinicDexie.where('id').anyOfIgnoreCase(ids).toArray();
+  },
 };

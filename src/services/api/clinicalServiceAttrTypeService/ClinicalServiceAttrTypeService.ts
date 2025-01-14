@@ -4,9 +4,10 @@ import api from '../apiService/apiService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 
 const clinicalServiceAttributeType = useRepo(ClinicalServiceAttributeType);
+const clinicalServiceAttributeTypeDexie = db[ClinicalServiceAttributeType.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -15,9 +16,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.putMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -36,7 +37,7 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       this.deleteWeb(uuid);
     }
@@ -52,15 +53,15 @@ export default {
       console.log(error);
     }
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('clinicalServiceAttributeType?offset=' + offset + '&max=100')
         .then((resp) => {
           clinicalServiceAttributeType.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           } else {
             closeLoading();
           }
@@ -95,10 +96,19 @@ export default {
     }
   },
   // Mobile
+  addMobile(params: string) {
+    return clinicalServiceAttributeTypeDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        clinicalServiceAttributeType.save(JSON.parse(params));
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
   putMobile(params: string) {
-    return nSQL(ClinicalServiceAttributeType.entity)
-      .query('upsert', params)
-      .exec()
+    return clinicalServiceAttributeTypeDexie
+      .add(JSON.parse(JSON.stringify(params)))
       .then(() => {
         clinicalServiceAttributeType.save(JSON.parse(params));
         // alertSucess('O Registo foi efectuado com sucesso');
@@ -109,9 +119,8 @@ export default {
       });
   },
   getMobile() {
-    return nSQL(ClinicalServiceAttributeType.entity)
-      .query('select')
-      .exec()
+    return clinicalServiceAttributeTypeDexie
+      .toArray()
       .then((rows: any) => {
         clinicalServiceAttributeType.save(rows);
       })
@@ -121,10 +130,8 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(ClinicalServiceAttributeType.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return clinicalServiceAttributeTypeDexie
+      .add(paramsId)
       .then(() => {
         clinicalServiceAttributeType.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
@@ -134,7 +141,16 @@ export default {
         console.log(error);
       });
   },
-
+  addBulkMobile(params: any) {
+    return clinicalServiceAttributeTypeDexie
+      .bulkPut(params)
+      .then(() => {
+        clinicalServiceAttributeType.save(params);
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
   // Local Storage Pinia
   newInstanceEntity() {
     return clinicalServiceAttributeType.getModel().$newInstance();

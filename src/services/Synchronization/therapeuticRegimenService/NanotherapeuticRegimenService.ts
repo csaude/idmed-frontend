@@ -1,8 +1,10 @@
 import api from '../../api/apiService/apiService';
-import { nSQL } from 'nano-sql';
 import TherapeuticRegimen from 'src/stores/models/therapeuticRegimen/TherapeuticRegimen';
-import { useRepo } from 'pinia-orm';
-const therapeuticRegimen = useRepo(TherapeuticRegimen);
+import therapeuticalRegimenService from 'src/services/api/therapeuticalRegimenService/therapeuticalRegimenService';
+
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
+const therapeuticalRegimenDexie = db[TherapeuticRegimen.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -10,8 +12,7 @@ export default {
       return await api()
         .get('therapeuticRegimen?offset=' + offset + '&max=100')
         .then((resp) => {
-          nSQL(TherapeuticRegimen.entity).query('upsert', resp.data).exec();
-          therapeuticRegimen.save(resp.data);
+          therapeuticalRegimenService.addBulkMobile(resp.data);
           console.log('Data synced from backend: TherapeuticRegimen');
           offset = offset + 100;
           if (resp.data.length > 0) {
@@ -23,5 +24,19 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania TherapeuticRegimen');
+    (await SynchronizationService.hasData(therapeuticalRegimenDexie))
+      ? await therapeuticalRegimenService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie TherapeuticRegimen');
+    const getAllTherapeuticRegimen =
+      therapeuticalRegimenService.getActiveTherapeuticalRegimens();
+    await therapeuticalRegimenDexie.bulkPut(getAllTherapeuticRegimen);
   },
 };

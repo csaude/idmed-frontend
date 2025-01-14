@@ -1,8 +1,10 @@
 import api from '../../api/apiService/apiService';
-import { nSQL } from 'nano-sql';
+import drugService from 'src/services/api/drugService/drugService';
+import SynchronizationService from '../SynchronizationService';
 import Drug from 'src/stores/models/drug/Drug';
-import { useRepo } from 'pinia-orm';
-const drug = useRepo(Drug);
+import db from 'src/stores/dexie';
+
+const drugDexie = db[Drug.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -10,8 +12,7 @@ export default {
       return await api()
         .get('drug?offset=' + offset + '&max=100')
         .then((resp) => {
-          nSQL(Drug.entity).query('upsert', resp.data).exec();
-          drug.save(resp.data);
+          drugService.addBulkMobile(resp.data);
           console.log('Data synced from backend: Drug');
           offset = offset + 100;
           if (resp.data.length > 0) {
@@ -23,5 +24,17 @@ export default {
           console.log(error);
         });
     }
+  },
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania Drug');
+    (await SynchronizationService.hasData(drugDexie))
+      ? await drugService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie Drug');
+    const getAllcDrugs = drugService.getAllDrugs();
+    await drugDexie.bulkPut(getAllcDrugs);
   },
 };

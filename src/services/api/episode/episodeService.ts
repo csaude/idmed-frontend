@@ -4,15 +4,21 @@ import Episode from 'src/stores/models/episode/Episode';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import clinicSectorService from '../clinicSectorService/clinicSectorService';
 import patientServiceIdentifierService from '../patientServiceIdentifier/patientServiceIdentifierService';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import patientVisitDetailsService from '../patientVisitDetails/patientVisitDetailsService';
 import prescriptionService from '../prescription/prescriptionService';
 import patientVisitService from '../patientVisit/patientVisitService';
 import packService from '../pack/packService';
+import ChunkArray from 'src/utils/ChunkArray';
+import clinicService from '../clinicService/clinicService';
+import startStopReasonService from '../startStopReasonService/startStopReasonService';
+import episodeTypeService from '../episodeType/episodeTypeService';
+import clinicSectorService from '../clinicSectorService/clinicSectorService';
 
 const episode = useRepo(Episode);
+const episodeDexie = db[Episode.entity];
+
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -20,7 +26,7 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      return this.putMobile(params);
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
@@ -41,7 +47,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -62,7 +68,7 @@ export default {
           episode.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -84,23 +90,38 @@ export default {
         episode.destroy(uuid);
       });
   },
+  deletePinia(uuid: string) {
+    return episode.destroy(uuid);
+  },
   // Mobile
+  addMobile(params: string) {
+    return episodeDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        episode.save(params);
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
   putMobile(params: string) {
-    return nSQL(Episode.entity)
-      .query('upsert', params)
-      .exec()
-      .then((resp) => {
-        episode.save(resp[0].affectedRows);
+    return episodeDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        episode.save(params);
+      })
+      .catch((error: any) => {
+        console.log(error);
       });
   },
   async getMobile() {
     try {
-      const rows = await nSQL(Episode.entity).query('select').exec();
+      const rows = await episodeDexie.toArray();
       if (rows.length === 0) {
         api()
           .get('episode?offset=0&max=700')
           .then((resp) => {
-            this.putMobile(resp.data);
+            this.addMobile(resp.data);
           });
       } else {
         episode.save(rows);
@@ -111,17 +132,20 @@ export default {
     }
   },
   async deleteMobile(paramsId: string) {
-    try {
-      await nSQL(Episode.entity)
-        .query('delete')
-        .where(['id', '=', paramsId])
-        .exec();
-      episode.destroy(paramsId);
-      alertSucess('O Registo foi removido com sucesso');
-    } catch (error) {
-      // alertError('Aconteceu um erro inesperado nesta operação.');
+    return episodeDexie
+      .delete(paramsId)
+      .then(() => {
+        episode.destroy(paramsId);
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
+  addBulkMobile() {
+    const episodesFromPinia = this.getAllFromStorageForDexie();
+    return episodeDexie.bulkPut(episodesFromPinia).catch((error: any) => {
       console.log(error);
-    }
+    });
   },
   async apiSave(episodeParams: any, isNew: boolean) {
     if (isNew) {
@@ -146,12 +170,22 @@ export default {
   },
 
   async apiFetchById(id: string) {
-    return await api()
-      .get(`/episode/${id}`)
-      .then((resp) => {
-        episode.save(resp.data);
-        return resp;
-      });
+    if (isMobile.value && !isOnline.value) {
+      return episodeDexie
+        .where('id')
+        .equalsIgnoreCase(id)
+        .first()
+        .then((row: any) => {
+          return row;
+        });
+    } else {
+      return await api()
+        .get(`/episode/${id}`)
+        .then((resp) => {
+          episode.save(resp.data);
+          return resp;
+        });
+    }
   },
 
   async apiGetAllByIdentifierId(
@@ -179,25 +213,56 @@ export default {
   },
 
   async syncEpisode(episode: any) {
-    if (episode.syncStatus === 'R') await this.apiSave(episode, true);
-    if (episode.syncStatus === 'U') await this.apiUpdate(episode);
+    if (episode.syncStatus === 'R') await this.postWeb(episode);
+    if (episode.syncStatus === 'U') await this.patchWeb(episode.id, episode);
   },
 
   async getLocalDbEpisodesToSync() {
-    return nSQL(Episode.entity)
-      .query('select')
-      .where([['syncStatus', '=', 'R'], 'OR', ['syncStatus', '=', 'U']])
-      .exec()
-      .then((result) => {
+    return await episodeDexie
+      .where('syncStatus')
+      .equalsIgnoreCase('R')
+      .or('syncStatus')
+      .equalsIgnoreCase('U')
+      .sortBy('syncStatus')
+      .then((result: any) => {
         return result;
       });
   },
+  async getAllMobileByIds(episodeIds: any) {
+    const resp = await episodeDexie.where('id').anyOf(episodeIds).toArray();
+
+    episode.save(resp);
+    return resp;
+  },
+
+  async getAllMobileByPatientServiceIds(patientServiceIds: []) {
+    const resp = await episodeDexie
+      .where('patientServiceIdentifier_id')
+      .anyOf(patientServiceIds)
+      .toArray();
+
+    episode.save(resp);
+    return resp;
+  },
+
   // Local Storage Pinia
   newInstanceEntity() {
     return episode.getModel().$newInstance();
   },
   getAllFromStorage() {
     return episode.all();
+  },
+  getAllFromStorageForDexie() {
+    return episode
+      .makeHidden([
+        'referralClinic',
+        'startStopReason',
+        'episodeType',
+        'clinicSector',
+        'patientServiceIdentifier',
+        'patientVisitDetails',
+      ])
+      .all();
   },
   deleteAllFromStorage() {
     episode.flush();
@@ -330,9 +395,10 @@ export default {
   },
 
   async doEpisodesBySectorGet() {
+    await clinicService.getMobile();
     console.log('user_sector' + localStorage.getItem('clinic_sector_users'));
-    const clinicSectorUser = clinicSectorService.getClinicSectorSlimByCode(
-      localStorage.getItem('clinic_sector_users')
+    const clinicSectorUser = clinicService.getByCode(
+      sessionStorage.getItem('clinicUsers')
     );
     this.apiGetLastByClinicSectorId(clinicSectorUser.id).then(async (resp) => {
       if (resp.data.length > 0) {
@@ -370,9 +436,275 @@ export default {
           }
           closeLoading();
         });
-        // offset = offset + max
-        // setTimeout(this.doEpisodesGet(clinicId, offset, max), 2)
       }
     });
+  },
+
+  async getEpisodeByIds(episodeIds: any) {
+    const limit = 100; // Define your limit
+    const offset = 0;
+
+    const chunks = ChunkArray.chunkArrayWithOffset(episodeIds, limit, offset);
+
+    const allEpisodes = [];
+
+    for (const chunk of chunks) {
+      const episodes = await api().post('/episode/getAllByEpisodeIds/', chunk);
+
+      allEpisodes.push(...episodes.data);
+    }
+
+    this.addBulkMobile(allEpisodes);
+  },
+
+  //Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    const episodes = await episodeDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .reverse()
+      .sortBy('episodeDate');
+
+    const referralClinicIds = episodes.map(
+      (episode: any) => episode.referralClinic_id
+    );
+
+    const startStopReasonIds = episodes.map(
+      (episode: any) => episode.startStopReason_id
+    );
+
+    const episodeTypeIds = episodes.map(
+      (episode: any) => episode.episodeType_id
+    );
+
+    const clinicSectorIds = episodes.map(
+      (episode: any) => episode.clinicSector_id
+    );
+
+    const patientServiceIdentifierIds = episodes.map(
+      (episode: any) => episode.patientServiceIdentifier_id
+    );
+
+    const [
+      referralClinics,
+      startStopReasons,
+      episodeTypes,
+      clinicSectors,
+      patientServiceIdentifiers,
+    ] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(referralClinicIds),
+      startStopReasonService.getAllByIDsFromDexie(startStopReasonIds),
+      episodeTypeService.getAllByIDsFromDexie(episodeTypeIds),
+      clinicSectorService.getAllByIDsFromDexie(clinicSectorIds),
+      patientServiceIdentifierService.getAllByIDsFromDexie(
+        patientServiceIdentifierIds
+      ),
+    ]);
+    episodes.map((episode: any) => {
+      episode.referralClinic = referralClinics.find(
+        (referralClinic: any) => referralClinic.id === episode.referralClinic_id
+      );
+      episode.startStopReason = startStopReasons.find(
+        (startStopReason: any) =>
+          startStopReason.id === episode.startStopReason_id
+      );
+      episode.episodeType = episodeTypes.find(
+        (episodeType: any) => episodeType.id === episode.episodeType_id
+      );
+      episode.clinicSector = clinicSectors.find(
+        (clinicSector: any) => clinicSector.id === episode.clinicSector_id
+      );
+      episode.patientServiceIdentifier = patientServiceIdentifiers.find(
+        (patientServiceIdentifier: any) =>
+          patientServiceIdentifier.id === episode.patientServiceIdentifier_id
+      );
+    });
+
+    return episodes;
+  },
+
+  async getByIDFromDexie(id: string) {
+    const episodes = await episodeDexie.where('id').equals(id).toArray();
+
+    const referralClinicIds = episodes.map(
+      (episode: any) => episode.referralClinic_id
+    );
+
+    const startStopReasonIds = episodes.map(
+      (episode: any) => episode.startStopReason_id
+    );
+
+    const episodeTypeIds = episodes.map(
+      (episode: any) => episode.episodeType_id
+    );
+
+    const clinicSectorIds = episodes.map(
+      (episode: any) => episode.clinicSector_id
+    );
+
+    const patientServiceIdentifierIds = episodes.map(
+      (episode: any) => episode.patientServiceIdentifier_id
+    );
+
+    const [
+      referralClinics,
+      startStopReasons,
+      episodeTypes,
+      clinicSectors,
+      patientServiceIdentifiers,
+    ] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(referralClinicIds),
+      startStopReasonService.getAllByIDsFromDexie(startStopReasonIds),
+      episodeTypeService.getAllByIDsFromDexie(episodeTypeIds),
+      clinicSectorService.getAllByIDsFromDexie(clinicSectorIds),
+      patientServiceIdentifierService.getAllByIDsFromDexie(
+        patientServiceIdentifierIds
+      ),
+    ]);
+
+    episodes.map((episode: any) => {
+      episode.referralClinic = referralClinics.find(
+        (referralClinic: any) => referralClinic.id === episode.referralClinic_id
+      );
+      episode.startStopReason = startStopReasons.find(
+        (startStopReason: any) =>
+          startStopReason.id === episode.startStopReason_id
+      );
+      episode.episodeType = episodeTypes.find(
+        (episodeType: any) => episodeType.id === episode.episodeType_id
+      );
+      episode.clinicSector = clinicSectors.find(
+        (clinicSector: any) => clinicSector.id === episode.clinicSector_id
+      );
+      episode.patientServiceIdentifier = patientServiceIdentifiers.find(
+        (patientServiceIdentifier: any) =>
+          patientServiceIdentifier.id === episode.patientServiceIdentifier_id
+      );
+    });
+
+    return episodes[0];
+  },
+  async getAllByIdentifierIDsFromDexie(ids: []) {
+    const episodes = await episodeDexie
+      .where('patientServiceIdentifier_id')
+      .anyOfIgnoreCase(ids)
+      .reverse()
+      .sortBy('episodeDate');
+
+    const referralClinicIds = episodes.map(
+      (episode: any) => episode.referralClinic_id
+    );
+
+    const startStopReasonIds = episodes.map(
+      (episode: any) => episode.startStopReason_id
+    );
+
+    const episodeTypeIds = episodes.map(
+      (episode: any) => episode.episodeType_id
+    );
+
+    const clinicSectorIds = episodes.map(
+      (episode: any) => episode.clinicSector_id
+    );
+
+    const episodeIds = episodes.map((episode: any) => episode.id);
+
+    const [
+      referralClinics,
+      startStopReasons,
+      episodeTypes,
+      clinicSectors,
+      patientVisitDetailList,
+    ] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(referralClinicIds),
+      startStopReasonService.getAllByIDsFromDexie(startStopReasonIds),
+      episodeTypeService.getAllByIDsFromDexie(episodeTypeIds),
+      clinicSectorService.getAllByIDsFromDexie(clinicSectorIds),
+      patientVisitDetailsService.getAllByEpisodeIDsFromDexie(episodeIds),
+    ]);
+    episodes.map((episode: any) => {
+      episode.referralClinic = referralClinics.find(
+        (referralClinic: any) => referralClinic.id === episode.referralClinic_id
+      );
+      episode.startStopReason = startStopReasons.find(
+        (startStopReason: any) =>
+          startStopReason.id === episode.startStopReason_id
+      );
+      episode.episodeType = episodeTypes.find(
+        (episodeType: any) => episodeType.id === episode.episodeType_id
+      );
+      episode.clinicSector = clinicSectors.find(
+        (clinicSector: any) => clinicSector.id === episode.clinicSector_id
+      );
+      episode.patientVisitDetails = patientVisitDetailList.filter(
+        (patientVisitDetail: any) =>
+          patientVisitDetail.episode_id === episode.id
+      );
+    });
+
+    return episodes;
+  },
+  async getAll3LastDataByIdentifierIDsFromDexie(ids: []) {
+    const episodes = await episodeDexie
+      .where('patientServiceIdentifier_id')
+      .anyOfIgnoreCase(ids)
+      .reverse()
+      .limit(3)
+      .sortBy('episodeDate');
+    const referralClinicIds = episodes.map(
+      (episode: any) => episode.referralClinic_id
+    );
+
+    const startStopReasonIds = episodes.map(
+      (episode: any) => episode.startStopReason_id
+    );
+
+    const episodeTypeIds = episodes.map(
+      (episode: any) => episode.episodeType_id
+    );
+
+    const clinicSectorIds = episodes.map(
+      (episode: any) => episode.clinicSector_id
+    );
+
+    const episodeIds = episodes.map((episode: any) => episode.id);
+
+    const [
+      referralClinics,
+      startStopReasons,
+      episodeTypes,
+      clinicSectors,
+      patientVisitDetailList,
+    ] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(referralClinicIds),
+      startStopReasonService.getAllByIDsFromDexie(startStopReasonIds),
+      episodeTypeService.getAllByIDsFromDexie(episodeTypeIds),
+      clinicSectorService.getAllByIDsFromDexie(clinicSectorIds),
+      patientVisitDetailsService.getAllByEpisodeIDsFromDexie(episodeIds),
+    ]);
+    episodes.map((episode: any) => {
+      episode.referralClinic = referralClinics.find(
+        (referralClinic: any) => referralClinic.id === episode.referralClinic_id
+      );
+      episode.startStopReason = startStopReasons.find(
+        (startStopReason: any) =>
+          startStopReason.id === episode.startStopReason_id
+      );
+      episode.episodeType = episodeTypes.find(
+        (episodeType: any) => episodeType.id === episode.episodeType_id
+      );
+      episode.clinicSector = clinicSectors.find(
+        (clinicSector: any) => clinicSector.id === episode.clinicSector_id
+      );
+      episode.patientVisitDetails = patientVisitDetailList.filter(
+        (patientVisitDetail: any) =>
+          patientVisitDetail.episode_id === episode.id
+      );
+    });
+
+    return episodes;
+  },
+  deleteAllFromDexie() {
+    episodeDexie.clear();
   },
 };

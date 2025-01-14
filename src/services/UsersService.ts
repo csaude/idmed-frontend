@@ -7,16 +7,21 @@ import { nSQL } from 'nano-sql';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import encryption from 'src/services/Encryption';
 import { useOnline } from 'src/composables/shared/loadParams/online';
-import patientService from './api/patientService/patientService';
+import db from 'src/stores/dexie';
+import axios, { Axios } from 'axios';
 
 const userLogin = useRepo(UserLogin);
 const userRoles = useRepo(UserRole);
 const { isMobile, isOnline } = useSystemUtils();
-const { deleteStorageInfo } = useOnline();
+const { deleteStorageInfo, deleteDexieInfo } = useOnline();
+const userLoginDexie = db[UserLogin.entity];
 
 export default {
   logout() {
     deleteStorageInfo();
+    if (!isMobile.value) {
+      deleteDexieInfo();
+    }
   },
   fetchUsers() {
     return api()
@@ -51,7 +56,7 @@ export default {
       .post('/login', params)
       .then((resp) => {
         if (isMobile.value) {
-          this.putMobile(resp.data);
+          this.addMobile(resp.data);
           localStorage.setItem(
             'sync_pass',
             encryption.encryptPlainText('user.sync')
@@ -133,33 +138,49 @@ export default {
       });
   },
 
+  refreshToken() {
+    const rToken = sessionStorage.getItem('refresh_token');
+    const url = localStorage.getItem('backend_url')?.replace('/api', '');
+    return axios
+      .post(
+        url +
+          '/oauth/access_token?grant_type=refresh_token&refresh_token=' +
+          rToken
+      )
+      .then((data) => {
+        return data;
+      });
+  },
+
   getUserByUserName(username: string) {
     return userLogin.query().where('username', username).first();
   },
 
   // Mobile
-  putMobile(params: string) {
-    return nSQL(UserLogin.entity)
-      .query('upsert', params)
-      .exec()
-      .then(() => {
-        userLogin.save(params);
-      })
-      .catch((error: any) => {
-        console.log(error);
-      });
-    0;
+
+  addMobile(params: string) {
+    return userLoginDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
+      userLogin.save(JSON.parse(JSON.stringify(params)));
+    });
   },
-  getMobile() {
-    return nSQL(UserLogin.entity)
-      .query('select')
-      .exec()
-      .then((rows: any) => {
-        userLogin.save(rows);
-        return rows;
-      })
-      .catch((error: any) => {
-        console.log(error);
-      });
+
+  putMobile(params: string) {
+    return userLoginDexie.put(JSON.parse(JSON.stringify(params))).then(() => {
+      userLogin.save(JSON.parse(JSON.stringify(params)));
+    });
+  },
+  async getMobile() {
+    try {
+      const rows = await userLoginDexie.toArray();
+      userLogin.save(rows);
+      return rows;
+    } catch (error) {
+      // alertError('Aconteceu um erro inesperado nesta operação.');
+      console.log(error);
+    }
+  },
+
+  async getLogedUser() {
+    return await userLoginDexie.orderBy('id').first();
   },
 };

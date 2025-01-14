@@ -149,32 +149,7 @@ const generateReport = async (id, fileType) => {
         }
       }
     });
-  } else {
-    /* const data = await PatientsWithoutDispense.getDataLocalReport(id);
-    if (data.length === 0) {
-      alertError('Não existem Dados para o período selecionado');
-      downloadingXls.value = false
-            downloadingPdf.value = false
-    } else {
-      const patientAux = data[0];
-
-      if (fileType === 'PDF') {
-        await activePatients.downloadPDF(
-          patientAux.province,
-          moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
-          moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-          data
-        );
-      } else {
-        await activePatients.downloadExcel(
-          patientAux.province,
-          moment(new Date(patientAux.startDate)).format('DD-MM-YYYY'),
-          moment(new Date(patientAux.endDate)).format('DD-MM-YYYY'),
-          data
-        );
-      }
-    } */
-  }
+  } 
 };
 
 onMounted(() => {

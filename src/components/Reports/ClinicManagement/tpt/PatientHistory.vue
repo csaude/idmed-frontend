@@ -144,9 +144,9 @@ const generateReport = (id, fileType) => {
               moment(new Date(firstReg.startDate)).format('DD-MM-YYYY'),
               moment(new Date(firstReg.endDate)).format('DD-MM-YYYY'),
               resp.data,
-              'tpt'
+              'tpt',
+              downloadingPdf
             );
-            downloadingPdf.value = false;
           } else {
             downloadingXls.value = true;
             patientHistoryTS.downloadExcel(
@@ -154,7 +154,8 @@ const generateReport = (id, fileType) => {
               moment(new Date(firstReg.startDate)).format('DD-MM-YYYY'),
               moment(new Date(firstReg.endDate)).format('DD-MM-YYYY'),
               resp.data,
-              'tpt'
+              'tpt',
+              downloadingXls
             );
             downloadingXls.value = false;
           }
@@ -169,15 +170,18 @@ const generateReport = (id, fileType) => {
           '',
           moment(new Date(firstReg.startDate)).format('DD-MM-YYYY'),
           moment(new Date(firstReg.endDate)).format('DD-MM-YYYY'),
-          reports
+          reports,
+          '',
+          downloadingPdf
         );
-        downloadingPdf.value = false;
       } else {
         patientHistoryTS.downloadExcel(
           '',
           moment(new Date(firstReg.startDate)).format('DD-MM-YYYY'),
           moment(new Date(firstReg.endDate)).format('DD-MM-YYYY'),
-          reports
+          reports,
+          '',
+          downloadingXls
         );
         downloadingXls.value = false;
       }

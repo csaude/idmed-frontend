@@ -8,6 +8,8 @@ import Report from 'src/services/api/report/ReportService';
 import clinicService from 'src/services/api/clinicService/clinicService';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import ArvDailyRegisterMobileService from 'src/services/api/report/mobile/ArvDailyRegisterMobileService';
+import { fetchFontAsBase64 } from 'src/utils/ReportUtils';
+import fontPath from 'src/assets/NotoSans-Regular.ttf';
 
 const img = new Image();
 img.src = 'data:image/png;base64,' + MOHIMAGELOG;
@@ -21,8 +23,8 @@ const reportName = 'ArvDailyListReport';
 const fileName = reportName.concat('_' + Report.getFormatDDMMYYYY(new Date()));
 
 export default {
-
   async downloadPDF(id, fileType, params) {
+    const fontBase64 = await fetchFontAsBase64(fontPath);
     const clinic = clinicService.currClinic();
     let rowsAux = [];
     let data = [];
@@ -42,7 +44,6 @@ export default {
       const listaFinal = Object.values(Report.mapaDeAgrupamento(rowsAux.data));
 
       data = this.createArrayOfArrayRow(listaFinal);
-
     } else {
       rowsAux = await this.getDataLocalReport(id);
       if (rowsAux.length === 0) return 204;
@@ -59,10 +60,9 @@ export default {
       putOnlyUsedFonts: true,
       floatPrecision: 'smart', // or "smart", default is 16
     });
-
-    // doc.setProperties({
-    //   title: fileName.concat('.pdf'),
-    // });
+    doc.addFileToVFS('NotoSans-Regular.ttf', fontBase64.split(',')[1]);
+    doc.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
+    doc.setFont('NotoSans');
 
     const headerReport = [
       [
@@ -161,11 +161,13 @@ export default {
     autoTable(doc, {
       //  margin: { top: 10 },
       bodyStyles: {
+        font: 'NotoSans',
         halign: 'left',
         valign: 'middle',
         fontSize: 8,
       },
       headStyles: {
+        font: 'NotoSans',
         halign: 'left',
         valign: 'middle',
       },
@@ -180,16 +182,15 @@ export default {
 
     autoTable(doc, {
       // margin: { top: 45 },
-      bodyStyles: 
-      {
+      bodyStyles: {
+        font: 'NotoSans',
         overflow: 'linebreak',
         cellWidth: 'wrap',
         valign: 'middle',
         fontSize: 6,
         overflowColumns: 'linebreak',
       },
-      headStyles: 
-      {
+      headStyles: {
         valign: 'bottom',
         halign: 'center',
         fontSize: 6,
@@ -198,14 +199,15 @@ export default {
         fillColor: [255, 255, 255],
         textColor: [96, 96, 96],
       },
-      didDrawPage: function (data) 
-      {    
+      didDrawPage: function (data) {
         const str = 'Página ' + doc.internal.getNumberOfPages();
         doc.setFontSize(6);
         // jsPDF 1.4+ uses getWidth, <1.4 uses .width
         const pageSize = doc.internal.pageSize;
-        const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
-        doc.text(str, data.settings.margin.right, pageHeight - 10);        
+        const pageHeight = pageSize.height
+          ? pageSize.height
+          : pageSize.getHeight();
+        doc.text(str, data.settings.margin.right, pageHeight - 10);
       },
 
       theme: 'grid',
@@ -217,9 +219,8 @@ export default {
       return doc.save(fileName.concat('.pdf'));
       // window.open(doc.output('bloburl'));
     } else {
-      console.log(doc);
       const pdfOutput = doc.output();
-      this.downloadFile(fileName, 'pdf', pdfOutput);
+      this.downloadFile(fileName, '.pdf', pdfOutput);
     }
   },
 
@@ -327,34 +328,15 @@ export default {
           horizontal: 'left',
           wrapText: false,
         };
-    // Border Format
-    /*  cellTitle.border =
-      cellPharm.border =
-      cellDistrictParamValue.border =
-      cellDistrict.border =
-      cellPharmParamValue.border =
-      cellProvince.border =
-      cellProvinceParamValue.border =
-      cellStartDate.border =
-      cellStartDateParamValue.border =
-      cellEndDate.border =
-      cellEndDateParamValue.border = */
-    // cellRepublica.border =
-    // cellPharm.border =
+
     cellDistrictParamValue.border =
       cellDistrict.border =
-      // cellPharmParamValue.border =
       cellProvince.border =
       cellProvinceParamValue.border =
-      //  cellStartDate.border =
-      // cellStartDateParamValue.border =
       cellEndDate.border =
       cellEndDateParamValue.border =
         {
-          // top: { style: 'thin' },
-          // left: { style: 'thin' },
           bottom: { style: 'thin' },
-          //  right: { style: 'thin' }
         };
 
     cellProfilaxia.border = cellFaixaEtaria.border = {
@@ -379,20 +361,11 @@ export default {
     cellFaixaEtaria.value = 'Faixa Etária';
     cellProfilaxia.value = 'Profilaxia';
     // merge a range of cells
-    // worksheet.mergeCells('A1:A7')
     worksheet.mergeCells('A9:G9');
     worksheet.mergeCells('B11:E11');
     worksheet.mergeCells('B12:C12');
     worksheet.mergeCells('E13:G13');
     worksheet.mergeCells('P13:R13');
-    // worksheet.mergeCells('E12:F12')
-    // worksheet.mergeCells('A13:G13')
-    /* row13Header.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: '1fa37b' },
-    bgColor: { argb: '1fa37b' }
-  } */
     worksheet.getCell('A13').fill =
       worksheet.getCell('B13').fill =
       worksheet.getCell('C13').fill =
@@ -594,27 +567,6 @@ export default {
       row.halign = 'left';
       row.wrapText = true;
 
-      /*  worksheet.mergeCells('A' + (x + 1) + ':A' + (x + 3))
-      worksheet.mergeCells('B' + (x + 1) + ':B' + (x + 3))
-      worksheet.mergeCells('C' + (x + 1) + ':C' + (x + 3))
-      worksheet.mergeCells('D' + (x + 1) + ':D' + (x + 3))
-      worksheet.mergeCells('E' + (x + 1) + ':E' + (x + 3))
-      worksheet.mergeCells('F' + (x + 1) + ':F' + (x + 3))
-      worksheet.mergeCells('G' + (x + 1) + ':G' + (x + 3))
-      worksheet.mergeCells('H' + (x + 1) + ':H' + (x + 3))
-      worksheet.mergeCells('I' + (x + 1) + ':I' + (x + 3))
-      worksheet.mergeCells('J' + (x + 1) + ':J' + (x + 3))
-     // worksheet.mergeCells('K' + (i + 1) + ':K' + (i + 3))
-     // worksheet.mergeCells('L' + (i + 1) + ':L' + (i + 3))
-      worksheet.mergeCells('M' + (x + 1) + ':M' + (x + 3))
-      worksheet.mergeCells('N' + (x + 1) + ':N' + (x + 3))
-      worksheet.mergeCells('O' + (x + 1) + ':O' + (x + 3))
-      worksheet.mergeCells('P' + (x + 1) + ':P' + (x + 3))
-      worksheet.mergeCells('Q' + (x + 1) + ':Q' + (x + 3))
-      worksheet.mergeCells('R' + (x + 1) + ':R' + (x + 3))
-      worksheet.mergeCells('S' + (x + 1) + ':S' + (x + 3)) */
-      //  x += 3
-      // worksheet.mergeCells('A' + i + ':A' + ((Number(worksheet.lastRow.number) + 3)))
       row.eachCell({ includeEmpty: true }, (cell) => {
         cell.border = {
           top: { style: 'thin' },
@@ -757,30 +709,38 @@ export default {
   },
   createArrayOfArrayRow(rows) {
     const data = [];
-    let ord = 1
-      for (const row in rows) {
-        const createRow = [];
-        // createRow.push(rows[row].orderNumber);
-        createRow.push(ord++);
-        createRow.push(rows[row].nid);
-        createRow.push(rows[row].patientName);
-        createRow.push(rows[row].startReason);
-        createRow.push(rows[row].ageGroup_0_4);
-        createRow.push(rows[row].ageGroup_5_9);
-        createRow.push(rows[row].ageGroup_10_14);
-        createRow.push(rows[row].ageGroup_Greater_than_15);
-        createRow.push(rows[row].patientType);
-        createRow.push(rows[row].regime);
-        createRow.push(Report.createDrugArrayOfArrayRow(rows[row].drugQuantityTemps).join('; \n'));
-        createRow.push(rows[row].dispensationType);
-        createRow.push(rows[row].therapeuticLine);
-        createRow.push(Report.getFormatDDMMYYYY(rows[row].pickupDate));
-        createRow.push(Report.getFormatDDMMYYYY(rows[row].nextPickupDate));
-        createRow.push(rows[row].ppe);
-        createRow.push(rows[row].prep);
-        createRow.push('');
-        data.push(createRow);
-      }
+    let ord = 1;
+    for (const row in rows) {
+      const createRow = [];
+      // createRow.push(rows[row].orderNumber);
+      createRow.push(ord++);
+      createRow.push(rows[row].nid);
+      createRow.push(rows[row].patientName);
+      createRow.push(rows[row].startReason);
+      createRow.push(rows[row].ageGroup_0_4);
+      createRow.push(rows[row].ageGroup_5_9);
+      createRow.push(rows[row].ageGroup_10_14);
+      createRow.push(rows[row].ageGroup_Greater_than_15);
+      createRow.push(rows[row].patientType);
+      createRow.push(rows[row].regime);
+      createRow.push(
+        Report.createDrugArrayOfArrayRow(rows[row].drugQuantityTemps).join(
+          '; \n'
+        )
+      );
+      // const drugs = rows[row].drugQuantityTemps;
+      // console.log(drugs)
+      // const result = drugs.map((drug) => `${drug.drugName}: ${drug.quantity}`);
+      // createRow.push(result.join('; \n'));
+      createRow.push(rows[row].dispensationType);
+      createRow.push(rows[row].therapeuticLine);
+      createRow.push(Report.getFormatDDMMYYYY(rows[row].pickupDate));
+      createRow.push(Report.getFormatDDMMYYYY(rows[row].nextPickupDate));
+      createRow.push(rows[row].ppe);
+      createRow.push(rows[row].prep);
+      createRow.push('');
+      data.push(createRow);
+    }
 
     return data;
   },

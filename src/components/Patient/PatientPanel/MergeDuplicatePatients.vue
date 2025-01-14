@@ -241,10 +241,17 @@
                       </q-td>
                       <q-td key="therapeuticRegimen" :props="props">
                         {{
-                          therapeuticalRegimenService.getById(
-                            props.row.prescription.prescriptionDetails[0]
-                              .therapeutic_regimen_id
-                          ).regimenScheme
+                          props.row.prescription.prescriptionDetails[0]
+                            .therapeutic_regimen_id !== null &&
+                          props.row.prescription.prescriptionDetails[0]
+                            .therapeutic_regimen_id !== undefined &&
+                          props.row.prescription.prescriptionDetails[0]
+                            .therapeutic_regimen_id !== ''
+                            ? therapeuticalRegimenService.getById(
+                                props.row.prescription.prescriptionDetails[0]
+                                  .therapeutic_regimen_id
+                              ).regimenScheme
+                            : 'Sem Info.'
                         }}
                       </q-td>
                     </q-tr>
@@ -276,6 +283,7 @@
             :loading="submitLoading"
             label="Submeter"
             color="primary"
+            :desabled="enableSubmit"
           />
         </q-card-actions>
       </form>
@@ -340,6 +348,7 @@ const formatDate = (dateString) => {
   return date.formatDate(dateString, 'DD-MM-YYYY');
 };
 const submitLoading = ref(false);
+const enableSubmit = ref(true)
 onMounted(async () => {
   showloading();
   const tarvClinicalService =
@@ -369,7 +378,7 @@ onMounted(async () => {
 
 const search = async () => {
   showloading();
-
+  enableSubmit.value = true
   if (identifierToSearch.value && identifierToSearch.value.length > 0) {
     const tarvClinicalService =
       clinicalServiceService.getClinicalServiceByCode('TARV');
@@ -398,6 +407,7 @@ const search = async () => {
         moment(patient.value.dateOfBirth, 'YYYY-MM-DD'),
         'years'
       );
+      enableSubmit.value = false
     } else {
       alertError('Não foi encontrado nenhum paciente com NID');
     }

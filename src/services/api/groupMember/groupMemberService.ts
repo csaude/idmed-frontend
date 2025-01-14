@@ -7,9 +7,11 @@ import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { nSQL } from 'nano-sql';
 import Group from 'src/stores/models/group/Group';
 import groupService from '../group/groupService';
+import db from 'src/stores/dexie';
 
 const { isOnline, isMobile } = useSystemUtils();
 const groupMember = useRepo(GroupMember);
+const groupMemberDexie = db[GroupMember.entity]
 const groupMemberInfo = useRepo(GroupMemberInfo);
 
 export default {
@@ -67,7 +69,6 @@ export default {
         });
     } else {
       const group = groupService.getGroupWithsById(member.group_id);
-      console.log(group);
       const memberToRemove = group.members.filter((memberParam: any) => {
         return memberParam.id === member.id;
       });
@@ -76,8 +77,6 @@ export default {
           return memberParam.id === member.id;
         }
       );
-      console.log(memberToRemove);
-      console.log(memberToRemoveIndex);
       group.members.splice(memberToRemoveIndex, 1, member);
       group.members.forEach((member) => {
         const memberPatientId = member.patient.id;
@@ -93,6 +92,15 @@ export default {
       });
       groupMember.save(member);
       groupService.apiUpdate(group);
+    }
+  },
+  async getPatientGroupByPatientId(patientId: string) {
+    if (isOnline.value) {
+      return await api()
+        .get(`/groupMember/groupMemberInfoPatient/${patientId}`)
+        .then((resp) => {
+          groupMember.save(resp.data);
+        });
     }
   },
   // Local Storage Pinia
@@ -115,5 +123,8 @@ export default {
 
   getMemberById(id: string) {
     return groupMember.withAllRecursive(2).where('id', id).first();
+  },
+  deleteAllFromDexie() {
+    groupMemberDexie.clear();
   },
 };

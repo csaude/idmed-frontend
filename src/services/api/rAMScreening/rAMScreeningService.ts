@@ -2,11 +2,13 @@ import { useRepo } from 'pinia-orm';
 import api from '../apiService/apiService';
 import RAMScreening from 'src/stores/models/screening/RAMScreening';
 import { useLoading } from 'src/composables/shared/loading/loading';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const rAMScreening = useRepo(RAMScreening);
+const rAMScreeningDexie = db[RAMScreening.entity];
+
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -35,7 +37,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -56,7 +58,7 @@ export default {
           rAMScreening.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -79,18 +81,23 @@ export default {
       });
   },
   // Mobile
+  addMobile(params: string) {
+    return rAMScreeningDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        rAMScreening.save(JSON.parse(JSON.stringify(params)));
+      });
+  },
   putMobile(params: string) {
-    return nSQL(RAMScreening.entity)
-      .query('upsert', params)
-      .exec()
-      .then((resp) => {
-        rAMScreening.save(resp[0].affectedRows);
+    return rAMScreeningDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        rAMScreening.save(JSON.parse(JSON.stringify(params)));
       });
   },
   getMobile() {
-    return nSQL(RAMScreening.entity)
-      .query('select')
-      .exec()
+    return rAMScreeningDexie
+      .toArray()
       .then((rows: any) => {
         rAMScreening.save(rows);
       })
@@ -100,10 +107,8 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(RAMScreening.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return rAMScreeningDexie
+      .delete(paramsId)
       .then(() => {
         rAMScreening.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
@@ -112,6 +117,22 @@ export default {
         // alertError('Aconteceu um erro inesperado nesta operação.');
         console.log(error);
       });
+  },
+  addBulkMobile() {
+    const rAMScreeningFromPinia = this.getAllFromStorageForDexie();
+    return rAMScreeningDexie
+      .bulkAdd(rAMScreeningFromPinia)
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
+  async getRAMScreeningByVisitIdMobile(id: string) {
+    const rAMScreenings = await rAMScreeningDexie
+      .where('patient_visit_id')
+      .equalsIgnoreCase(id)
+      .toArray();
+    rAMScreening.save(rAMScreenings);
+    return rAMScreenings;
   },
   async apiGetAll(offset: number, max: number) {
     return await api().get('/RAMScreening?offset=' + offset + '&max=' + max);
@@ -123,7 +144,29 @@ export default {
   getAllFromStorage() {
     return rAMScreening.all();
   },
+  getAllFromStorageForDexie() {
+    return rAMScreening.makeHidden(['visit']).all();
+  },
   deleteAllFromStorage() {
     rAMScreening.flush();
+  },
+
+
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await rAMScreeningDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+  },
+
+  async getAllByPatientVisitIDsFromDexie(ids: []) {
+    return await rAMScreeningDexie
+      .where('patient_visit_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+  },
+  deleteAllFromDexie() {
+    rAMScreeningDexie.clear();
   },
 };

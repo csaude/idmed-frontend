@@ -2,11 +2,12 @@ import { useRepo } from 'pinia-orm';
 import api from '../apiService/apiService';
 import StartStopReason from 'src/stores/models/startStopReason/StartStopReason';
 import { useLoading } from 'src/composables/shared/loading/loading';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const startStopReason = useRepo(StartStopReason);
+const startStopReasonDexie = db[StartStopReason.entity];
 
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -15,7 +16,7 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.putMobile(params);
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
@@ -36,7 +37,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -49,17 +50,15 @@ export default {
         startStopReason.save(resp.data);
       });
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('startStopReason?offset=' + offset + '&max=100')
         .then((resp) => {
           startStopReason.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -82,10 +81,19 @@ export default {
       });
   },
   // Mobile
+  addMobile(params: string) {
+    return startStopReasonDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        startStopReason.save(JSON.parse(params));
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
   putMobile(params: string) {
-    return nSQL(startStopReason.use?.entity)
-      .query('upsert', params)
-      .exec()
+    return startStopReasonDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         startStopReason.save(JSON.parse(params));
         // alertSucess('O Registo foi efectuado com sucesso');
@@ -96,9 +104,8 @@ export default {
       });
   },
   getMobile() {
-    return nSQL(startStopReason.use?.entity)
-      .query('select')
-      .exec()
+    return startStopReasonDexie
+      .toArray()
       .then((rows: any) => {
         startStopReason.save(rows);
       })
@@ -108,16 +115,24 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(startStopReason.use?.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return startStopReasonDexie
+      .delete(paramsId)
       .then(() => {
         startStopReason.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  addBulkMobile(params: any) {
+    return startStopReasonDexie
+      .bulkPut(params)
+      .then(() => {
+        startStopReason.save(params);
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },
@@ -154,5 +169,13 @@ export default {
         return startStopReason.id === id;
       })
       .get();
+  },
+
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await startStopReasonDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
   },
 };

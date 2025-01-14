@@ -4,9 +4,11 @@ import api from '../apiService/apiService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 
 const form = useRepo(Form);
+const formDexie = db[Form.entity];
+
 const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
@@ -14,9 +16,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      this.putMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -35,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -51,21 +53,18 @@ export default {
       console.log(error);
     }
   },
-  getWeb(offset: number) {
+  async getWeb(offset: number) {
     if (offset >= 0) {
-      return api()
+      return await api()
         .get('form?offset=' + offset + '&max=100')
         .then((resp) => {
           form.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
-          } else {
-            closeLoading();
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
-          // alertError('Aconteceu um erro inesperado nesta operação.');
           console.log(error);
         });
     }
@@ -91,10 +90,21 @@ export default {
     }
   },
   // Mobile
+  addMobile(params: string) {
+    return formDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        form.save(JSON.parse(params));
+        // alertSucess('O Registo foi efectuado com sucesso');
+      })
+      .catch((error: any) => {
+        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
   putMobile(params: string) {
-    return nSQL(Form.entity)
-      .query('upsert', params)
-      .exec()
+    return formDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         form.save(JSON.parse(params));
         // alertSucess('O Registo foi efectuado com sucesso');
@@ -105,9 +115,8 @@ export default {
       });
   },
   getMobile() {
-    return nSQL(Form.entity)
-      .query('select')
-      .exec()
+    return formDexie
+      .toArray()
       .then((rows: any) => {
         form.save(rows);
       })
@@ -117,10 +126,8 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(Form.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return formDexie
+      .delete(paramsId)
       .then(() => {
         form.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
@@ -130,6 +137,17 @@ export default {
         console.log(error);
       });
   },
+  addBulkMobile(params: any) {
+    return formDexie
+      .bulkPut(params)
+      .then(() => {
+        form.save(params);
+      })
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
+
   /*Pinia Methods*/
   getAllForms() {
     return form.query().withAll().get();
@@ -137,5 +155,9 @@ export default {
 
   getFormById(id: string) {
     return form.query().where('id', id).first();
+  },
+  //Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await formDexie.where('id').anyOfIgnoreCase(ids).toArray();
   },
 };

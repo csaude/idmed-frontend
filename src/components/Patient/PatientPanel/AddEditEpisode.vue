@@ -120,7 +120,7 @@
             v-model="episode.clinicSector"
             :options="clinicSerctors"
             option-value="id"
-            option-label="description"
+            option-label="clinicName"
             label="Sector Clinico *"
           />
           <q-select
@@ -138,7 +138,7 @@
             v-model="episode.clinicSector"
             :options="mobileClinicSector"
             option-value="id"
-            option-label="description"
+            option-label="clinicName"
             label="Sector Clinico *"
           />
           <q-input
@@ -268,7 +268,7 @@
               :rules="[
                 (val) => !!val || 'Por favor indicar o destino do paciente.',
               ]"
-              v-model="closureEpisode.referralClinic"
+              v-model="selectedClinicSector"
               :options="referralClinics"
               option-value="id"
               option-label="clinicName"
@@ -284,7 +284,7 @@
               use-input
               ref="clinicSectorTypeRef"
               input-debounce="0"
-              :options="clinicSectorTypes"
+              :options="facilityTypesSectors"
               option-value="id"
               option-label="description"
               label="Tipo de Sector de Dispensa"
@@ -302,7 +302,24 @@
               v-model="selectedClinicSector"
               :options="referealClinicSectors"
               option-value="id"
-              option-label="description"
+              option-label="clinicName"
+              label="Sector de Dispensa"
+            />
+          </div>
+          <div class="row" v-if="isSectorReferenceEpisode">
+            <q-select
+              class="col"
+              dense
+              outlined
+              :disable="episode.id !== null && isEditStep"
+              ref="referealClinicSectorRef"
+              :rules="[
+                (val) => !!val || 'Por favor indicar o sector de dispensa.',
+              ]"
+              v-model="selectedClinicSector"
+              :options="referealClinicSectorsRSC"
+              option-value="id"
+              option-label="clinicName"
               label="Sector de Dispensa"
             />
           </div>
@@ -344,7 +361,6 @@ import episodeService from 'src/services/api/episode/episodeService';
 import clinicService from 'src/services/api/clinicService/clinicService';
 import clinicSectorService from 'src/services/api/clinicSectorService/clinicSectorService';
 import provinceService from 'src/services/api/provinceService/provinceService';
-import clinicSectorTypeService from 'src/services/api/clinicSectorTypeService/clinicSectorTypeService';
 import districtService from 'src/services/api/districtService/districtService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import episodeTypeService from 'src/services/api/episodeType/episodeTypeService';
@@ -353,8 +369,9 @@ import { usePrescription } from 'src/composables/prescription/prescriptionMethod
 import patientVisitService from 'src/services/api/patientVisit/patientVisitService';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 import { v4 as uuidv4 } from 'uuid';
-import PatientServiceIdentifier from 'src/stores/models/patientServiceIdentifier/PatientServiceIdentifier';
 import patientServiceIdentifierService from 'src/services/api/patientServiceIdentifier/patientServiceIdentifierService';
+import facilityTypeService from 'src/services/api/facilityTypeService/facilityTypeService';
+import { useLoading } from 'src/composables/shared/loading/loading';
 
 //Declaration
 const {
@@ -369,6 +386,7 @@ const { alertSucess, alertError } = useSwal();
 const { fullName, age } = usePatient();
 const { isReferenceOrTransferenceEpisode, hasVisits } = useEpisode();
 const { remainigDurationInWeeks } = usePrescription();
+const { closeLoading, showloading } = useLoading();
 const { isOnline } = useSystemUtils();
 
 const submitting = ref(false);
@@ -440,15 +458,23 @@ const provinces = computed(() => {
   }
 });
 
-const clinicSectorTypes = computed(() => {
-  return clinicSectorTypeService.getAllClinicSectorTypes();
+const facilityTypesSectors = computed(() => {
+  return facilityTypeService.getFacilityTypeClinicSectorForDC();
 });
 
 const referealClinicSectors = computed(() => {
   if (selectedClinicSectorType.value === null) return [];
-  return clinicSectorService.getClinicSectorsByClinicIdSectorTypeId(
+  return clinicSectorService.getClinicSectorsByFacilityTypeId(
     currClinic.value.id,
     selectedClinicSectorType.value.id
+  );
+});
+
+const referealClinicSectorsRSC = computed(() => {
+  const facilityType = facilityTypeService.getFacilityTypeParagemUnica();
+  return clinicSectorService.getClinicSectorsByFacilityTypeId(
+    currClinic.value.id,
+    facilityType.id
   );
 });
 
@@ -499,19 +525,44 @@ const isTransferenceEpisode = computed(() => {
   return closureEpisode.value.startStopReason.code === 'TRANSFERIDO_PARA';
 });
 
+const isSectorReferenceEpisode = computed(() => {
+  if (closureEpisode.value === null || closureEpisode.value === undefined)
+    return false;
+  if (
+    closureEpisode.value.startStopReason === null ||
+    closureEpisode.value.startStopReason === undefined
+  )
+    return false;
+  return (
+    closureEpisode.value.startStopReason.code === 'REFERIDO_SECTOR_CLINICO'
+  );
+});
 const identifierstartDate = computed(() => {
   return getDDMMYYYFromJSDate(curIdentifier.value.startDate);
 });
 
 const clinicSerctors = computed(() => {
-  return clinicSectorService.getActiveUSClinicSectorByClinic(
+  const allClinicSectors = clinicSectorService.getActiveUSClinicSectorByClinic(
     curIdentifier.value.clinic_id
   );
+  if (patient.value.gender === 'Masculino') {
+    let clinicSectorsMale = [];
+    clinicSectorsMale = allClinicSectors.filter((sector) => {
+      return sector.code !== 'CPN';
+    });
+    return clinicSectorsMale;
+  }
+  return allClinicSectors;
 });
 
 const mobileClinicSector = computed(() => {
-  const clinicSectorCode = localStorage.getItem('clinic_sector_users');
-  return clinicSectorService.getClinicSectorByCode(clinicSectorCode);
+  const clinicSectorCode = localStorage.getItem('clinicUsers');
+
+  if (!clinicSectorService.getClinicSectorByCode(clinicSectorCode)) {
+    return clinicService.getByCode(clinicSectorCode);
+  } else {
+    return clinicSectorService.getClinicSectorByCode(clinicSectorCode);
+  }
 });
 
 const referralClinics = computed(() => {
@@ -556,6 +607,23 @@ const stopReasons = computed(() => {
   let resonList = [];
   if (allReasons === undefined || allReasons === null) {
     allReasons = [];
+  }
+
+  if (!isOnline.value) {
+    resonList = allReasons.filter((reason) => {
+      return (
+        reason.code !== 'REFERIDO_DC' &&
+        reason.code !== 'TRANSFERIDO_PARA' &&
+        reason.code !== 'REFERIDO_PARA' &&
+        reason.code !== 'FIM_PPE' &&
+        reason.code !== 'TERMINO_DO_TRATAMENTO' &&
+        reason.code !== 'OBITO' &&
+        reason.code !== 'TSPC' &&
+        reason.code !== 'REFERIDO_SECTOR_CLINICO' &&
+        reason.code !== 'VOLTOU_A_SER_REFERIDO_PARA'
+      );
+    });
+    return resonList;
   }
   if (
     lastEpisode.value !== null &&
@@ -613,16 +681,6 @@ const init = async () => {
         curIdentifier.value.id
       );
       startDate.value = getDDMMYYYFromJSDate(episode.value.episodeDate);
-      // startDate.value = episode.value.episodeDate;
-      // episode.value.patientServiceIdentifier.episodes = [];
-      // if (
-      //   lastEpisodeIdentifier(curIdentifier.value) !== null &&
-      //   isStartEpisode(lastEpisodeIdentifier(curIdentifier.value)) &&
-      //   (episode.value !== null || episode.value !== undefined)
-      // ) {
-      //   episode.value = new Episode(lastEpisodeIdentifier(curIdentifier.value));
-      //   changeToCloseStep();
-      // }
     }
   }
 };
@@ -639,8 +697,6 @@ const submitForm = () => {
   ) {
     if (isNewEpisode.value) {
       if (lastEpisode.value !== null) {
-        console.log(lastEpisode.value.episodeDate);
-        console.log(moment(lastEpisode.value.episodeDate));
         if (
           getYYYYMMDDFromJSDate(
             extractHyphenDateFromDMYConvertYMD(startDate.value)
@@ -767,15 +823,19 @@ const doSave = async () => {
     episode.value.episodeDate = getDateFromHyphenDDMMYYYYWithTime(
       startDate.value
     );
-    episode.value.creationDate = moment();
+    episode.value.creationDate = new Date();
     episode.value.patientVisitDetails = [];
     episode.value.patientServiceIdentifier = {};
     episode.value.patientServiceIdentifier.id = curIdentifier.value.id;
+    episode.value.patientServiceIdentifier_id = curIdentifier.value.id;
+    episode.value.origin = currClinic.value.id;
   } else {
+    episode.value.creationDate = new Date();
     episode.value.clinicSector_id = episode.value.clinicSector.id;
     const clinicSectorId = episode.value.clinicSector.id;
     episode.value.clinicSector = {};
     episode.value.clinicSector.id = clinicSectorId;
+    episode.value.clinicSector_id = clinicSectorId;
     episode.value.clinic = {};
     episode.value.clinic.id = currClinic.value.id;
     episode.value.episodeDate = isClosingEpisode.value
@@ -784,15 +844,19 @@ const doSave = async () => {
     episode.value.patientVisitDetails = [];
     closureEpisode.value.patientServiceIdentifier = {};
     closureEpisode.value.patientServiceIdentifier.id = curIdentifier.value.id;
+    closureEpisode.value.patientServiceIdentifier_id = curIdentifier.value.id;
     episode.value.patientVisitDetails = [];
     episode.value.patientServiceIdentifier = {};
     episode.value.patientServiceIdentifier.id = curIdentifier.value.id;
+    episode.value.patientServiceIdentifier_id = curIdentifier.value.id;
     if (isClosingEpisode.value) {
       episode.value.isLast = false;
       closureEpisode.value.clinicSector =
         selectedClinicSector.value !== null
           ? selectedClinicSector.value
           : episode.value.clinicSector;
+      closureEpisode.value.clinicSector_id =
+        closureEpisode.value.clinicSector.id;
       closureEpisode.value.isLast = true;
       closureEpisode.value.episodeType =
         episodeTypeService.getEpisodeTypeByCode('FIM');
@@ -801,32 +865,42 @@ const doSave = async () => {
       closureEpisode.value.episodeDate = getDateFromHyphenDDMMYYYYWithTime(
         stopDate.value
       );
-      closureEpisode.value.creationDate = moment();
+      closureEpisode.value.creationDate = new Date();
       closureEpisode.value.patientServiceIdentifier = {};
       closureEpisode.value.patientServiceIdentifier.id = curIdentifier.value.id;
       closureEpisode.value.patientVisitDetails = [];
+      episode.value.origin = currClinic.value.id;
+      closureEpisode.value.origin = currClinic.value.id;
     }
   }
   episodeService
     .apiSave(episode.value, isNewEpisode.value)
     .then(() => {
       if (isClosingEpisode.value) {
+        showloading();
         episodeService
           .apiSave(closureEpisode.value, true)
           .then(() => {
             if (
               closureEpisode.value.startStopReason.code ===
                 'TRANSFERIDO_PARA' ||
-              closureEpisode.value.startStopReason.code === 'OBITO'
+              closureEpisode.value.startStopReason.code === 'OBITO' ||
+              closureEpisode.value.startStopReason.code ===
+                'REFERIDO_SECTOR_CLINICO' ||
+              closureEpisode.value.startStopReason.code === 'REFERIDO_PARA' ||
+              closureEpisode.value.startStopReason.code === 'REFERIDO_DC'
             ) {
               curIdentifier.value.patient.identifiers.forEach((identifiers) => {
                 patientServiceIdentifierService.apiFetchById(identifiers.id);
+                closeLoading();
               });
+            } else {
+              closeLoading();
             }
-            console.log('Histórico Clínico de fecho criado com sucesso');
           })
           .catch((error) => {
             console.log(error);
+            closeLoading();
             alertError(
               'Aconteceu um erro ao durante a operacao de registo do Histórico Clínico de Fecho'
             );

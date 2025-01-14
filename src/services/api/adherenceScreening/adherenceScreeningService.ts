@@ -1,19 +1,22 @@
 import { useRepo } from 'pinia-orm';
 import api from '../apiService/apiService';
-import { nSQL } from 'nano-sql';
 import AdherenceScreening from 'src/stores/models/screening/AdherenceScreening';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
+import { useLoading } from 'src/composables/shared/loading/loading';
+import db from '../../../stores/dexie';
 
 const adherenceScreening = useRepo(AdherenceScreening);
+const adherenceScreeningDexie = db[AdherenceScreening.entity];
 
 const { alertSucess, alertError } = useSwal();
 const { isMobile, isOnline } = useSystemUtils();
+const { closeLoading, showloading } = useLoading();
 
 export default {
   post(params: string) {
     if (isMobile.value && !isOnline.value) {
-      return this.putMobile(params);
+      return this.addMobile(params);
     } else {
       return this.postWeb(params);
     }
@@ -27,14 +30,14 @@ export default {
   },
   patch(uid: string, params: string) {
     if (isMobile.value && !isOnline.value) {
-      return this.putMobile(params);
+      return this.patchMobile(params);
     } else {
       return this.patchWeb(uid, params);
     }
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -55,7 +58,7 @@ export default {
           adherenceScreening.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -78,20 +81,41 @@ export default {
       });
   },
   // Mobile
-  putMobile(params: string) {
-    return nSQL(AdherenceScreening.entity)
-      .query('upsert', params)
-      .exec()
-      .then((resp) => {
-        adherenceScreening.save(resp[0].affectedRows);
+  addMobile(params: string) {
+    showloading();
+    return adherenceScreeningDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        adherenceScreening.save(JSON.parse(JSON.stringify(params)));
+        // alertSucess('O Registo foi efectuado com sucesso');
+        closeLoading();
+      })
+      .catch((error: any) => {
+        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  patchMobile(params: string) {
+    showloading();
+    return adherenceScreeningDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        adherenceScreening.save(JSON.parse(JSON.stringify(params)));
+        // alertSucess('O Registo foi efectuado com sucesso');
+        closeLoading();
+      })
+      .catch((error: any) => {
+        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
       });
   },
   getMobile() {
-    return nSQL(AdherenceScreening.entity)
-      .query('select')
-      .exec()
+    showloading();
+    return adherenceScreeningDexie
+      .toArray()
       .then((rows: any) => {
         adherenceScreening.save(rows);
+        closeLoading();
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
@@ -99,10 +123,8 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(AdherenceScreening.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return adherenceScreeningDexie
+      .delete(paramsId)
       .then(() => {
         adherenceScreening.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
@@ -112,6 +134,22 @@ export default {
         console.log(error);
       });
   },
+  addBulkMobile() {
+    const adherenceScreeningFromPinia = this.getAllFromStorageForDexie();
+    return adherenceScreeningDexie
+      .bulkPut(adherenceScreeningFromPinia)
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
+  async getAdherenceScreeningByVisitIdMobile(id: string) {
+    const adherenceScreenings = await adherenceScreeningDexie
+      .where('patient_visit_id')
+      .equalsIgnoreCase(id)
+      .toArray();
+    adherenceScreening.save(adherenceScreenings);
+    return adherenceScreenings;
+  },
   // Local Storage Pinia
   newInstanceEntity() {
     return adherenceScreening.getModel().$newInstance();
@@ -119,7 +157,27 @@ export default {
   getAllFromStorage() {
     return adherenceScreening.all();
   },
+  getAllFromStorageForDexie() {
+    return adherenceScreening.makeHidden(['visit']).all();
+  },
   deleteAllFromStorage() {
     adherenceScreening.flush();
+  },
+  // Dexie Block
+  async getAllByIDsFromDexie(ids: []) {
+    return await adherenceScreeningDexie
+      .where('id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+  },
+
+  async getAllByPatientVisitIDsFromDexie(ids: []) {
+    return await adherenceScreeningDexie
+      .where('patient_visit_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+  },
+  deleteAllFromDexie() {
+    adherenceScreeningDexie.clear();
   },
 };

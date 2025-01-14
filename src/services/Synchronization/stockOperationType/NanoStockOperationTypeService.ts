@@ -1,7 +1,10 @@
-import api from '../../api/apiService/apiService';
-import { nSQL } from 'nano-sql';
-import StockOperationType from 'src/stores/models/stockoperation/StockOperationType';
 import StockOperationTypeService from 'src/services/api/stockOperationTypeService/StockOperationTypeService';
+import api from '../../api/apiService/apiService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
+import StockOperationType from 'src/stores/models/stockoperation/StockOperationType';
+
+const StockOperationTypeDexie = db[StockOperationType.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -9,11 +12,10 @@ export default {
       return await api()
         .get('stockOperationType?offset=' + offset + '&max=100')
         .then((resp) => {
-          nSQL(StockOperationType.entity).query('upsert', resp.data).exec();
-          StockOperationTypeService.savePinia(resp.data)
-          console.log('Data synced from backend: StockOperationType');
-          offset = offset + 100;
           if (resp.data.length > 0) {
+            StockOperationTypeService.addBulkMobile(resp.data);
+            console.log('Data synced from backend: stockOperationType');
+            offset = offset + 100;
             this.getFromBackEnd(offset);
           }
         })
@@ -22,5 +24,19 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania stockOperationType');
+    (await SynchronizationService.hasData(StockOperationTypeDexie))
+      ? await StockOperationTypeService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie stockOperationType');
+    const getAllstockOperationType =
+      StockOperationTypeService.getAllFromStorage();
+    await StockOperationTypeDexie.bulkPut(getAllstockOperationType);
   },
 };

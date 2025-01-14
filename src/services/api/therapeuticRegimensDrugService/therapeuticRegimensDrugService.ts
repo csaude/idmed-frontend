@@ -2,11 +2,12 @@ import { useRepo } from 'pinia-orm';
 import TherapeuticRegimensDrug from 'src/stores/models/TherapeuticRegimensDrug/TherapeuticRegimensDrug';
 import api from '../apiService/apiService';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
-import { nSQL } from 'nano-sql';
+import db from '../../../stores/dexie';
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
 
 const therapeuticRegimensDrug = useRepo(TherapeuticRegimensDrug);
+const therapeuticRegimensDrugDexie = db[TherapeuticRegimensDrug.entity];
 
 const { closeLoading } = useLoading();
 const { alertSucess, alertError } = useSwal();
@@ -15,9 +16,9 @@ const { isMobile, isOnline } = useSystemUtils();
 export default {
   async post(params: string) {
     if (isMobile && !isOnline) {
-      this.putMobile(params);
+      return this.addMobile(params);
     } else {
-      this.postWeb(params);
+      return this.postWeb(params);
     }
   },
   get(offset: number) {
@@ -36,9 +37,9 @@ export default {
   },
   async delete(uuid: string) {
     if (isMobile && !isOnline) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
-      this.deleteWeb(uuid);
+      return this.deleteWeb(uuid);
     }
   },
   // WEB
@@ -60,7 +61,7 @@ export default {
           therapeuticRegimensDrug.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           } else {
             closeLoading();
           }
@@ -92,23 +93,29 @@ export default {
     }
   },
   // Mobile
-  putMobile(params: string) {
-    return nSQL(therapeuticRegimensDrug.use?.entity)
-      .query('upsert', params)
-      .exec()
+  addMobile(params: string) {
+    return therapeuticRegimensDrugDexie
+      .put(JSON.parse(JSON.stringify(params)))
       .then(() => {
         therapeuticRegimensDrug.save(JSON.parse(params));
-        // alertSucess('O Registo foi efectuado com sucesso');
       })
       .catch((error: any) => {
-        // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  putMobile(params: string) {
+    return therapeuticRegimensDrugDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        therapeuticRegimensDrug.save(JSON.parse(params));
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },
   getMobile() {
-    return nSQL(therapeuticRegimensDrug.use?.entity)
-      .query('select')
-      .exec()
+    return therapeuticRegimensDrugDexie
+      .toArray()
       .then((rows: any) => {
         therapeuticRegimensDrug.save(rows);
       })
@@ -118,16 +125,24 @@ export default {
       });
   },
   deleteMobile(paramsId: string) {
-    return nSQL(therapeuticRegimensDrug.use?.entity)
-      .query('delete')
-      .where(['id', '=', paramsId])
-      .exec()
+    return therapeuticRegimensDrugDexie
+      .delete(paramsId)
       .then(() => {
         therapeuticRegimensDrug.destroy(paramsId);
         alertSucess('O Registo foi removido com sucesso');
       })
       .catch((error: any) => {
         // alertError('Aconteceu um erro inesperado nesta operação.');
+        console.log(error);
+      });
+  },
+  addBulkMobile(params: any) {
+    return therapeuticRegimensDrugDexie
+      .bulkPut(params)
+      .then(() => {
+        therapeuticRegimensDrug.save(params);
+      })
+      .catch((error: any) => {
         console.log(error);
       });
   },

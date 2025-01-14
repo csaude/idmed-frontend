@@ -195,7 +195,6 @@
 
 <script setup>
 import { date } from 'quasar';
-import Stock from '../../../stores/models/stock/Stock';
 import { StockDestructionAdjustment } from '../../../stores/models/stockadjustment/StockDestructionAdjustment';
 import DestroyedStock from '../../../stores/models/stockdestruction/DestroyedStock';
 import { onMounted, ref, computed, provide, inject } from 'vue';

@@ -2,8 +2,6 @@ import NanohealthInformationSystemService from 'src/services/Synchronization/Hea
 import NanoInteroperabilityAttributeService from 'src/services/Synchronization/InteroperabilityAttribute/NanoInteroperabilityAttributeService';
 import NanoInteroperabilityTypeService from 'src/services/Synchronization/InteroperabilityType/NanoInteroperabilityTypeService';
 import NanoclinicSectorService from 'src/services/Synchronization/clinicSectorService/NanoclinicSectorService';
-import NanoclinicSectorTypeService from 'src/services/Synchronization/clinicSectorTypeService/NanoclinicSectorTypeService';
-import NanoclinicService from 'src/services/Synchronization/clinicService/NanoclinicService';
 import NanoclinicalServiceAttributeService from 'src/services/Synchronization/clinicalServiceAttributeService/NanoclinicalServiceAttributeService';
 import NanoclinicalServiceService from 'src/services/Synchronization/clinicalServiceService/NanoclinicalServiceService';
 import NanodispenseModeService from 'src/services/Synchronization/dispenseMode/NanodispenseModeService';
@@ -12,22 +10,11 @@ import NanodistrictService from 'src/services/Synchronization/districtService/Na
 import NanodoctorService from 'src/services/Synchronization/doctorService/NanodoctorService';
 import NanodrugService from 'src/services/Synchronization/drugService/NanodrugService';
 import NanodurationService from 'src/services/Synchronization/duration/NanodurationService';
-import NanoepisodeService from 'src/services/Synchronization/episode/NanoepisodeService';
 import NanoepisodeTypeService from 'src/services/Synchronization/episodeType/NanoepisodeTypeService';
 import NanofacilityTypeService from 'src/services/Synchronization/facilityTypeService/NanofacilityTypeService';
 import NanoformService from 'src/services/Synchronization/formService/NanoformService';
 import NanoidentifierTypeService from 'src/services/Synchronization/identifierTypeService/NanoidentifierTypeService';
-import NanopackService from 'src/services/Synchronization/pack/NanopackService';
-import NanopackagedDrugService from 'src/services/Synchronization/packagedDrug/NanopackagedDrugService';
-import NanopatientAttributeService from 'src/services/Synchronization/patientAttribute/NanopatientAttributeService';
-import NanopatientService from 'src/services/Synchronization/patientService/NanopatientService';
-import NanopatientServiceIdentifierService from 'src/services/Synchronization/patientServiceIdentifier/NanopatientServiceIdentifierService';
 import NanoPatientTransReferenceTypeService from 'src/services/Synchronization/patientTransReferenceServiceType/NanoPatientTransReferenceTypeService';
-import NanopatientVisitService from 'src/services/Synchronization/patientVisit/NanopatientVisitService';
-import NanopatientVisitDetailsService from 'src/services/Synchronization/patientVisitDetails/NanopatientVisitDetailsService';
-import NanoprescribedDrugService from 'src/services/Synchronization/prescribedDrug/NanoprescribedDrugService';
-import NanoprescriptionService from 'src/services/Synchronization/prescription/NanoprescriptionService';
-import NanoprescriptionDetailsService from 'src/services/Synchronization/prescriptionDetails/NanoprescriptionDetailsService';
 import NanoprovinceService from 'src/services/Synchronization/provinceService/NanoprovinceService';
 import NanoprovincialServerService from 'src/services/Synchronization/provincialServerService/NanoprovincialServerService';
 import NanospetialPrescriptionMotiveService from 'src/services/Synchronization/spetialPrescriptionMotive/NanospetialPrescriptionMotiveService';
@@ -56,11 +43,97 @@ import prescriptionDetailsService from 'src/services/api/prescriptionDetails/pre
 import rAMScreeningService from 'src/services/api/rAMScreening/rAMScreeningService';
 import tBScreeningService from 'src/services/api/tBScreening/tBScreeningService';
 import vitalSignsScreeningService from 'src/services/api/vitalSignsScreening/vitalSignsScreeningService';
+import clinicService from 'src/services/api/clinicService/clinicService';
+import NanosystemConfigsService from 'src/services/Synchronization/systemConfigs/NanosystemConfigsService';
+import StockService from 'src/services/api/stockService/StockService';
+import StockEntranceService from 'src/services/api/stockEntranceService/StockEntranceService';
+import NanoclinicService from 'src/services/Synchronization/clinicService/NanoclinicService';
+import NanomenuService from 'src/services/Synchronization/menu/NanomenuService';
+import StockDistributorService from 'src/services/api/stockDistributorService/StockDistributorService';
+import StockDistributorBatchService from 'src/services/api/stockDistributorBatchService/StockDistributorBatchService';
+import DrugDistributorService from 'src/services/api/drugDistributorService/DrugDistributorService';
+// import { useLoading } from '../loading/loading';
+
+// const { closeLoading, showloading } = useLoading();
 
 export function useOffline() {
+  async function loadClinicsDataFromBackEndToPinia() {
+    await NanoclinicService.getFromBackEndToPinia(0);
+    await NanosystemConfigsService.getFromBackEndToPinia(0);
+    await NanomenuService.getFromBackEndToPinia(0);
+    return true;
+  }
+
+  async function loadParamsDataFromBackEndToPinia() {
+    await NanoclinicSectorService.getFromBackEndToPinia(0);
+    await NanodrugService.getFromBackEndToPinia(0);
+    await NanoclinicalServiceService.getFromBackEndToPinia(0);
+    await NanoclinicalServiceAttributeService.getFromBackEndToPinia(0);
+    await NanoidentifierTypeService.getFromBackEndToPinia(0);
+    await NanoepisodeTypeService.getFromBackEndToPinia(0);
+    await NanofacilityTypeService.getFromBackEndToPinia(0);
+    await NanostartStopReasonService.getFromBackEndToPinia(0);
+    await NanodurationService.getFromBackEndToPinia(0);
+    await NanotherapeuticRegimenService.getFromBackEndToPinia(0);
+    await NanotherapeuticLineService.getFromBackEndToPinia(0);
+    await NanoformService.getFromBackEndToPinia(0);
+    await NanodispenseTypeService.getFromBackEndToPinia(0);
+    await NanoInteroperabilityTypeService.getFromBackEndToPinia(0);
+    await NanoInteroperabilityAttributeService.getFromBackEndToPinia(0);
+    await NanohealthInformationSystemService.getFromBackEndToPinia(0);
+    await NanoPatientTransReferenceTypeService.getFromBackEndToPinia(0);
+    await NanospetialPrescriptionMotiveService.getFromBackEndToPinia(0);
+    await NanoprovincialServerService.getFromBackEndToPinia(0);
+    await NanodoctorService.getFromBackEndToPinia(0);
+    await NanodispenseModeService.getFromBackEndToPinia(0);
+    await NanoprovinceService.getFromBackEndToPinia(0);
+    await NanodistrictService.getFromBackEndToPinia(0);
+    await NanoStockCenterService.getFromBackEndToPinia(0);
+    await NanoStockOperationTypeService.getFromBackEndToPinia(0);
+    await NanoGroupTypeService.getFromBackEndToPinia(0);
+
+    return true;
+  }
+
+  async function saveParamsFromPiniaToDexie() {
+    NanoclinicSectorService.getFromPiniaToDexie();
+    NanodrugService.getFromPiniaToDexie();
+    NanoclinicalServiceService.getFromPiniaToDexie();
+    NanoclinicalServiceAttributeService.getFromPiniaToDexie();
+    NanoidentifierTypeService.getFromPiniaToDexie();
+    NanoepisodeTypeService.getFromPiniaToDexie();
+    NanofacilityTypeService.getFromPiniaToDexie();
+    NanostartStopReasonService.getFromPiniaToDexie();
+    NanodurationService.getFromPiniaToDexie();
+    NanotherapeuticRegimenService.getFromPiniaToDexie();
+    NanotherapeuticLineService.getFromPiniaToDexie();
+    NanoformService.getFromPiniaToDexie();
+    NanodispenseTypeService.getFromPiniaToDexie();
+    NanoInteroperabilityTypeService.getFromPiniaToDexie();
+    NanoInteroperabilityAttributeService.getFromPiniaToDexie();
+    NanohealthInformationSystemService.getFromPiniaToDexie();
+    NanoPatientTransReferenceTypeService.getFromPiniaToDexie();
+    NanospetialPrescriptionMotiveService.getFromPiniaToDexie();
+    NanoprovincialServerService.getFromPiniaToDexie();
+    NanodoctorService.getFromPiniaToDexie();
+    NanodispenseModeService.getFromPiniaToDexie();
+    NanoprovinceService.getFromPiniaToDexie();
+    NanodistrictService.getFromPiniaToDexie();
+    NanoStockCenterService.getFromPiniaToDexie();
+    NanoStockOperationTypeService.getFromPiniaToDexie();
+    NanoGroupTypeService.getFromPiniaToDexie();
+    NanosystemConfigsService.getFromPiniaToDexie();
+    NanomenuService.getFromPiniaToDexie();
+    NanoclinicService.getFromPiniaToDexie();
+    return true;
+  }
+
   async function loadSettingParamsToOffline() {
     //  await NanoclinicSectorTypeService.getFromBackEnd(0);
     //  await NanoclinicSectorService.getFromBackEnd(0);
+    //NanoclinicService.getFromBackEnd(0);
+    NanoclinicSectorService.getFromBackEnd(0);
+    NanodrugService.getFromBackEnd(0);
     NanoclinicalServiceService.getFromBackEnd(0);
     NanoclinicalServiceAttributeService.getFromBackEnd(0);
     NanoidentifierTypeService.getFromBackEnd(0);
@@ -77,7 +150,6 @@ export function useOffline() {
     NanoInteroperabilityAttributeService.getFromBackEnd(0);
     NanohealthInformationSystemService.getFromBackEnd(0);
     NanofacilityTypeService.getFromBackEnd(0);
-
     NanoPatientTransReferenceTypeService.getFromBackEnd(0);
     NanospetialPrescriptionMotiveService.getFromBackEnd(0);
     NanoprovincialServerService.getFromBackEnd(0);
@@ -86,30 +158,69 @@ export function useOffline() {
     // NanogroupTypeService.getFromBackEnd(0);
     NanoprovinceService.getFromBackEnd(0);
     NanodistrictService.getFromBackEnd(0);
-    NanoclinicService.getFromBackEnd(0);
     NanoStockCenterService.getFromBackEnd(0);
     NanoStockOperationTypeService.getFromBackEnd(0);
     NanoGroupTypeService.getFromBackEnd(0);
+    NanosystemConfigsService.getFromBackEnd(0);
+
+    StockService.getFromBackEnd(0, clinicService.currClinic().id);
+    StockEntranceService.getFromBackEnd(0, clinicService.currClinic().id);
   }
 
   async function loadPatientDataToOffline() {
-    /*
-    NanopatientService.getFromBackEnd(0);
-    NanopatientAttributeService.getFromBackEnd(0);
-    NanopatientServiceIdentifierService.getFromBackEnd(0);
-    NanopatientVisitService.getFromBackEnd(0);
-    NanopatientVisitDetailsService.getFromBackEnd(0);
-    NanoepisodeService.getFromBackEnd(0);
-    NanopackService.getFromBackEnd(0);
-    NanoprescriptionService.getFromBackEnd(0);
-    NanoprescriptionDetailsService.getFromBackEnd(0);
-    NanopackagedDrugService.getFromBackEnd(0);
-    NanoprescribedDrugService.getFromBackEnd(0);
-    */
-    await NanoclinicSectorService.getFromBackEnd(0);
-    await NanoclinicSectorTypeService.getFromBackEnd(0);
-    await patientService.doPatientsBySectorGet();
-    await episodeService.doEpisodesBySectorGet();
+    await patientService.doPatientsBySectorGet().then((resp) => {
+      if (!resp) {
+        patientService.addBulkMobile();
+        patientServiceIdentifierService.addBulkMobile();
+      }
+    });
+
+    await patientVisitDetailsService
+      .doPatientVisitServiceBySectorGet()
+      .then((resp) => {
+        if (resp) {
+          //  addBulkToMobile();
+        }
+      });
+
+    await patientVisitService
+      .getAllLast3VisitsWithScreeningByPatientIds()
+      .then((resp) => {
+        if (resp) {
+          addBulkToMobile();
+        }
+      });
+  }
+
+  async function addBulkToMobile() {
+    episodeService.addBulkMobile();
+    patientVisitService.addBulkMobile();
+    patientVisitDetailsService.addBulkMobile();
+    prescriptionService.addBulkMobile();
+    prescribedDrugService.addBulkMobile();
+    prescriptionDetailsService.addBulkMobile();
+    packService.addBulkMobile();
+    packagedDrugService.addBulkMobile();
+    vitalSignsScreeningService.addBulkMobile();
+    rAMScreeningService.addBulkMobile();
+    adherenceScreeningService.addBulkMobile();
+    tBScreeningService.addBulkMobile();
+    pregnancyScreeningService.addBulkMobile();
+  }
+
+  async function loadSettingParamsInOfflineMode() {
+    //  await NanoclinicSectorTypeService.getFromBackEnd(0);
+    //  await NanoclinicSectorService.getFromBackEnd(0);
+    // clinicService.getMobile();
+    // clinicSectorService.getMobile();
+    // drugService.getMobile()
+  }
+
+  async function loadStockDistribuitionData() {
+    StockDistributorBatchService.get(0);
+    DrugDistributorService.get(0);
+    StockDistributorService.get(0);
+    StockService.getStockDistributorWeb(clinicService.currClinic().id, 0);
   }
 
   function deleteStorageInfo() {
@@ -158,9 +269,14 @@ export function useOffline() {
   }
 
   return {
+    saveParamsFromPiniaToDexie,
+    loadParamsDataFromBackEndToPinia,
+    loadClinicsDataFromBackEndToPinia,
     loadSettingParamsToOffline,
     loadPatientDataToOffline,
     deleteStorageInfo,
     deleteStorageWithoutPatientInfo,
+    loadSettingParamsInOfflineMode,
+    loadStockDistribuitionData,
   };
 }

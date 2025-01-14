@@ -4,13 +4,25 @@ import PatientVisitDetails from 'src/stores/models/patientVisitDetails/PatientVi
 import { useLoading } from 'src/composables/shared/loading/loading';
 import { useSwal } from 'src/composables/shared/dialog/dialog';
 import { useSystemUtils } from 'src/composables/shared/systemUtils/systemUtils';
-import { nSQL } from 'nano-sql';
-import clinicalServiceService from '../clinicalServiceService/clinicalServiceService';
+import db from '../../../stores/dexie';
+import dispenseTypeService from '../dispenseType/dispenseTypeService';
+import moment from 'moment';
+import prescriptionService from '../prescription/prescriptionService';
+import clinicService from '../clinicService/clinicService';
+import patientService from '../patientService/patientService';
+import ChunkArray from 'src/utils/ChunkArray';
+import useNotify from 'src/composables/shared/notify/UseNotify';
+import episodeService from '../episode/episodeService';
+import patientVisitService from '../patientVisit/patientVisitService';
+import packService from '../pack/packService';
+import { Notify } from 'quasar';
 
 const patientVisitDetails = useRepo(PatientVisitDetails);
+const patientVisitDetailsDexie = db[PatientVisitDetails.entity];
 
-const { closeLoading } = useLoading();
+const { closeLoading, showloading } = useLoading();
 const { alertSucess, alertError } = useSwal();
+const { notifySuccess, notifyInfo, notifyError } = useNotify();
 const { isMobile, isOnline } = useSystemUtils();
 
 export default {
@@ -37,7 +49,7 @@ export default {
   },
   delete(uuid: string) {
     if (isMobile.value && !isOnline.value) {
-      this.deleteMobile(uuid);
+      return this.deleteMobile(uuid);
     } else {
       return this.deleteWeb(uuid);
     }
@@ -58,7 +70,7 @@ export default {
           patientVisitDetails.save(resp.data);
           offset = offset + 100;
           if (resp.data.length > 0) {
-            this.get(offset);
+            this.getWeb(offset);
           }
         })
         .catch((error) => {
@@ -81,19 +93,23 @@ export default {
       });
   },
   // Mobile
+  addMobile(params: string) {
+    return patientVisitDetailsDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        patientVisitDetails.save(params);
+      });
+  },
   putMobile(params: string) {
-    return nSQL(PatientVisitDetails.entity)
-      .query('upsert', params)
-      .exec()
-      .then((resp) => {
-        patientVisitDetails.save(resp[0].affectedRows);
+    return patientVisitDetailsDexie
+      .put(JSON.parse(JSON.stringify(params)))
+      .then(() => {
+        patientVisitDetails.save(params);
       });
   },
   async getMobile() {
     try {
-      const rows = await nSQL(PatientVisitDetails.entity)
-        .query('select')
-        .exec();
+      const rows = await patientVisitDetailsDexie.toArray();
       patientVisitDetails.save(rows);
     } catch (error) {
       // alertError('Aconteceu um erro inesperado nesta operação.');
@@ -102,16 +118,201 @@ export default {
   },
   async deleteMobile(paramsId: string) {
     try {
-      await nSQL(PatientVisitDetails.entity)
-        .query('delete')
-        .where(['id', '=', paramsId])
-        .exec();
+      await patientVisitDetailsDexie.delete(paramsId);
       patientVisitDetails.destroy(paramsId);
       alertSucess('O Registo foi removido com sucesso');
     } catch (error) {
       // alertError('Aconteceu um erro inesperado nesta operação.');
       console.log(error);
     }
+  },
+  async addBulkMobile() {
+    const patientVisitDetailsFromPinia = this.getAllFromStorageForDexie();
+    return patientVisitDetailsDexie
+      .bulkPut(patientVisitDetailsFromPinia)
+      .catch((error: any) => {
+        console.log(error);
+      });
+  },
+
+  async getAllMobileByVisitId(visitIds: []) {
+    const resp = await patientVisitDetailsDexie
+      .where('patientVisitId')
+      .anyOf(visitIds)
+      .toArray();
+
+    patientVisitDetails.save(resp);
+    return resp;
+  },
+
+  async getAllMobileByDetailsId(id: string) {
+    const resp = await patientVisitDetailsDexie
+      .where('id')
+      .equalsIgnoreCase(id)
+      .first();
+
+    ///  patientVisitDetails.save(resp);
+    return resp;
+  },
+
+  async countPacksByDispenseTypeAndServiceOnPeriod(
+    dispenseType: any,
+    service: any,
+    startDate: any,
+    endDate: any
+  ) {
+    let counter = 0;
+    return patientVisitDetailsDexie.toArray().then(async (result) => {
+      for (const pvd of result) {
+        if (pvd.pack !== undefined) {
+          const pickupDate = moment(pvd.pack.pickupDate).format('YYYY-MM-DD');
+          let prescription = pvd.prescription;
+          if (prescription !== undefined) {
+            if (
+              prescription.prescriptionDetails[0].dispenseType === null ||
+              prescription.prescriptionDetails[0].dispenseType === undefined
+            ) {
+              prescription =
+                await prescriptionService.getPrescriptionMobileById(
+                  prescription.id
+                );
+            }
+          }
+          const dispenseTypeId =
+            prescription.prescriptionDetails.length > 0
+              ? prescription.prescriptionDetails[0].dispenseType.id
+              : '';
+          const codeDispenseType = dispenseTypeService.getById(dispenseTypeId);
+          if (
+            pickupDate >= startDate &&
+            pickupDate <= endDate &&
+            pvd.episode.patientServiceIdentifier.service.id === service &&
+            codeDispenseType.code === dispenseType
+          ) {
+            counter++;
+          }
+        }
+      }
+      return counter;
+    });
+  },
+
+  async doPatientVisitServiceBySectorGet() {
+    try {
+      notifyInfo('Carregamento de Dispensas Iniciado');
+      showloading();
+      const patients = await patientService.getMobile();
+      const ids = patients.map((pat: any) => pat.id);
+      const clinicSector = clinicService.currClinic();
+
+      const limit = 100; // Define your limit
+      const offset = 0; // Define your offset
+      let percentage = 0;
+
+      const notif = Notify.create({
+        group: false, // required to be updatable
+        timeout: 0, // we want to be in control when it gets dismissed
+        spinner: true,
+        message: 'Carregando dispensas ...',
+        caption: '2%',
+        color: 'white',
+        textColor: 'primary',
+      });
+
+      const chunks = ChunkArray.chunkArrayWithOffset(ids, limit, offset);
+      // const allVisits = [];
+      //const allVisitDetailsIds = [];
+
+      for (const chunk of chunks) {
+        percentage = Math.min(100, percentage + Math.floor(Math.random() * 20));
+
+        const listParams = {
+          ids: chunk,
+          clinicSector: clinicSector,
+        };
+
+        await api()
+          .post('/patientVisitDetails/getLastAllByPatientIds/', listParams)
+          .then((resp) => {
+            patientVisitDetails.save(resp.data);
+            notif({
+              caption: `${percentage}%`,
+            });
+          })
+          .catch((error) => {
+            notif({
+              type: 'negative',
+              spinner: false,
+              message: 'Ocorreu um erro durante o carregamento de dispensas!',
+              timeout: 2500, // we will timeout it in 2.5s
+              caption: `${percentage}%`,
+              color: 'red',
+              textColor: 'white',
+            });
+          });
+      }
+      // if we are done...
+      percentage = 100;
+      notif({
+        icon: 'done', // we add an icon
+        spinner: false, // we reset the spinner setting so the icon can be displayed
+        message: 'Terminado!',
+        caption: `${percentage}%`,
+        timeout: 2500, // we will timeout it in 2.5s
+      });
+      closeLoading();
+      notifySuccess('Carregamento de Dispensas Terminado');
+      return true;
+    } catch (error) {
+      // Handle any error that occurs during the async operations
+      console.error('An error occurred:', error);
+      closeLoading();
+      notifyError('Ocorreu um erro durante o carregamento de dispensas');
+      return false;
+    }
+  },
+
+  async getLocalDbPatientVisitsPickedUpAtUs(
+    service: any,
+    startDate: any,
+    endDate: any
+  ) {
+    const patientVisitDetails = [];
+    return patientVisitDetailsDexie.toArray().then(async (result) => {
+      for (const pvd of result) {
+        if (pvd.pack !== undefined) {
+          const pickupDate = moment(pvd.pack.pickupDate).format('YYYY-MM-DD');
+          if (
+            pickupDate >= startDate &&
+            pickupDate <= endDate &&
+            pvd.pack.origin !== clinicService.currClinic().id
+          ) {
+            patientVisitDetails.push(pvd);
+          }
+        }
+      }
+      return patientVisitDetails;
+    });
+  },
+  async getLocalDbPatientVisitsExpectedOnDay(
+    service: any,
+    startDate: any,
+    endDate: any
+  ) {
+    const patientVisitDetails = [];
+    return patientVisitDetailsDexie.toArray().then(async (result) => {
+      for (const pvd of result) {
+        if (pvd.pack !== undefined) {
+          const nexPickUpDate = moment(pvd.pack.nextPickUpDate).format(
+            'YYYY-MM-DD'
+          );
+          if (nexPickUpDate >= startDate && nexPickUpDate <= endDate) {
+            patientVisitDetails.push(pvd);
+          }
+        }
+      }
+      return patientVisitDetails;
+    });
   },
   async apiFetchById(id: string) {
     return await api().get(`/patientVisitDetails/${id}`);
@@ -147,7 +348,7 @@ export default {
           max
       )
       .then((resp) => {
-        nSQL(PatientVisitDetails.entity).query('upsert', resp.data).exec();
+        patientVisitDetailsDexie.add(JSON.parse(JSON.stringify(resp.data)));
         patientVisitDetails.save(resp.data);
       });
   },
@@ -177,15 +378,11 @@ export default {
   },
 
   async apiGetPatientVisitDetailsByPatientId(patientId: string) {
-    if (isMobile && !isOnline) {
-      this.get(0);
-    } else {
-      return await api()
-        .get('patientVisitDetails/patientId/' + patientId)
-        .then((resp) => {
-          patientVisitDetails.save(resp.data);
-        });
-    }
+    return await api()
+      .get('patientVisitDetails/patientId/' + patientId)
+      .then((resp) => {
+        patientVisitDetails.save(resp.data);
+      });
   },
 
   async apiGetAllofPrecription(prescriptionId: string) {
@@ -206,12 +403,25 @@ export default {
         return resp;
       });
   },
+
+  async getMobileByPatientVisitIds(patientVisitIds: string) {
+    const rows = await patientVisitDetailsDexie
+      .where('patientVisitId')
+      .anyOf(patientVisitIds);
+    patientVisitDetails.save(rows);
+    return rows;
+  },
   // Local Storage Pinia
   newInstanceEntity() {
     return patientVisitDetails.getModel().$newInstance();
   },
   getAllFromStorage() {
     return patientVisitDetails.all();
+  },
+  getAllFromStorageForDexie() {
+    return patientVisitDetails
+      .makeHidden(['pack', 'episode', 'clinic', 'patientVisit', 'prescription'])
+      .all();
   },
   deleteAllFromStorage() {
     patientVisitDetails.flush();
@@ -287,5 +497,215 @@ export default {
         });
       })
       .get();
+  },
+
+  // Dexie Block
+  async getPatientVisitDetailsByPackIdFromDexie(packIds: string) {
+    return await patientVisitDetailsDexie
+      .where('pack_id')
+      .anyOf(packIds)
+      .toArray();
+  },
+  async getByIdFromDexie(id: string) {
+    return patientVisitDetailsDexie.get(id);
+  },
+  async getAllByIDsFromDexie(ids: []) {
+    const patientVisitDetails = await patientVisitDetailsDexie
+      .where('id')
+      .anyOf(ids)
+      .toArray();
+
+    const patientVisitIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.patient_visit_id
+    );
+
+    const episodeIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.episode_id
+    );
+
+    const clinicIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.clinic_id
+    );
+
+    const prescriptionIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.prescription_id
+    );
+
+    const [clinics, episodes, patientVisits, prescriptions] = await Promise.all(
+      [
+        clinicService.getAllByIDsFromDexie(clinicIds),
+        episodeService.getAllByIDsFromDexie(episodeIds),
+        patientVisitService.getAllByIDsFromDexie(patientVisitIds),
+        prescriptionService.getAllByIDsFromDexie(prescriptionIds),
+      ]
+    );
+
+    patientVisitDetails.map((patientVisitDetail: any) => {
+      patientVisitDetail.clinic = clinics.find(
+        (clinic: any) => clinic.id === patientVisitDetail.clinic_id
+      );
+      patientVisitDetail.episode = episodes.find(
+        (episode: any) => episode.id === patientVisitDetail.episode_id
+      );
+      patientVisitDetail.patientVisit = patientVisits.find(
+        (patientVisit: any) =>
+          patientVisit.id === patientVisitDetail.patient_visit_id
+      );
+      patientVisitDetail.prescription = prescriptions.find(
+        (prescription: any) =>
+          prescription.id === patientVisitDetail.prescription_id
+      );
+    });
+
+    return patientVisitDetails;
+  },
+  async getAllByIDFullFromDexie(ids: []) {
+    const patientVisitDetails = await patientVisitDetailsDexie
+      .where('id')
+      .anyOf(ids)
+      .toArray();
+
+    // const patientVisitIds = patientVisitDetails.map(
+    //   (patientVisitDetail: any) => patientVisitDetail.patient_visit_id
+    // );
+
+    const episodeIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.episode_id
+    );
+
+    const clinicIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.clinic_id
+    );
+
+    const prescriptionIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.prescription_id
+    );
+
+    const packIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.pack_id
+    );
+
+    const [clinics, episodes, prescriptions, packs] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(clinicIds),
+      episodeService.getAllByIDsFromDexie(episodeIds),
+      prescriptionService.getAllByIDsFromDexie(prescriptionIds),
+      packService.getAllByIDsFromDexie(packIds),
+    ]);
+
+    patientVisitDetails.map((patientVisitDetail: any) => {
+      patientVisitDetail.clinic = clinics.find(
+        (clinic: any) => clinic.id === patientVisitDetail.clinic_id
+      );
+      patientVisitDetail.episode = episodes.find(
+        (episode: any) => episode.id === patientVisitDetail.episode_id
+      );
+      patientVisitDetail.prescription = prescriptions.find(
+        (prescription: any) =>
+          (prescription.id = patientVisitDetail.prescription_id)
+      );
+      patientVisitDetail.pack = packs.find(
+        (pack: any) => pack.id === patientVisitDetail.pack_id
+      );
+    });
+
+    return patientVisitDetails;
+  },
+
+  async getAllByPatientVisitIdsFromDexie(ids: []) {
+    const patientVisitDetails = await patientVisitDetailsDexie
+      .where('patient_visit_id')
+      .anyOf(ids)
+      .toArray();
+
+    const episodeIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.episode_id
+    );
+
+    const clinicIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.clinic_id
+    );
+
+    const prescriptionIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.prescription_id
+    );
+
+    const packIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.pack_id
+    );
+
+    const [clinics, episodes, prescriptions, packs] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(clinicIds),
+      episodeService.getAllByIDsFromDexie(episodeIds),
+      prescriptionService.getAllByIDsFromDexie(prescriptionIds),
+      packService.getAllByIDsFromDexie(packIds),
+    ]);
+    patientVisitDetails.map((patientVisitDetail: any) => {
+      patientVisitDetail.clinic = clinics.find(
+        (clinic: any) => clinic.id === patientVisitDetail.clinic_id
+      );
+      patientVisitDetail.episode = episodes.find(
+        (episode: any) => episode.id === patientVisitDetail.episode_id
+      );
+      patientVisitDetail.prescription = prescriptions.find(
+        (prescription: any) =>
+          prescription.id === patientVisitDetail.prescription_id
+      );
+      patientVisitDetail.pack = packs.find(
+        (pack: any) => pack.id === patientVisitDetail.pack_id
+      );
+    });
+
+    return patientVisitDetails;
+  },
+  async getAllByEpisodeIDsFromDexie(ids: []) {
+    const patientVisitDetails = await patientVisitDetailsDexie
+      .where('episode_id')
+      .anyOfIgnoreCase(ids)
+      .toArray();
+
+    const patientVisitIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.patient_visit_id
+    );
+
+    const packIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.pack_id
+    );
+
+    const clinicIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.clinic_id
+    );
+
+    const prescriptionIds = patientVisitDetails.map(
+      (patientVisitDetail: any) => patientVisitDetail.prescription_id
+    );
+
+    const [clinics, packs, patientVisits, prescriptions] = await Promise.all([
+      clinicService.getAllByIDsFromDexie(clinicIds),
+      packService.getAllByIDsFromDexie(packIds),
+      patientVisitService.getAllByIDsNoRelationsFromDexie(patientVisitIds),
+      prescriptionService.getAllByIDsFromDexie(prescriptionIds),
+    ]);
+
+    patientVisitDetails.map((patientVisitDetail: any) => {
+      patientVisitDetail.clinic = clinics.find(
+        (clinic: any) => clinic.id === patientVisitDetail.clinic_id
+      );
+      patientVisitDetail.pack = packs.find(
+        (pack: any) => pack.id === patientVisitDetail.pack_id
+      );
+      patientVisitDetail.patientVisit = patientVisits.find(
+        (patientVisit: any) =>
+          patientVisit.id === patientVisitDetail.patient_visit_id
+      );
+      patientVisitDetail.prescription = prescriptions.find(
+        (prescription: any) =>
+          prescription.id === patientVisitDetail.prescription_id
+      );
+    });
+
+    return patientVisitDetails;
+  },
+  deleteAllFromDexie() {
+    patientVisitDetailsDexie.clear();
   },
 };

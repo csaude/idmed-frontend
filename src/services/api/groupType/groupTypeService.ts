@@ -32,7 +32,22 @@ export default {
         groupType.destroy(id);
       });
   },
-
+  getWeb(offset: number) {
+    if (offset >= 0) {
+      return api()
+        .get('groupType?offset=' + offset + '&max=100')
+        .then((resp) => {
+          groupType.save(resp.data);
+          offset = offset + 100;
+          if (resp.data.length > 0) {
+            this.getWeb(offset);
+          }
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    }
+  },
   async apiGetAllWeb() {
     return await api()
       .get('/groupType')
@@ -66,7 +81,6 @@ export default {
         console.log(error);
       });
   },
-
   get() {
     if (!isOnline.value) {
       this.getMobile();

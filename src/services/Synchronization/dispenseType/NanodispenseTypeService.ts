@@ -1,9 +1,10 @@
 import api from '../../api/apiService/apiService';
-import { nSQL } from 'nano-sql';
+import dispenseTypeService from 'src/services/api/dispenseType/dispenseTypeService';
+import SynchronizationService from '../SynchronizationService';
+import db from 'src/stores/dexie';
 import DispenseType from 'src/stores/models/dispenseType/DispenseType';
-import { useRepo } from 'pinia-orm';
 
-const dispenseType = useRepo(DispenseType);
+const dispenseTypeDexie = db[DispenseType.entity];
 
 export default {
   async getFromBackEnd(offset: number) {
@@ -11,8 +12,7 @@ export default {
       return await api()
         .get('dispenseType?offset=' + offset + '&max=100')
         .then((resp) => {
-          nSQL(DispenseType.entity).query('upsert', resp.data).exec();
-          dispenseType.save(resp.data);
+          dispenseTypeService.addBulkMobile(resp.data);
           console.log('Data synced from backend: DispenseType');
           offset = offset + 100;
           if (resp.data.length > 0) {
@@ -24,5 +24,18 @@ export default {
           console.log(error);
         });
     }
+  },
+
+  async getFromBackEndToPinia(offset: number) {
+    console.log('Data synced from backend To Piania DispenseType');
+    (await SynchronizationService.hasData(dispenseTypeDexie))
+      ? await dispenseTypeService.getWeb(offset)
+      : '';
+  },
+
+  async getFromPiniaToDexie() {
+    console.log('Data synced from Pinia To Dexie DispenseType');
+    const getAllDispenseType = dispenseTypeService.getAllFromStorage();
+    await dispenseTypeDexie.bulkPut(getAllDispenseType);
   },
 };

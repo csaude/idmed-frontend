@@ -74,10 +74,20 @@
                   }}
                 </div>
               </div>
-              <div v-if="prescription.prescriptionDetails !== null" class="row">
+              <div
+                v-if="
+                  prescription.prescriptionDetails !== null &&
+                  prescription.prescriptionDetails !== undefined &&
+                  prescription.prescriptionDetails.length !== 0
+                "
+                class="row"
+              >
                 <div
                   v-if="
-                    prescription.prescriptionDetails[0].therapeuticLine !== null
+                    prescription.prescriptionDetails[0].therapeuticLine !==
+                      null &&
+                    prescription.prescriptionDetails[0].therapeuticLine !==
+                      undefined
                   "
                   class="col text-grey-9 text-weight-medium"
                 >
@@ -85,7 +95,10 @@
                 </div>
                 <div
                   v-if="
-                    prescription.prescriptionDetails[0].therapeuticLine !== null
+                    prescription.prescriptionDetails[0].therapeuticLine !==
+                      null &&
+                    prescription.prescriptionDetails[0].therapeuticLine !==
+                      undefined
                   "
                   class="col text-grey-8"
                 >
@@ -112,7 +125,14 @@
                   }}
                 </div>
               </div>
-              <div v-if="prescription !== null" class="row">
+              <div
+                v-if="
+                  prescription !== null &&
+                  prescription.prescriptionDetails !== undefined &&
+                  prescription.prescriptionDetails.length !== 0
+                "
+                class="row"
+              >
                 <div class="col text-grey-9 text-weight-medium">
                   Tipo Dispensa:
                 </div>
@@ -270,20 +290,22 @@ import { usePrescription } from 'src/composables/prescription/prescriptionMethod
 import groupService from 'src/services/api/group/groupService';
 import PrescriptionDetailsView from 'components/Patient/Prescription/PrescriptionDetailsView.vue';
 import { useSystemConfig } from 'src/composables/systemConfigs/SystemConfigs';
+import StockService from 'src/services/api/stockService/StockService';
+import groupMemberService from 'src/services/api/groupMember/groupMemberService';
 
 //Declaration
-const { website } = useSystemUtils();
+const { website, isMobile, isOnline } = useSystemUtils();
 const { closeLoading, showloading } = useLoading();
 const { isProvincialInstalation } = useSystemConfig();
 const { isCloseEpisode, isDCReferenceEpisode } = useEpisode();
 const { alertSucess, alertError, alertInfo, alertWarningAction } = useSwal();
-const { remainigDuration, remainigDurationInWeeks } = usePrescription();
+const { remainigDuration } = usePrescription();
 const infoVisible = ref(true);
 const loadingFilaPDF = reactive(ref(false));
 const showPrescriptionDetails = ref(false);
 
 //props
-const props = defineProps(['identifierId', 'serviceId']);
+const props = defineProps(['identifierId']);
 
 // Inject
 const editPrescriptionOption = inject('editPrescriptionOption');
@@ -293,9 +315,13 @@ const patient = inject('patient');
 onMounted(() => {
   showloading();
   init();
+  if (isMobile.value && !isOnline.value) {
+    StockService.get(0);
+  }
 });
 //Methods
 const init = () => {
+  groupMemberService.getPatientGroupByPatientId(patient.value.id);
   closeLoading();
 };
 
@@ -310,12 +336,13 @@ const removePack = () => {
   ) {
     isPatientVisitRemoveble = false;
   }
+  const patientVisitDetailsList =
+    patientVisitDetailsService.getAllPatientVisitByPrescriptioId(
+      lastPatientVisitDetails.value.prescription.id
+    );
   alertWarningAction('Deseja remover a Dispensa?').then((result) => {
     if (result) {
-      if (
-        isPatientVisitRemoveble &&
-        patientVisit.value.patientVisitDetails.length <= 1
-      ) {
+      if (isPatientVisitRemoveble && patientVisitDetailsList.length <= 1) {
         let packIdToRemove = lastPatientVisitDetails.value.pack.id;
         let prescriptionToRemove =
           lastPatientVisitDetails.value.prescription.id;
@@ -341,19 +368,12 @@ const removePack = () => {
           });
       } else {
         let packIdToRemove = lastPatientVisitDetails.value.pack.id;
-        let prescriptionToRemove =
-          lastPatientVisitDetails.value.prescription.id;
-        let countPatientVisitDetailsByPrescription =
-          patientVisitDetailsService.getAllPatientVisitByPrescriptioId(
-            prescriptionToRemove
-          );
+
         patientVisitDetailsService
           .delete(lastPatientVisitDetails.value.id)
           .then((resp) => {
             packService.removeFromStorage(packIdToRemove);
-            if (countPatientVisitDetailsByPrescription.length <= 1) {
-              prescriptionService.removeFromStorage(prescriptionToRemove);
-            }
+
             closeLoading();
             console.log(resp);
             alertSucess('Dispensa removida com sucesso');
@@ -402,7 +422,7 @@ const formatDate = (dateString) => {
   return date.formatDate(dateString, 'DD-MM-YYYY');
 };
 
-const printFilaReport = (patientServiceIdentifier) => {
+const printFilaReport = async (patientServiceIdentifier) => {
   filaReport.downloadPDF(
     patient.value,
     patientServiceIdentifier,
@@ -412,10 +432,7 @@ const printFilaReport = (patientServiceIdentifier) => {
 
 // Computed
 const curIdentifier = computed(() => {
-  return patientServiceIdentifierService.identifierCurr(
-    props.identifierId,
-    props.serviceId
-  );
+  return patientServiceIdentifierService.identifierCurr(props.identifierId, '');
 });
 
 const validadeColor = computed(() => {
@@ -549,7 +566,7 @@ const isClosed = computed(() => {
 const isPatientActiveGroupMember = computed(() => {
   return groupService.getGroupByPatientAndService(
     patient.value.id,
-    props.serviceId
+    curIdentifier.value.service.id
   );
 });
 

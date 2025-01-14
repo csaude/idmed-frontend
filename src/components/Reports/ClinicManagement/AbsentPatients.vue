@@ -43,7 +43,7 @@
 <script setup>
 import Report from 'src/services/api/report/ReportService';
 import { LocalStorage } from 'quasar';
-import { ref, provide, onMounted } from 'vue';
+import { ref, provide, onMounted, reactive } from 'vue';
 import absentPatientsTs from 'src/services/reports/ClinicManagement/AbsentPatients.ts';
 import ListHeader from 'components/Shared/ListHeader.vue';
 import FiltersInput from 'components/Reports/shared/FiltersInput.vue';
@@ -60,8 +60,8 @@ const qtyProcessed = ref(0);
 const report = 'FALTOSOS_AO_LEVANTAMENTO';
 const progress = ref(0.0);
 const filterDrugStoreSection = ref('');
-const downloadingPdf = ref(false);
-const downloadingXls = ref(false);
+const downloadingPdf = reactive(ref(false));
+const downloadingXls = reactive(ref(false));
 const isReportClosed = ref(false);
 
 const closeSection = (params) => {
@@ -70,6 +70,9 @@ const closeSection = (params) => {
     const paramId = params.id;
     isReportClosed.value = true;
     LocalStorage.remove(paramId);
+  } else {
+    isReportClosed.value = true;
+    LocalStorage.remove(props.id);
   }
 };
 
@@ -90,54 +93,64 @@ const initReportProcessing = async (params) => {
       }
     );
   } else {
-    updateParamsOnLocalStrage(params, isReportClosed);
     const resp = await AbsentPatientMobileService.getDataLocalDb(params);
     progress.value = 100;
     params.progress = 100;
+    updateParamsOnLocalStrage(params, isReportClosed);
   }
 };
 
 const getProcessingStatus = (params) => {
-  Report.getProcessingStatus('absentPatientsReport', params).then((resp) => {
-    if (resp.data.progress > 0.001) {
-      progress.value = resp.data.progress;
-      if (progress.value < 100) {
-        updateParamsOnLocalStrage(params, isReportClosed);
-        params.progress = resp.data.progress;
+  if (isOnline.value) {
+    Report.getProcessingStatus('absentPatientsReport', params).then((resp) => {
+      if (resp.data.progress > 0.001) {
+        progress.value = resp.data.progress;
+        if (progress.value < 100) {
+          updateParamsOnLocalStrage(params, isReportClosed);
+          params.progress = resp.data.progress;
+          setTimeout(() => {
+            getProcessingStatus(params);
+          }, 3000);
+        } else {
+          progress.value = 100;
+          params.progress = 100;
+          updateParamsOnLocalStrage(params, isReportClosed);
+        }
+      } else {
         setTimeout(() => {
           getProcessingStatus(params);
         }, 3000);
-      } else {
-        progress.value = 100;
-        params.progress = 100;
-        updateParamsOnLocalStrage(params, isReportClosed);
       }
-    } else {
-      setTimeout(() => {
-        getProcessingStatus(params);
-      }, 3000);
-    }
-  });
-};
-
-const generateReport = (id, fileType, params) => {
-  if (fileType === 'PDF') {
-    absentPatientsTs.downloadPDF(id, fileType, params).then((resp) => {
-      if (resp === 204)
-        alertError('Não existem Dados para o período selecionado');
-      downloadingPdf.value = false;
-    });
-  } else if (fileType === 'XLS') {
-    absentPatientsTs.downloadExcel(id, fileType, params).then((resp) => {
-      if (resp === 204)
-        alertError('Não existem Dados para o período selecionado');
-      downloadingXls.value = false;
     });
   }
 };
 
+const generateReport = (id, fileType, params) => {
+  if (fileType === 'PDF') {
+    absentPatientsTs
+      .downloadPDF(id, fileType, params, downloadingPdf)
+      .then((resp) => {
+        if (resp === 204) {
+          alertError('Não existem Dados para o período selecionado');
+          downloadingPdf.value = false;
+        }
+      });
+  } else if (fileType === 'XLS') {
+    absentPatientsTs
+      .downloadExcel(id, fileType, params, downloadingXls)
+      .then((resp) => {
+        if (resp === 204) {
+          alertError('Não existem Dados para o período selecionado');
+          downloadingXls.value = false;
+        }
+      });
+  }
+};
+
 onMounted(() => {
-  console.log(name);
+  if (props.params) {
+    getProcessingStatus(props.params);
+  }
 });
 
 provide('downloadingPdf', downloadingPdf);

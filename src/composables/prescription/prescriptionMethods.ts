@@ -24,7 +24,9 @@ export function usePrescription() {
         pvd.pack_id !== null
       ) {
         pvd.pack = packService.getPackWithsByID(pvd.pack_id);
-        packagedWeeks = Number(packagedWeeks + pvd.pack.weeksSupply);
+        if (pvd.pack !== null) {
+          packagedWeeks = Number(packagedWeeks + pvd.pack.weeksSupply);
+        }
       }
     });
     return Number((prescriptionDuration - packagedWeeks) / 4);

@@ -1,6 +1,6 @@
 import { Model } from 'pinia-orm';
-import Clinic from '../clinic/Clinic';
-import ClinicSector from '../clinicSector/ClinicSector';
+import { Clinic } from '../clinic/ClinicHierarchy';
+import { ClinicSector } from '../clinic/ClinicHierarchy';
 import EpisodeType from '../episodeType/EpisodeType';
 import PatientServiceIdentifier from '../patientServiceIdentifier/PatientServiceIdentifier';
 import PatientVisitDetails from '../patientVisitDetails/PatientVisitDetails';
@@ -23,11 +23,12 @@ export default class Episode extends Model {
       isLast: this.boolean(false),
       referralClinic_id: this.attr(''),
       syncStatus: this.attr(''),
+      origin: this.attr(''),
       // Relationships
       referralClinic: this.belongsTo(Clinic, 'referralClinic_id'),
       startStopReason: this.belongsTo(StartStopReason, 'startStopReason_id'),
       episodeType: this.belongsTo(EpisodeType, 'episodeType_id'),
-      clinicSector: this.belongsTo(ClinicSector, 'clinicSector_id'),
+      clinicSector: this.belongsTo(Clinic, 'clinicSector_id'),
       patientServiceIdentifier: this.belongsTo(
         PatientServiceIdentifier,
         'patientServiceIdentifier_id'
